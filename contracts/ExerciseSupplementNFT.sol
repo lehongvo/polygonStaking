@@ -1,7 +1,3 @@
-/**
- *Submitted for verification at polygonscan.com on 2024-07-15
-*/
-
 // SPDX-License-Identifier: MIT
 
 /**
@@ -4316,6 +4312,12 @@ contract ExerciseSupplementNFT is
     // Private variable to store information about Gacha instances.
     GachaInfos private gachaInfos;
 
+    // SoulBound NFT contract address - ADDED LAST FOR PROXY COMPATIBILITY
+    address public soulBoundNftAddress;
+
+    // Set of NFT addresses required to be eligible to mint the SoulBound NFT
+    EnumerableSet.AddressSet private requiredNftAddressesForSoulBound;
+
     /**
      * @dev Initializes the contract by setting the base URI, initializing the inherited ERC721, ERC721Burnable,
      * UUPSUpgradeable contracts, granting roles, and setting the base extension and size of the contract.
@@ -4621,6 +4623,22 @@ contract ExerciseSupplementNFT is
             curentAddressNftUse = listNftAddress.at(0);
             indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0))
                 .nextTokenIdToMint();
+        }
+
+        if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {
+            bool isEligible = true;
+            
+            for (uint256 i = 0; i < requiredNftAddressesForSoulBound.length(); i++) {
+                address requiredNftAddress = requiredNftAddressesForSoulBound.at(i);
+                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(_challenger) == 0) {
+                    isEligible = false;
+                    break;
+                }
+            }
+            
+            if (isEligible) {
+                TransferHelper.safeMintNFT(soulBoundNftAddress, _challenger);
+            }
         }
 
         return (curentAddressNftUse, indexNftAfterMint);
@@ -5001,5 +5019,49 @@ contract ExerciseSupplementNFT is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+     /**
+     * @dev Update or remove SoulBound contract address
+     * @param _soulBoundNftAddress The address of the SoulBound contract
+     * @param _flag true to update/replace, false to remove (set to address(0))
+     */
+    function updateSoulBoundAddress(
+        address _soulBoundNftAddress,
+        bool _flag
+    ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
+        if (_flag) {
+            require(_soulBoundNftAddress != address(0), "INVALID ADDRESS");
+            soulBoundNftAddress = _soulBoundNftAddress;
+        } else {
+            soulBoundNftAddress = address(0);
+        }
+    }
+
+    /**
+     * @dev Add and remove a required NFT address to the set of addresses required to be eligible to mint the SoulBound NFT
+     * @param _nftAddress The address of the NFT to add to the required list
+     * @param _flag true to add, false to remove
+     */
+    function addOrRemoveRequiredNftAddress(
+        address _nftAddress,
+        bool _flag
+    ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
+        if (_flag) {
+            require(_nftAddress != address(0), "INVALID ADDRESS");
+            require(!requiredNftAddressesForSoulBound.contains(_nftAddress), "NFT ALREADY IN LIST");
+            requiredNftAddressesForSoulBound.add(_nftAddress);
+        } else {
+            require(requiredNftAddressesForSoulBound.contains(_nftAddress), "NFT NOT IN LIST");
+            requiredNftAddressesForSoulBound.remove(_nftAddress);
+        }
+    }
+
+    /**
+     * @dev Get all required NFT addresses for SoulBound minting
+     * @return Array of required NFT addresses
+     */
+    function getRequiredNftAddresses() external view returns (address[] memory) {
+        return requiredNftAddressesForSoulBound.values();
     }
 }
