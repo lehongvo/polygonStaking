@@ -1,0 +1,61 @@
+{
+  "deployments": {
+    "amoy": {
+      "network": "Amoy Testnet",
+      "chainId": 80002,
+      "explorer": "https://www.oklink.com/amoy",
+      "deployer": "0x00000FC78106799b5b1dbD71f206d8f0218B28fe",
+      "contracts": {
+        "polToken": {
+          "name": "TestToken (POL)",
+          "address": "0x8dF1b28ADF0370c101786CC86370e4Bbb4F8be00",
+          "description": "Test POL token for testnet"
+        },
+        "defiAggregator": {
+          "name": "PolygonDeFiAggregator",
+          "address": "0x730607A4dC953f74733f913a146E6E8EE37E2F57",
+          "description": "Main DeFi aggregator contract"
+        }
+      },
+      "protocols": {
+        "stader": {
+          "name": "Stader Liquid Staking",
+          "address": "0x1234567890123456789012345678901234567890",
+          "apy": "10.5%",
+          "type": "liquid"
+        },
+        "claystack": {
+          "name": "ClayStack Liquid Staking",
+          "address": "0x2345678901234567890123456789012345678901",
+          "apy": "9.53%",
+          "type": "liquid"
+        },
+        "ankr": {
+          "name": "Ankr Liquid Staking",
+          "address": "0x3456789012345678901234567890123456789012",
+          "apy": "9.55%",
+          "type": "liquid"
+        },
+        "quickswap_lp": {
+          "name": "QuickSwap LP Staking",
+          "address": "0x4567890123456789012345678901234567890123",
+          "apy": "12%",
+          "type": "lp"
+        },
+        "aave_lending": {
+          "name": "Aave Lending Pool",
+          "address": "0x5678901234567890123456789012345678901234",
+          "apy": "5%",
+          "type": "lending"
+        }
+      },
+      "deploymentDate": "2025-07-28T12:54:07.527Z",
+      "status": "deployed"
+    }
+  },
+  "environment": {
+    "network": "amoy",
+    "rpcUrl": "https://polygon-amoy.infura.io/v3/562726b484744589a1ae3373b09c77ac",
+    "privateKey": "51df14fb6587fe2f6e7e7b4d78c2ab6f9f125d2aba408775c3ec04153201ea1a"
+  }
+}

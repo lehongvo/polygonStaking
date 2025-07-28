@@ -1,4 +1,39 @@
+import * as fs from 'fs';
 import { ethers } from 'hardhat';
+import * as path from 'path';
+
+interface DeploymentInfo {
+  deployments: {
+    [network: string]: {
+      network: string;
+      chainId: number;
+      explorer?: string;
+      deployer: string;
+      contracts: {
+        [name: string]: {
+          name: string;
+          address: string;
+          description: string;
+        };
+      };
+      protocols: {
+        [name: string]: {
+          name: string;
+          address: string;
+          apy: string;
+          type: string;
+        };
+      };
+      deploymentDate: string;
+      status: string;
+    };
+  };
+  environment: {
+    network: string;
+    rpcUrl: string;
+    privateKey: string;
+  };
+}
 
 async function main() {
   console.log('🚀 Setting up PolygonDeFiAggregator for Polygon PoS...');
@@ -52,22 +87,23 @@ async function main() {
   // Setup DeFi protocols
   console.log('\n📋 Setting up DeFi protocols...');
 
-  // Protocol addresses (use env vars or mock for testing)
+  // Protocol addresses (use env vars or real addresses for mainnet)
   const protocolAddresses = {
     stader:
       process.env.STADER_ADDRESS ||
-      '0x1234567890123456789012345678901234567890',
+      (networkName === 'polygon' ? '0x9A0b2b634C62eE6F54B7C4F3Fa15c23b426650aE' : '0x1234567890123456789012345678901234567890'), // Stader Child Pool on Polygon (estimated)
     claystack:
       process.env.CLAYSTACK_ADDRESS ||
-      '0x2345678901234567890123456789012345678901',
+      (networkName === 'polygon' ? '0x0000000000000000000000000000000000000000' : '0x2345678901234567890123456789012345678901'), // ClayStack - cần research thêm
     ankr:
-      process.env.ANKR_ADDRESS || '0x3456789012345678901234567890123456789012',
+      process.env.ANKR_ADDRESS || 
+      (networkName === 'polygon' ? '0xCfD4B4Bc15C8bF0Fd820B0D4558c725727B3ce89' : '0xAf2FdE2a233bc2E7B0B8Fa6066aD2df980B6fa67'), // Ankr PolygonPool: mainnet vs testnet
     quickswap_lp:
       process.env.QUICKSWAP_LP_ADDRESS ||
-      '0x4567890123456789012345678901234567890123',
+      (networkName === 'polygon' ? '0x8eF88E4c7CfbbaC1C163f7eddd4B578792201de6' : '0x4567890123456789012345678901234567890123'), // QuickSwap V3 Position Manager
     aave_lending:
       process.env.AAVE_POOL_ADDRESS ||
-      '0x5678901234567890123456789012345678901234',
+      (networkName === 'polygon' ? '0x794a61358D6845594F94dc1DB02A252b5b4814aD' : '0x5678901234567890123456789012345678901234'),  // Aave V3 Pool on Polygon
   };
 
   // 1. Add Stader (Liquid Staking)
@@ -175,6 +211,19 @@ async function main() {
     }
   }
 
+  // Update deployment-info.json
+  console.log('\n💾 Updating deployment info...');
+  await updateDeploymentInfo(
+    networkName,
+    {
+      polToken: polTokenAddress,
+      defiAggregator: aggregatorAddress,
+      protocols: protocolAddresses,
+    },
+    network,
+    deployer.address
+  );
+
   console.log('\n🎉 PolygonDeFiAggregator setup completed!');
   console.log('\n📝 How to use:');
   console.log('1. Users approve POL tokens to DeFiAggregator');
@@ -199,6 +248,114 @@ async function main() {
     defiAggregator: aggregatorAddress,
     protocols: protocolAddresses,
   };
+}
+
+async function updateDeploymentInfo(
+  networkName: string,
+  addresses: any,
+  network: any,
+  deployerAddress: string
+) {
+  const deploymentPath = path.join(__dirname, '..', 'deployment-info.json');
+
+  // Read existing deployment info or create new
+  let deploymentData: DeploymentInfo;
+  try {
+    deploymentData = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
+  } catch (error) {
+    deploymentData = {
+      deployments: {},
+      environment: {
+        network: networkName,
+        rpcUrl: process.env[`${networkName.toUpperCase()}_RPC_URL`] || '',
+        privateKey: process.env.PRIVATE_KEY || '',
+      },
+    };
+  }
+
+  // Get explorer URL based on network
+  let explorerUrl = '';
+  if (networkName === 'amoy') {
+    explorerUrl = 'https://www.oklink.com/amoy';
+  } else if (networkName === 'polygon') {
+    explorerUrl = 'https://polygonscan.com';
+  }
+
+  // Update deployment info
+  deploymentData.deployments[networkName] = {
+    network:
+      networkName === 'amoy'
+        ? 'Amoy Testnet'
+        : networkName === 'polygon'
+          ? 'Polygon Mainnet'
+          : networkName,
+    chainId: Number(network.chainId),
+    explorer: explorerUrl,
+    deployer: deployerAddress,
+    contracts: {
+      polToken: {
+        name:
+          networkName === 'amoy' || networkName === 'localhost'
+            ? 'TestToken (POL)'
+            : 'POL Token',
+        address: addresses.polToken,
+        description:
+          networkName === 'amoy' || networkName === 'localhost'
+            ? 'Test POL token for testnet'
+            : 'Real POL token',
+      },
+      defiAggregator: {
+        name: 'PolygonDeFiAggregator',
+        address: addresses.defiAggregator,
+        description: 'Main DeFi aggregator contract',
+      },
+    },
+    protocols: {
+      stader: {
+        name: 'Stader Liquid Staking',
+        address: addresses.protocols.stader,
+        apy: '10.5%',
+        type: 'liquid',
+      },
+      claystack: {
+        name: 'ClayStack Liquid Staking',
+        address: addresses.protocols.claystack,
+        apy: '9.53%',
+        type: 'liquid',
+      },
+      ankr: {
+        name: 'Ankr Liquid Staking',
+        address: addresses.protocols.ankr,
+        apy: '9.55%',
+        type: 'liquid',
+      },
+      quickswap_lp: {
+        name: 'QuickSwap LP Staking',
+        address: addresses.protocols.quickswap_lp,
+        apy: '12%',
+        type: 'lp',
+      },
+      aave_lending: {
+        name: 'Aave Lending Pool',
+        address: addresses.protocols.aave_lending,
+        apy: '5%',
+        type: 'lending',
+      },
+    },
+    deploymentDate: new Date().toISOString(),
+    status: 'deployed',
+  };
+
+  // Update environment info
+  deploymentData.environment = {
+    network: networkName,
+    rpcUrl: process.env[`${networkName.toUpperCase()}_RPC_URL`] || '',
+    privateKey: process.env.PRIVATE_KEY || '',
+  };
+
+  // Write updated deployment info
+  fs.writeFileSync(deploymentPath, JSON.stringify(deploymentData, null, 2));
+  console.log('✅ Deployment info updated in deployment-info.json');
 }
 
 main()

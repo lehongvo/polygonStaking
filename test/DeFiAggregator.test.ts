@@ -12,12 +12,21 @@ describe('PolygonDeFiAggregator', function () {
 
     // Deploy test token
     const TestTokenFactory = await ethers.getContractFactory('TestToken');
-    testToken = await TestTokenFactory.deploy('Polygon Test', 'POL', 18, 1000000);
+    testToken = await TestTokenFactory.deploy(
+      'Polygon Test',
+      'POL',
+      18,
+      1000000
+    );
     await testToken.waitForDeployment();
 
     // Deploy DeFi Aggregator
-    const DeFiAggregatorFactory = await ethers.getContractFactory('PolygonDeFiAggregator');
-    defiAggregator = await DeFiAggregatorFactory.deploy(await testToken.getAddress());
+    const DeFiAggregatorFactory = await ethers.getContractFactory(
+      'PolygonDeFiAggregator'
+    );
+    defiAggregator = await DeFiAggregatorFactory.deploy(
+      await testToken.getAddress()
+    );
     await defiAggregator.waitForDeployment();
   });
 
@@ -64,14 +73,19 @@ describe('PolygonDeFiAggregator', function () {
       const initialAPY = 1000;
 
       await expect(
-        defiAggregator.connect(user).addProtocol(
-          protocolName,
-          protocolAddress,
-          rewardToken,
-          protocolType,
-          initialAPY
-        )
-      ).to.be.revertedWithCustomError(defiAggregator, 'OwnableUnauthorizedAccount');
+        defiAggregator
+          .connect(user)
+          .addProtocol(
+            protocolName,
+            protocolAddress,
+            rewardToken,
+            protocolType,
+            initialAPY
+          )
+      ).to.be.revertedWithCustomError(
+        defiAggregator,
+        'OwnableUnauthorizedAccount'
+      );
     });
   });
 
@@ -92,23 +106,30 @@ describe('PolygonDeFiAggregator', function () {
 
     it('Should stake tokens successfully', async function () {
       const stakeAmount = ethers.parseEther('100');
-      
-      await testToken.connect(user).approve(await defiAggregator.getAddress(), stakeAmount);
-      
+
+      await testToken
+        .connect(user)
+        .approve(await defiAggregator.getAddress(), stakeAmount);
+
       await defiAggregator.connect(user).stake(stakeAmount, 'test-protocol');
 
-      const userPosition = await defiAggregator.getUserPosition(user.address, 'test-protocol');
+      const userPosition = await defiAggregator.getUserPosition(
+        user.address,
+        'test-protocol'
+      );
       expect(userPosition.stakedAmount).to.equal(stakeAmount);
     });
 
     it('Should fail when staking to non-existent protocol', async function () {
       const stakeAmount = ethers.parseEther('100');
-      
-      await testToken.connect(user).approve(await defiAggregator.getAddress(), stakeAmount);
-      
+
+      await testToken
+        .connect(user)
+        .approve(await defiAggregator.getAddress(), stakeAmount);
+
       await expect(
         defiAggregator.connect(user).stake(stakeAmount, 'non-existent')
       ).to.be.revertedWith('Protocol not found');
     });
   });
-}); 
+});
