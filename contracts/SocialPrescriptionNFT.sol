@@ -1780,14 +1780,14 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
     EnumerableSet.AddressSet private admins;
     
     // Soul Bound Token: Prevent transfers
-    bool public transferEnabled = false;
+    bool private transferEnabled = false;
     
     // Events for Soul Bound Token functionality
     event TransferStatusChanged(bool enabled);
     event SoulBoundMint(address indexed to, uint256 indexed tokenId);
     
     modifier onlyAdmin() {
-        require(admins.contains(_msgSender()), "NOT ADMIN");
+        require(admins.contains(_msgSender()), "Only admins can call this function");
         _;
     }
 
@@ -1810,29 +1810,26 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
     function supportsInterface(
         bytes4 interfaceId
     ) public view virtual override returns (bool) {
-        // Add support for ERC-5192 interface if needed
         return 
-            interfaceId == 0x49064906 || // ERC-4907 (minimal example)
+            interfaceId == 0x49064906 ||
             super.supportsInterface(interfaceId);
     }
 
-    function safeMint(address to) public {
-        require(admins.contains(_msgSender()), "Address can't mint NFT");
+    function safeMint(address to) public onlyAdmin {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
         
-        // Emit Soul Bound specific event
         emit SoulBoundMint(to, tokenId);
     }
 
-    function batchMint(address to, uint256 amount) public {
-        require(admins.contains(_msgSender()), "Address can't mint NFT");
-        
+    function batchMint(address to, uint256 amount) public onlyAdmin {
         for (uint256 i = 0; i < amount; i++) {
             uint256 tokenId = _tokenIdCounter.current();
             _tokenIdCounter.increment();
             _safeMint(to, tokenId);
+            
+            emit SoulBoundMint(to, tokenId);
         }
     }
 
@@ -1872,11 +1869,11 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
     }
 
     function updateAdmin(address _adminAddr, bool _flag) external onlyAdmin {
-        require(_adminAddr != address(0), "INVALID ADDRESS");
+        require(_adminAddr != address(0), "UpdateAdmin: Invalid address");
         if (_flag) {
             admins.add(_adminAddr);
         } else {
-            require(admins.length() > 1, "CANNOT REMOVE LAST ADMIN");
+            require(admins.length() > 1, "UpdateAdmin: Cannot remove last admin");
             admins.remove(_adminAddr);
         }
     }
@@ -1896,11 +1893,13 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, tokenId);
         
-        // Prevent transfers unless explicitly enabled (for emergency)
+        bool isMintOrBurn = (from == address(0) || to == address(0));
+        bool isAdminOperation = admins.contains(_msgSender()) || admins.contains(from);
+        
         require(
-            transferEnabled || 
-            from == address(0) || 
-            to == address(0),
+            isMintOrBurn ||           
+            isAdminOperation ||       
+            transferEnabled,
             "Soul Bound Token: Transfers are disabled"
         );
     }
@@ -1966,9 +1965,9 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
     
     /**
      * @dev Check if token is soul bound (non-transferable)
-     * @return bool Always returns true for this implementation
+     * @return bool Returns true if token is soul bound (transfers disabled)
      */
     function isSoulBound() external view returns (bool) {
-        return transferEnabled;
+        return !transferEnabled;
     }
 }
