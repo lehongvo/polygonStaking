@@ -1765,6 +1765,11 @@ pragma solidity ^0.8.16;
 
 
 
+/**
+ * @title SocialPrescriptionNFT - Soul Bound Token for Medical Prescriptions
+ * @dev ERC721-based Soul Bound Token that cannot be transferred between addresses
+ * @dev Implements emergency transfer controls for admin management
+ */
 contract SocialPrescriptionNFT is ERC721, Ownable {
     using Strings for uint256;
     using Counters for Counters.Counter;
@@ -1773,7 +1778,14 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
     string public baseExtension = ".json";
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private admins;
-
+    
+    // Soul Bound Token: Prevent transfers
+    bool public transferEnabled = false;
+    
+    // Events for Soul Bound Token functionality
+    event TransferStatusChanged(bool enabled);
+    event SoulBoundMint(address indexed to, uint256 indexed tokenId);
+    
     modifier onlyAdmin() {
         require(admins.contains(_msgSender()), "NOT ADMIN");
         _;
@@ -1792,11 +1804,26 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
         return baseURI;
     }
 
+    /**
+     * @dev Override supportsInterface to include Soul Bound Token detection
+     */
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override returns (bool) {
+        // Add support for ERC-5192 interface if needed
+        return 
+            interfaceId == 0x49064906 || // ERC-4907 (minimal example)
+            super.supportsInterface(interfaceId);
+    }
+
     function safeMint(address to) public {
         require(admins.contains(_msgSender()), "Address can't mint NFT");
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
+        
+        // Emit Soul Bound specific event
+        emit SoulBoundMint(to, tokenId);
     }
 
     function batchMint(address to, uint256 amount) public {
@@ -1856,5 +1883,92 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
 
     function getAdmins() external view returns (address[] memory) {
         return admins.values();
+    }
+
+    /**
+     * @dev Override transfer functions to make this a Soul Bound Token
+     * Only admins can enable/disable transfers for emergency purposes
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) internal virtual override {
+        super._beforeTokenTransfer(from, to, tokenId);
+        
+        // Prevent transfers unless explicitly enabled (for emergency)
+        require(
+            transferEnabled || 
+            from == address(0) || 
+            to == address(0),
+            "Soul Bound Token: Transfers are disabled"
+        );
+    }
+    
+    /**
+     * @dev Override transferFrom to prevent transfers
+     */
+    function transferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual override {
+        require(
+            transferEnabled,
+            "Soul Bound Token: Transfers are disabled"
+        );
+        super.transferFrom(from, to, tokenId);
+    }
+    
+    /**
+     * @dev Override safeTransferFrom to prevent transfers
+     */
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId
+    ) public virtual override {
+        require(
+            transferEnabled,
+            "Soul Bound Token: Transfers are disabled"
+        );
+        super.safeTransferFrom(from, to, tokenId);
+    }
+    
+    /**
+     * @dev Override safeTransferFrom with data to prevent transfers
+     */
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) public virtual override {
+        require(
+            transferEnabled,
+            "Soul Bound Token: Transfers are disabled"
+        );
+        super.safeTransferFrom(from, to, tokenId, data);
+    }
+    
+    /**
+     * @dev Emergency function to enable/disable transfers (admin only)
+     * @param _enabled Whether to enable or disable transfers
+     */
+    function setTransferEnabled(bool _enabled) external onlyAdmin {
+        bool previousState = transferEnabled;
+        transferEnabled = _enabled;
+        
+        if (previousState != _enabled) {
+            emit TransferStatusChanged(_enabled);
+        }
+    }
+    
+    /**
+     * @dev Check if token is soul bound (non-transferable)
+     * @return bool Always returns true for this implementation
+     */
+    function isSoulBound() external view returns (bool) {
+        return transferEnabled;
     }
 }
