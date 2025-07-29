@@ -1,3 +1,35 @@
+// SPDX-License-Identifier: MIT
+
+/**
+ * @title MIT License
+ * @copyright 2024 Hiroshi Tanimoto / Sense It Smart Corporation
+ * 
+ * @notice Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * @notice The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ * 
+ * @notice THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ * 
+ * @notice This project uses OpenZeppelin Contracts (https://github.com/OpenZeppelin/openzeppelin-contracts)
+ * which is licensed under the MIT License.
+ * 
+ * @notice IMPORTANT: This software may be subject to patent rights. Your use of this software may be subject 
+ * to additional terms and conditions as outlined in our Patent Policy. Please refer to our Patent 
+ * Policy for more information:
+ * Patent Policy: https://espl.jp/patentpolicy/
+ */
 
 // File: SocialPrescriptionNFT/IERC165.sol
 
