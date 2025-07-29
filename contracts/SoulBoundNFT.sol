@@ -1798,11 +1798,11 @@ pragma solidity ^0.8.16;
 
 
 /**
- * @title SocialPrescriptionNFT - Soul Bound Token for Medical Prescriptions
+ * @title SoulBoundNFT - Soul Bound Token Implementation
  * @dev ERC721-based Soul Bound Token that cannot be transferred between addresses
  * @dev Implements emergency transfer controls for admin management
  */
-contract SocialPrescriptionNFT is ERC721, Ownable {
+contract SoulBoundNFT is ERC721, Ownable {
     using Strings for uint256;
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIdCounter;
@@ -1810,11 +1810,8 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
     string public baseExtension = ".json";
     using EnumerableSet for EnumerableSet.AddressSet;
     EnumerableSet.AddressSet private admins;
-    
-    // Soul Bound Token: Prevent transfers
     bool private transferEnabled = false;
-    
-    // Events for Soul Bound Token functionality
+
     event TransferStatusChanged(bool enabled);
     event SoulBoundMint(address indexed to, uint256 indexed tokenId);
     

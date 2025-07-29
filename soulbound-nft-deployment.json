@@ -1,0 +1,15 @@
+{
+  "network": "polygon",
+  "chainId": 137,
+  "explorer": "https://polygonscan.com",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "contractName": "SoulBoundNFT",
+  "contractAddress": "0x39E16281D4668b393303c6A03fa75e2f84d6404B",
+  "constructorArgs": [
+    "Soul Bound NFT",
+    "SBNFT",
+    "https://api.soulbound.com/metadata/"
+  ],
+  "deploymentDate": "2025-07-29T00:15:54.163Z",
+  "verified": false
+}
