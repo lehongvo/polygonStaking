@@ -56,6 +56,6 @@
   "environment": {
     "network": "amoy",
     "rpcUrl": "https://polygon-amoy.infura.io/v3/562726b484744589a1ae3373b09c77ac",
-    "privateKey": "51df14fb6587fe2f6e7e7b4d78c2ab6f9f125d2aba408775c3ec04153201ea1a"
+    "privateKey": "*** REMOVED FOR SECURITY - USE .env FILE ***"
   }
 }
