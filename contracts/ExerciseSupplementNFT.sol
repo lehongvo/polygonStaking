@@ -4625,19 +4625,12 @@ contract ExerciseSupplementNFT is
                 .nextTokenIdToMint();
         }
 
-        if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {
-            bool isEligible = true;
-            
+        if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {            
             for (uint256 i = 0; i < requiredNftAddressesForSoulBound.length(); i++) {
                 address requiredNftAddress = requiredNftAddressesForSoulBound.at(i);
-                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(_challenger) == 0) {
-                    isEligible = false;
-                    break;
+                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(_challenger) > 0) {
+                    TransferHelper.safeMintNFT(soulBoundNftAddress, _challenger);
                 }
-            }
-            
-            if (isEligible) {
-                TransferHelper.safeMintNFT(soulBoundNftAddress, _challenger);
             }
         }
 
