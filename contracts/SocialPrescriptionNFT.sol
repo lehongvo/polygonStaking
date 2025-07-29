@@ -1925,11 +1925,11 @@ contract SocialPrescriptionNFT is ERC721, Ownable {
     ) internal virtual override {
         super._beforeTokenTransfer(from, to, tokenId);
         
-        bool isMintOrBurn = (from == address(0) || to == address(0));
+        bool isBurn = to == address(0);
         bool isAdminOperation = admins.contains(_msgSender()) || admins.contains(from);
         
         require(
-            isMintOrBurn ||           
+            isBurn ||           
             isAdminOperation ||       
             transferEnabled,
             "Soul Bound Token: Transfers are disabled"
