@@ -30,7 +30,7 @@ async function main() {
   try {
     // Deploy ExerciseSupplementNFT (Regular deployment)
     console.log('\n📝 Deploying ExerciseSupplementNFT...');
-    const ExerciseSupplementNFT = await hre.ethers.getContractFactory('ExerciseSupplementNFT');
+    const ExerciseSupplementNFT = await hre.ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     
     // Deploy without constructor arguments
     const exerciseNft = await ExerciseSupplementNFT.deploy();
