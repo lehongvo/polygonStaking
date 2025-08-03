@@ -4628,7 +4628,7 @@ contract ExerciseSupplementNFT is
         if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {            
             for (uint256 i = 0; i < requiredNftAddressesForSoulBound.length(); i++) {
                 address requiredNftAddress = requiredNftAddressesForSoulBound.at(i);
-                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(msg.sender) > 0) {
+                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(_challenger) > 0) {
                     TransferHelper.safeMintNFT(soulBoundNftAddress, _challenger);
                 }
             }
