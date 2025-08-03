@@ -4619,16 +4619,24 @@ contract ExerciseSupplementNFT is
                 }
             }
         } else {
-            TransferHelper.safeMintNFT(listNftAddress.at(0), _challenger);
-            curentAddressNftUse = listNftAddress.at(0);
-            indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0))
-                .nextTokenIdToMint();
+            if(soulBoundNftAddress == address(0)) {
+                TransferHelper.safeMintNFT(listNftAddress.at(0), _challenger);
+                curentAddressNftUse = listNftAddress.at(0);
+                indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0))
+                    .nextTokenIdToMint();
+            }
         }
 
         if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {            
             for (uint256 i = 0; i < requiredNftAddressesForSoulBound.length(); i++) {
                 address requiredNftAddress = requiredNftAddressesForSoulBound.at(i);
                 if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(msg.sender) > 0) {
+                    if(indexNftAfterMint == 0) {
+                        curentAddressNftUse = requiredNftAddress;
+                        indexNftAfterMint = ExerciseSupplementNFT(
+                            soulBoundNftAddress
+                        ).nextTokenIdToMint();
+                    }
                     TransferHelper.safeMintNFT(soulBoundNftAddress, _challenger);
                 }
             }
