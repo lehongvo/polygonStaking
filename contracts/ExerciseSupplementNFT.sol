@@ -4583,6 +4583,17 @@ contract ExerciseSupplementNFT is
     ) public onlyRole(ALLOWED_CONTRACTS_CHALLENGE) returns (address, uint256) {
         address curentAddressNftUse;
         uint256 indexNftAfterMint;
+        bool hasSoulBoundMinted = false;
+
+        if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {            
+            for (uint256 i = 0; i < requiredNftAddressesForSoulBound.length(); i++) {
+                address requiredNftAddress = requiredNftAddressesForSoulBound.at(i);
+                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(msg.sender) > 0) {
+                    TransferHelper.safeMintNFT(soulBoundNftAddress, _challenger);
+                    hasSoulBoundMinted = true;
+                }
+            }
+        }
 
         if (
             _goal >= listNftSpecialConditionInfo.targetStepPerDay &&
@@ -4619,26 +4630,11 @@ contract ExerciseSupplementNFT is
                 }
             }
         } else {
-            if(soulBoundNftAddress == address(0)) {
+            if(soulBoundNftAddress == address(0) || !hasSoulBoundMinted) {
                 TransferHelper.safeMintNFT(listNftAddress.at(0), _challenger);
                 curentAddressNftUse = listNftAddress.at(0);
                 indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0))
                     .nextTokenIdToMint();
-            }
-        }
-
-        if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {            
-            for (uint256 i = 0; i < requiredNftAddressesForSoulBound.length(); i++) {
-                address requiredNftAddress = requiredNftAddressesForSoulBound.at(i);
-                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(msg.sender) > 0) {
-                    if(indexNftAfterMint == 0) {
-                        curentAddressNftUse = requiredNftAddress;
-                        indexNftAfterMint = ExerciseSupplementNFT(
-                            soulBoundNftAddress
-                        ).nextTokenIdToMint();
-                    }
-                    TransferHelper.safeMintNFT(soulBoundNftAddress, _challenger);
-                }
             }
         }
 
