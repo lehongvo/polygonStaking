@@ -1,51 +1,7 @@
 import 'dotenv/config';
-import * as fs from 'fs';
-import { run } from 'hardhat';
-import * as path from 'path';
 
 const hre = require('hardhat');
 
-async function verifyContract(contractAddress: string, constructorArgs: any[], networkName: string): Promise<boolean> {
-  // Skip verification for local networks
-  if (networkName === 'hardhat' || networkName === 'localhost') {
-    console.log('⚠️ Skipping verification for local network');
-    return false;
-  }
-
-  try {
-    console.log('\n🔍 Verifying contract on blockchain...');
-    
-    await run('verify:verify', {
-      address: contractAddress,
-      constructorArguments: constructorArgs
-    });
-
-    console.log('✅ Contract verified successfully!');
-    return true;
-  } catch (error: any) {
-    if (error.message.includes('Already Verified')) {
-      console.log('✅ Contract was already verified!');
-      return true;
-    } else {
-      console.log('⚠️ Verification failed:', error.message);
-      console.log('�� You can verify manually later using:');
-      console.log(`npx hardhat verify --network ${networkName} ${contractAddress}`);
-      return false;
-    }
-  }
-}
-function getExplorerUrl(networkName: string): string {
-  switch (networkName) {
-    case 'polygon':
-      return 'https://polygonscan.com';
-    case 'amoy':
-      return 'https://www.oklink.com/amoy';
-    case 'mumbai':
-      return 'https://mumbai.polygonscan.com';
-    default:
-      return '';
-  }
-}
 interface TokenConfig {
   address: string;
   symbol: string;
@@ -254,39 +210,7 @@ async function main() {
   console.log(`- AAVE_POOL_ADDRESS: ${process.env.AAVE_POOL_ADDRESS || 'NOT SET'}`);
   console.log(`- DEPLOY_TEST_TOKENS: ${process.env.DEPLOY_TEST_TOKENS || 'NOT SET'}`);
 
-  // Save deployment info for verification
-  const deploymentInfo = {
-    network: networkName,
-    chainId: Number(network.chainId),
-    explorer: getExplorerUrl(networkName),
-    deployer: deployer.address,
-    contractName: 'PolygonDeFiAggregator',
-    contractAddress: aggregatorAddress,
-    constructorArgs: [], // Empty constructor
-    deploymentDate: new Date().toISOString(),
-    verified: false,
-    tokens: finalTokenAddresses,
-    protocols: protocolConfigs.reduce((acc, p) => ({ ...acc, [p.name]: p.address }), {}),
-  };
-
-  const deploymentPath = path.join(__dirname, '..', 'polygon-defi-deployment.json');
-  fs.writeFileSync(deploymentPath, JSON.stringify(deploymentInfo, null, 2));
-  console.log(`\n💾 Deployment info saved to: ${deploymentPath}`);
-
-  // Auto verify contract
-  const isVerified = await verifyContract(aggregatorAddress, [], networkName);
-  deploymentInfo.verified = isVerified;
-  
-  // Update deployment info with verification status
-  fs.writeFileSync(deploymentPath, JSON.stringify(deploymentInfo, null, 2));
-  
-  if (isVerified && deploymentInfo.explorer) {
-    console.log('\n🔗 Verified Contract Links:');
-    console.log(`- Contract: ${deploymentInfo.explorer}/address/${aggregatorAddress}`);
-    console.log(`- Verified Code: ${deploymentInfo.explorer}/address/${aggregatorAddress}#code`);
-    console.log(`- Read Contract: ${deploymentInfo.explorer}/address/${aggregatorAddress}#readContract`);
-    console.log(`- Write Contract: ${deploymentInfo.explorer}/address/${aggregatorAddress}#writeContract`);
-  }  return {
+  return {
     defiAggregator: aggregatorAddress,
     tokens: finalTokenAddresses,
     protocols: protocolConfigs.reduce((acc, p) => ({ ...acc, [p.name]: p.address }), {}),
