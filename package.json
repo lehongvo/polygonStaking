@@ -5,7 +5,7 @@
   "license": "MIT",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
-    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.1.0",
     "@nomicfoundation/hardhat-ignition": "^0.15.0",
     "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
@@ -49,6 +49,9 @@
     "deploy:amoy": "hardhat run scripts/setup-polygon-defi.ts --network amoy",
     "deploy:polygon": "hardhat run scripts/setup-polygon-defi.ts --network polygon",
     "deploy:localhost": "hardhat run scripts/setup-polygon-defi.ts --network localhost",
+    "deploy:staking:amoy": "hardhat run scripts/setup-time-locked-staking.ts --network amoy",
+    "deploy:staking:polygon": "hardhat run scripts/setup-time-locked-staking.ts --network polygon",
+    "deploy:staking:localhost": "hardhat run scripts/setup-time-locked-staking.ts --network localhost",
     "deploy:soulbound:amoy": "hardhat run scripts/deploy-soulbound-nft.ts --network amoy",
     "deploy:soulbound:polygon": "hardhat run scripts/deploy-soulbound-nft.ts --network polygon",
     "deploy:soulbound:localhost": "hardhat run scripts/deploy-soulbound-nft.ts --network localhost",

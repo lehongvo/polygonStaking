@@ -1,0 +1,75 @@
+# Environment Configuration for Polygon DeFi Staking
+
+# ==============================================
+# PRIVATE KEYS & ACCOUNTS
+# ==============================================
+# Your wallet private key (without 0x prefix)
+# ⚠️ NEVER commit this to git! Keep it secret!
+PRIVATE_KEY=your_private_key_here
+
+# ==============================================
+# RPC ENDPOINTS
+# ==============================================
+# Polygon Mainnet RPC URL
+POLYGON_RPC_URL=https://polygon-rpc.com
+# Alternative: https://rpc.ankr.com/polygon
+# Alternative: https://polygon.llamarpc.com
+
+# Polygon Amoy Testnet RPC URL  
+AMOY_RPC_URL=https://polygon-amoy.drpc.org
+# Alternative: https://rpc-amoy.polygon.technology
+
+# ==============================================
+# API KEYS
+# ==============================================
+# PolygonScan API Key for contract verification
+POLYGONSCAN_API_KEY=your_polygonscan_api_key_here
+
+# ==============================================
+# TOKEN ADDRESSES
+# ==============================================
+# POL Token Address (Polygon's native token)
+# Mainnet: 0x455e53bd3ba7eCC66C8e1e2c4A1a2A0F4b9A5D0F
+POL_TOKEN_ADDRESS=0x455e53bd3ba7eCC66C8e1e2c4A1a2A0F4b9A5D0F
+
+# ==============================================
+# PROTOCOL ADDRESSES (Optional Overrides)
+# ==============================================
+# Stader Protocol Address (currently not available on Polygon)
+STADER_ADDRESS=
+
+# ClayStack Protocol Address (currently shutting down)
+CLAYSTACK_ADDRESS=
+
+# Ankr Protocol Address (verified working)
+ANKR_ADDRESS=0xCfD4B4Bc15C8bF0Fd820B0D4558c725727B3ce89
+
+# QuickSwap LP Address
+QUICKSWAP_LP_ADDRESS=0x8eF88E4c7CfbbaC1C163f7eddd4B578792201de6
+
+# Aave Pool Address
+AAVE_POOL_ADDRESS=0x794a61358D6845594F94dc1DB02A252b5b4814aD
+
+# ==============================================
+# DEPLOYMENT OPTIONS
+# ==============================================
+# Set to 'true' to deploy test tokens on testnets
+DEPLOY_TEST_TOKEN=true
+
+# Gas reporting (set to any value to enable)
+REPORT_GAS=
+
+# ==============================================
+# USAGE EXAMPLES
+# ==============================================
+# Deploy to Amoy testnet:
+# yarn deploy:amoy
+
+# Deploy to Polygon mainnet:
+# yarn deploy:polygon
+
+# Deploy to localhost:
+# yarn deploy:localhost
+
+# Verify contracts:
+# yarn verify:contracts:polygon
