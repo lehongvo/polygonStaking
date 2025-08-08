@@ -450,7 +450,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         require(protocol.isActive, "Protocol not supported");
 
         uint256 actualAmount;
-        
+
         // Handle native MATIC staking (when _token is WMATIC and msg.value > 0)
         if (_token == WMATIC_ADDRESS && msg.value > 0) {
             require(msg.value > 0, "Cannot stake 0 MATIC");
@@ -458,21 +458,20 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
                 keccak256(bytes(_protocol)) == keccak256(bytes("aave_lending")),
                 "Native MATIC only supported for Aave"
             );
-            
+
             actualAmount = msg.value;
-            
+
             // Wrap native MATIC to WMATIC
             IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
-            wmatic.deposit{value: actualAmount}();
-            
+            wmatic.deposit{ value: actualAmount }();
         } else {
             // Handle regular ERC20 token staking
             require(_amount > 0, "Cannot stake 0");
             require(msg.value == 0, "Don't send MATIC for ERC20 staking");
             require(supportedTokens[_token].isActive, "Token not supported");
-            
+
             actualAmount = _amount;
-            
+
             // Transfer tokens from user
             IERC20(_token).safeTransferFrom(msg.sender, address(this), actualAmount);
         }

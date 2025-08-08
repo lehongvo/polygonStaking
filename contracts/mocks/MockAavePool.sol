@@ -9,7 +9,7 @@ contract MockAavePool {
 
     mapping(address => mapping(address => uint256)) public userBalances;
     mapping(address => uint256) public totalSupplied;
-    
+
     bool public shouldFail = false;
     uint256 public interestRate = 1050; // 5% interest (1.05x)
 
@@ -20,26 +20,22 @@ contract MockAavePool {
         uint16 referralCode
     ) external {
         require(!shouldFail, "Mock: Supply failed");
-        
+
         IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
         userBalances[onBehalfOf][asset] += amount;
         totalSupplied[asset] += amount;
     }
 
-    function withdraw(
-        address asset,
-        uint256 amount,
-        address to
-    ) external returns (uint256) {
+    function withdraw(address asset, uint256 amount, address to) external returns (uint256) {
         require(!shouldFail, "Mock: Withdraw failed");
         require(userBalances[to][asset] >= amount, "Insufficient balance");
-        
+
         // Simulate interest earned
         uint256 withdrawAmount = (amount * interestRate) / 1000;
-        
+
         userBalances[to][asset] -= amount;
         totalSupplied[asset] -= amount;
-        
+
         IERC20(asset).safeTransfer(to, withdrawAmount);
         return withdrawAmount;
     }

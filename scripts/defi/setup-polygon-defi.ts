@@ -324,6 +324,8 @@ async function main() {
   const deploymentPath = path.join(
     __dirname,
     '..',
+    '..',
+    'deployInfo',
     'polygon-defi-deployment.json'
   );
   fs.writeFileSync(deploymentPath, JSON.stringify(deploymentInfo, null, 2));
