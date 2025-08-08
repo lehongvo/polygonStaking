@@ -30,6 +30,7 @@ async function main() {
     __dirname,
     '..',
     '..',
+    'deployInfo',
     'polygon-defi-deployment.json'
   );
 
