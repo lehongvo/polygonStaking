@@ -23,17 +23,25 @@ async function main() {
   console.log(`Network: ${networkName}`);
 
   // Read deployment info
-  const deploymentPath = path.join(__dirname, '..', 'exercise-nft-deployment.json');
-  
+  const deploymentPath = path.join(
+    __dirname,
+    '..',
+    'exercise-nft-deployment.json'
+  );
+
   if (!fs.existsSync(deploymentPath)) {
     console.error('❌ Deployment info file not found. Please deploy first.');
     process.exit(1);
   }
 
-  const deploymentInfo: DeploymentInfo = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
+  const deploymentInfo: DeploymentInfo = JSON.parse(
+    fs.readFileSync(deploymentPath, 'utf8')
+  );
 
   if (deploymentInfo.network !== networkName) {
-    console.error(`❌ Network mismatch. Deployment was on ${deploymentInfo.network}, current network is ${networkName}`);
+    console.error(
+      `❌ Network mismatch. Deployment was on ${deploymentInfo.network}, current network is ${networkName}`
+    );
     process.exit(1);
   }
 
@@ -44,7 +52,7 @@ async function main() {
     console.log('\n📋 Verifying contract...');
     await run('verify:verify', {
       address: deploymentInfo.contractAddress,
-      constructorArguments: []
+      constructorArguments: [],
     });
     console.log('✅ Contract verified!');
 
@@ -59,23 +67,28 @@ async function main() {
 
     if (deploymentInfo.explorer) {
       console.log('\n🔗 Verified Explorer Link:');
-      console.log(`- Contract: ${deploymentInfo.explorer}/address/${deploymentInfo.contractAddress}`);
+      console.log(
+        `- Contract: ${deploymentInfo.explorer}/address/${deploymentInfo.contractAddress}`
+      );
     }
-
   } catch (error) {
     console.error('❌ Verification failed:', error);
     console.log('\n🔧 Manual verification command:');
-    console.log(`yarn hardhat verify --network ${networkName} ${deploymentInfo.contractAddress}`);
+    console.log(
+      `yarn hardhat verify --network ${networkName} ${deploymentInfo.contractAddress}`
+    );
     process.exit(1);
   }
 }
 
 main()
   .then(() => {
-    console.log('\n🎉 ExerciseSupplementNFT verification completed successfully!');
+    console.log(
+      '\n🎉 ExerciseSupplementNFT verification completed successfully!'
+    );
     process.exit(0);
   })
   .catch(error => {
     console.error('❌ Verification error:', error);
     process.exit(1);
-  }); 
+  });

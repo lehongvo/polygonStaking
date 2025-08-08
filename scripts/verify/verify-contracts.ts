@@ -45,15 +45,10 @@ async function main() {
 
       // Get constructor arguments based on contract type
       let constructorArgs: string[] = [];
-      
+
       if (contractName === 'polToken') {
         // TestToken constructor: name, symbol, decimals, initialSupply
-        constructorArgs = [
-          '"Polygon Test"',
-          '"POL"',
-          '18',
-          '1000000'
-        ];
+        constructorArgs = ['"Polygon Test"', '"POL"', '18', '1000000'];
       } else if (contractName === 'defiAggregator') {
         // PolygonDeFiAggregator constructor: polTokenAddress
         const polTokenAddress = networkInfo.contracts.polToken?.address;
