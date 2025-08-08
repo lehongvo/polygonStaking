@@ -1,0 +1,28 @@
+{
+  "network": "localhost",
+  "contractName": "YOBOWEB3WALK",
+  "contractAddress": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "deploymentTime": "2025-08-08T04:44:28.604Z",
+  "blockNumber": 12,
+  "constructorArgs": {
+    "baseURI": "ipfs://QmQEQYguTJ4ApkCJ8J5wSMGFfgZLP5Xz4w7yGArFdHkVjr/"
+  },
+  "contractDetails": {
+    "name": "YOBOWEB3WALK",
+    "symbol": "YOB3WK",
+    "maxSupply": 201,
+    "soulBound": true
+  },
+  "initialMints": [
+    {
+      "to": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+      "count": 2,
+      "description": "Initial mints for testing"
+    }
+  ],
+  "verification": {
+    "verified": false,
+    "explorerUrl": "Unknown network: localhost"
+  }
+}

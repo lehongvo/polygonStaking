@@ -45,6 +45,15 @@ interface ICompoundPool {
     function exchangeRateStored() external view returns (uint256);
 }
 
+// Interface cho WMATIC (Wrapped MATIC)
+interface IWMATIC {
+    function deposit() external payable;
+    function withdraw(uint256 amount) external;
+    function balanceOf(address account) external view returns (uint256);
+    function transfer(address to, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+}
+
 /**
  * @title PolygonDeFiAggregator
  * @dev Contract trung gian để tương tác với các DeFi staking protocols trên Polygon PoS
@@ -52,6 +61,9 @@ interface ICompoundPool {
  */
 contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
+
+    // Constants
+    address public constant WMATIC_ADDRESS = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
 
     struct TimeLockedStake {
         uint256 amount;
@@ -422,40 +434,67 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     // ===== ORIGINAL FUNCTIONS (for backward compatibility) =====
 
     /**
+    /**
      * @dev Stake tokens through specified DeFi protocol (immediate, no time lock)
-     * @param _token Token address to stake
-     * @param _amount Amount to stake
+     * Enhanced to support native MATIC staking when _token is WMATIC
+     * @param _token Token address to stake (use WMATIC_ADDRESS for native MATIC)
+     * @param _amount Amount to stake (ignored if sending native MATIC)
      * @param _protocol Protocol to stake in
      */
     function stake(
         address _token,
         uint256 _amount,
         string memory _protocol
-    ) external nonReentrant whenNotPaused {
-        require(_amount > 0, "Cannot stake 0");
-        require(supportedTokens[_token].isActive, "Token not supported");
-
+    ) external payable nonReentrant whenNotPaused {
         ProtocolInfo storage protocol = protocols[_protocol];
         require(protocol.isActive, "Protocol not supported");
 
-        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
+        uint256 actualAmount;
+        
+        // Handle native MATIC staking (when _token is WMATIC and msg.value > 0)
+        if (_token == WMATIC_ADDRESS && msg.value > 0) {
+            require(msg.value > 0, "Cannot stake 0 MATIC");
+            require(
+                keccak256(bytes(_protocol)) == keccak256(bytes("aave_lending")),
+                "Native MATIC only supported for Aave"
+            );
+            
+            actualAmount = msg.value;
+            
+            // Wrap native MATIC to WMATIC
+            IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
+            wmatic.deposit{value: actualAmount}();
+            
+        } else {
+            // Handle regular ERC20 token staking
+            require(_amount > 0, "Cannot stake 0");
+            require(msg.value == 0, "Don't send MATIC for ERC20 staking");
+            require(supportedTokens[_token].isActive, "Token not supported");
+            
+            actualAmount = _amount;
+            
+            // Transfer tokens from user
+            IERC20(_token).safeTransferFrom(msg.sender, address(this), actualAmount);
+        }
 
+        // Update user position
         UserPosition storage position = userPositions[msg.sender];
-        position.totalDeposited += _amount;
-        position.tokenProtocolBalances[_token][_protocol] += _amount;
+        position.totalDeposited += actualAmount;
+        position.tokenProtocolBalances[_token][_protocol] += actualAmount;
         position.lastActionTime = block.timestamp;
 
         // Approve protocol contract
-        IERC20(_token).approve(protocol.contractAddress, _amount);
+        IERC20(_token).approve(protocol.contractAddress, actualAmount);
 
         // Stake based on protocol type
-        uint256 sharesReceived = _stakeToProtocol(_token, _protocol, _amount);
+        uint256 sharesReceived = _stakeToProtocol(_token, _protocol, actualAmount);
         position.tokenProtocolShares[_token][_protocol] += sharesReceived;
 
-        protocol.totalDeposited += _amount;
-        tokenProtocolTVL[_token][_protocol] += _amount;
+        // Update protocol stats
+        protocol.totalDeposited += actualAmount;
+        tokenProtocolTVL[_token][_protocol] += actualAmount;
 
-        emit Staked(msg.sender, _token, _protocol, _amount, block.timestamp);
+        emit Staked(msg.sender, _token, _protocol, actualAmount, block.timestamp);
     }
 
     /**

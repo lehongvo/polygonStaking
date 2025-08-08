@@ -1639,14 +1639,7 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      */
     constructor(string memory _initBaseURI) ERC721("YOBOWEB3WALK", "YOB3WK") {
         setBaseURI(_initBaseURI);
-        admins.add(msg.sender); // Contract deployer becomes first admin
-
-        // Mint Genesis SBT (#0) to contract owner (JPMA)
-        uint256 genesisTokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        _safeMint(msg.sender, genesisTokenId);
-
-        emit SoulBoundMint(msg.sender, genesisTokenId);
+        admins.add(msg.sender); // Contract deployer becomes first admin;
     }
 
     /**
