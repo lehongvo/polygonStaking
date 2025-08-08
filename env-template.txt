@@ -32,6 +32,10 @@ POLYGONSCAN_API_KEY=your_polygonscan_api_key_here
 # Mainnet: 0x455e53bd3ba7eCC66C8e1e2c4A1a2A0F4b9A5D0F
 POL_TOKEN_ADDRESS=0x455e53bd3ba7eCC66C8e1e2c4A1a2A0F4b9A5D0F
 
+# WMATIC Token Address (Wrapped MATIC)
+# Mainnet: 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270
+WMATIC_ADDRESS=0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270
+
 # ==============================================
 # PROTOCOL ADDRESSES (Optional Overrides)
 # ==============================================
@@ -60,6 +64,21 @@ DEPLOY_TEST_TOKEN=true
 REPORT_GAS=
 
 # ==============================================
+# YOBOWEB3WALK NFT CONFIGURATION
+# ==============================================
+# Base URI for YOBOWEB3WALK NFT metadata
+YOBO_BASE_URI=ipfs://QmQEQYguTJ4ApkCJ8J5wSMGFfgZLP5Xz4w7yGArFdHkVjr/
+
+# Deployed contract address (set after deployment)
+YOBO_CONTRACT_ADDRESS=
+
+# Default recipient address for minting
+YOBO_RECIPIENT_ADDRESS=0xe340371845820cb16Cb8908E0ed07e2E1Ff40024
+
+# Number of NFTs to mint in batch operations
+YOBO_MINT_COUNT=2
+
+# ==============================================
 # USAGE EXAMPLES
 # ==============================================
 # Deploy to Amoy testnet:
@@ -73,4 +92,10 @@ REPORT_GAS=
 
 # Verify contracts:
 # yarn verify:contracts:polygon
+
+# Deploy YOBOWEB3WALK NFT:
+# npx hardhat run scripts/nft/deploy-yoboweb3walk.ts --network amoy
+
+# Mint YOBOWEB3WALK NFTs:
+# npx hardhat run scripts/nft/mint-yoboweb3walk.ts --network amoy
 

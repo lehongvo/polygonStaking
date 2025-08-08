@@ -29,6 +29,7 @@ async function main() {
   const deploymentPath = path.join(
     __dirname,
     '..',
+    '..',
     'polygon-defi-deployment.json'
   );
 
