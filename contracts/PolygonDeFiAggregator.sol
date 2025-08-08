@@ -59,10 +59,10 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         uint256 startTime;
         uint256 endTime;
         uint256 lastClaimTime;
-        address stakingToken;       // Token được stake (TTJP, POL, etc.)
-        string protocol;            // Protocol name (ankr, aave, etc.)
+        address stakingToken; // Token được stake (TTJP, POL, etc.)
+        string protocol; // Protocol name (ankr, aave, etc.)
         bool isActive;
-        bool isScheduled;           // true if start time is in future
+        bool isScheduled; // true if start time is in future
     }
 
     struct UserPosition {
@@ -70,7 +70,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         uint256 totalClaimed;
         uint256 lastActionTime;
         mapping(address => mapping(string => uint256)) tokenProtocolBalances; // token => protocol => balance
-        mapping(address => mapping(string => uint256)) tokenProtocolShares;   // token => protocol => shares
+        mapping(address => mapping(string => uint256)) tokenProtocolShares; // token => protocol => shares
         TimeLockedStake[] timeLockedStakes; // Array of time-locked stakes
     }
 
@@ -106,14 +106,20 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
     // Events
     event TokenAdded(address indexed token, string symbol, uint8 decimals);
-    event Staked(address indexed user, address indexed token, string protocol, uint256 amount, uint256 timestamp);
-    event TimeLockedStakeCreated(
-        address indexed user, 
-        uint256 indexed stakeId, 
+    event Staked(
+        address indexed user,
         address indexed token,
-        string protocol, 
-        uint256 amount, 
-        uint256 startTime, 
+        string protocol,
+        uint256 amount,
+        uint256 timestamp
+    );
+    event TimeLockedStakeCreated(
+        address indexed user,
+        uint256 indexed stakeId,
+        address indexed token,
+        string protocol,
+        uint256 amount,
+        uint256 startTime,
         uint256 endTime
     );
     event ScheduledStakeExecuted(address indexed user, uint256 indexed stakeId, uint256 timestamp);
@@ -131,7 +137,13 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         uint256 rewards,
         uint256 timestamp
     );
-    event RewardsClaimed(address indexed user, address indexed token, string protocol, uint256 rewards, uint256 timestamp);
+    event RewardsClaimed(
+        address indexed user,
+        address indexed token,
+        string protocol,
+        uint256 rewards,
+        uint256 timestamp
+    );
     event ProtocolAdded(string protocolName, address contractAddress, string protocolType);
     event APYUpdated(string protocolName, uint256 oldAPY, uint256 newAPY);
 
@@ -224,10 +236,10 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         require(_lockDuration >= 1 days, "Minimum lock duration is 1 day");
         require(_lockDuration <= 365 days, "Maximum lock duration is 365 days");
         require(_startTime >= block.timestamp, "Start time cannot be in the past");
-        
+
         // Check if token is supported
         require(supportedTokens[_token].isActive, "Token not supported");
-        
+
         ProtocolInfo storage protocol = protocols[_protocol];
         require(protocol.isActive, "Protocol not supported");
 
@@ -239,17 +251,19 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
         // Create time-locked stake
         UserPosition storage position = userPositions[msg.sender];
-        position.timeLockedStakes.push(TimeLockedStake({
-            amount: _amount,
-            shares: 0, // Will be set when actually staked
-            startTime: _startTime,
-            endTime: endTime,
-            lastClaimTime: _startTime,
-            stakingToken: _token,
-            protocol: _protocol,
-            isActive: true,
-            isScheduled: isScheduled
-        }));
+        position.timeLockedStakes.push(
+            TimeLockedStake({
+                amount: _amount,
+                shares: 0, // Will be set when actually staked
+                startTime: _startTime,
+                endTime: endTime,
+                lastClaimTime: _startTime,
+                stakingToken: _token,
+                protocol: _protocol,
+                isActive: true,
+                isScheduled: isScheduled
+            })
+        );
 
         uint256 stakeId = position.timeLockedStakes.length - 1;
 
@@ -258,7 +272,15 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
             _executeStake(msg.sender, stakeId);
         }
 
-        emit TimeLockedStakeCreated(msg.sender, stakeId, _token, _protocol, _amount, _startTime, endTime);
+        emit TimeLockedStakeCreated(
+            msg.sender,
+            stakeId,
+            _token,
+            _protocol,
+            _amount,
+            _startTime,
+            endTime
+        );
     }
 
     /**
@@ -267,14 +289,14 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     function executeScheduledStake(uint256 _stakeId) external nonReentrant {
         UserPosition storage position = userPositions[msg.sender];
         require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
-        
+
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
         require(stake.isActive, "Stake not active");
         require(stake.isScheduled, "Stake already executed");
         require(block.timestamp >= stake.startTime, "Start time not reached");
 
         _executeStake(msg.sender, _stakeId);
-        
+
         emit ScheduledStakeExecuted(msg.sender, _stakeId, block.timestamp);
     }
 
@@ -284,23 +306,23 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     function _executeStake(address _user, uint256 _stakeId) internal {
         UserPosition storage position = userPositions[_user];
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
-        
+
         ProtocolInfo storage protocol = protocols[stake.protocol];
-        
+
         // Approve protocol contract
         IERC20(stake.stakingToken).approve(protocol.contractAddress, stake.amount);
-        
+
         // Stake to protocol and get shares
         uint256 sharesReceived = _stakeToProtocol(stake.stakingToken, stake.protocol, stake.amount);
         stake.shares = sharesReceived;
         stake.isScheduled = false;
-        
+
         // Update position tracking
         position.totalDeposited += stake.amount;
         position.tokenProtocolBalances[stake.stakingToken][stake.protocol] += stake.amount;
         position.tokenProtocolShares[stake.stakingToken][stake.protocol] += sharesReceived;
         position.lastActionTime = block.timestamp;
-        
+
         // Update protocol stats
         protocol.totalDeposited += stake.amount;
         tokenProtocolTVL[stake.stakingToken][stake.protocol] += stake.amount;
@@ -312,34 +334,38 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     function withdrawTimeLockedStake(uint256 _stakeId) external nonReentrant {
         UserPosition storage position = userPositions[msg.sender];
         require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
-        
+
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
         require(stake.isActive, "Stake not active");
         require(!stake.isScheduled, "Stake not yet executed");
         require(block.timestamp >= stake.endTime, "Stake not yet matured");
 
         ProtocolInfo storage protocol = protocols[stake.protocol];
-        
+
         // Withdraw from protocol
-        uint256 actualWithdrawn = _withdrawFromProtocol(stake.stakingToken, stake.protocol, stake.shares);
-        
+        uint256 actualWithdrawn = _withdrawFromProtocol(
+            stake.stakingToken,
+            stake.protocol,
+            stake.shares
+        );
+
         // Calculate rewards
         uint256 rewards = actualWithdrawn > stake.amount ? actualWithdrawn - stake.amount : 0;
-        
+
         // Update state
         stake.isActive = false;
         position.tokenProtocolBalances[stake.stakingToken][stake.protocol] -= stake.amount;
         position.tokenProtocolShares[stake.stakingToken][stake.protocol] -= stake.shares;
         position.totalDeposited -= stake.amount;
         position.totalClaimed += rewards;
-        
+
         // Update protocol stats
         protocol.totalDeposited -= stake.amount;
         tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
-        
+
         // Transfer tokens
         IERC20(stake.stakingToken).safeTransfer(msg.sender, actualWithdrawn);
-        
+
         emit WithdrawnMature(msg.sender, _stakeId, stake.amount, rewards, block.timestamp);
     }
 
@@ -349,35 +375,48 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     function withdrawTimeLockedStakeEarly(uint256 _stakeId) external nonReentrant {
         UserPosition storage position = userPositions[msg.sender];
         require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
-        
+
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
         require(stake.isActive, "Stake not active");
         require(!stake.isScheduled, "Stake not yet executed");
-        require(block.timestamp < stake.endTime, "Stake already matured, use withdrawTimeLockedStake");
+        require(
+            block.timestamp < stake.endTime,
+            "Stake already matured, use withdrawTimeLockedStake"
+        );
 
         ProtocolInfo storage protocol = protocols[stake.protocol];
-        
+
         // Withdraw from protocol
-        uint256 actualWithdrawn = _withdrawFromProtocol(stake.stakingToken, stake.protocol, stake.shares);
-        
+        uint256 actualWithdrawn = _withdrawFromProtocol(
+            stake.stakingToken,
+            stake.protocol,
+            stake.shares
+        );
+
         // Apply early withdrawal penalty (5%)
         uint256 penalty = (actualWithdrawn * 500) / 10000;
         uint256 finalAmount = actualWithdrawn - penalty;
-        
+
         // Update state
         stake.isActive = false;
         position.tokenProtocolBalances[stake.stakingToken][stake.protocol] -= stake.amount;
         position.tokenProtocolShares[stake.stakingToken][stake.protocol] -= stake.shares;
         position.totalDeposited -= stake.amount;
-        
+
         // Update protocol stats
         protocol.totalDeposited -= stake.amount;
         tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
-        
+
         // Transfer tokens (minus penalty)
         IERC20(stake.stakingToken).safeTransfer(msg.sender, finalAmount);
-        
-        emit WithdrawnImmediately(msg.sender, stake.stakingToken, stake.protocol, finalAmount, block.timestamp);
+
+        emit WithdrawnImmediately(
+            msg.sender,
+            stake.stakingToken,
+            stake.protocol,
+            finalAmount,
+            block.timestamp
+        );
     }
 
     // ===== ORIGINAL FUNCTIONS (for backward compatibility) =====
@@ -390,12 +429,12 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
      */
     function stake(
         address _token,
-        uint256 _amount, 
+        uint256 _amount,
         string memory _protocol
     ) external nonReentrant whenNotPaused {
         require(_amount > 0, "Cannot stake 0");
         require(supportedTokens[_token].isActive, "Token not supported");
-        
+
         ProtocolInfo storage protocol = protocols[_protocol];
         require(protocol.isActive, "Protocol not supported");
 
@@ -418,7 +457,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
         emit Staked(msg.sender, _token, _protocol, _amount, block.timestamp);
     }
-commit
+
     /**
      * @dev Internal function to stake to specific protocol
      */
@@ -432,12 +471,7 @@ commit
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             shares = ILiquidStaking(protocol.contractAddress).deposit(_amount);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            IAavePool(protocol.contractAddress).supply(
-                _token,
-                _amount,
-                address(this),
-                0
-            );
+            IAavePool(protocol.contractAddress).supply(_token, _amount, address(this), 0);
             shares = _amount; // 1:1 for simplicity
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lp"))) {
             ILPStaking(protocol.contractAddress).stake(_amount);
@@ -454,17 +488,20 @@ commit
      */
     function withdrawImmediately(
         address _token,
-        uint256 _amount, 
+        uint256 _amount,
         string memory _protocol
     ) external nonReentrant {
         require(_amount > 0, "Cannot withdraw 0");
         require(supportedTokens[_token].isActive, "Token not supported");
-        
+
         ProtocolInfo storage protocol = protocols[_protocol];
         require(protocol.isActive, "Protocol not supported");
 
         UserPosition storage position = userPositions[msg.sender];
-        require(position.tokenProtocolBalances[_token][_protocol] >= _amount, "Insufficient balance");
+        require(
+            position.tokenProtocolBalances[_token][_protocol] >= _amount,
+            "Insufficient balance"
+        );
 
         // Calculate shares to withdraw
         uint256 totalShares = position.tokenProtocolShares[_token][_protocol];
@@ -509,11 +546,7 @@ commit
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             amount = ILiquidStaking(protocol.contractAddress).withdraw(_shares);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            amount = IAavePool(protocol.contractAddress).withdraw(
-                _token,
-                _shares,
-                address(this)
-            );
+            amount = IAavePool(protocol.contractAddress).withdraw(_token, _shares, address(this));
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lp"))) {
             ILPStaking(protocol.contractAddress).unstake(_shares);
             amount = _shares; // 1:1 for simplicity
@@ -529,7 +562,7 @@ commit
      */
     function claim(address _token) external nonReentrant {
         require(supportedTokens[_token].isActive, "Token not supported");
-        
+
         uint256 totalRewards = 0;
 
         for (uint256 i = 0; i < supportedProtocols.length; i++) {
@@ -556,9 +589,12 @@ commit
     /**
      * @dev Internal function to claim from specific protocol
      */
-    function _claimFromProtocol(address _token, string memory _protocol) internal returns (uint256 rewards) {
+    function _claimFromProtocol(
+        address _token,
+        string memory _protocol
+    ) internal returns (uint256 rewards) {
         ProtocolInfo storage protocol = protocols[_protocol];
-        
+
         // Get rewards before claiming to track the amount
         uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
 
@@ -578,7 +614,7 @@ commit
             // For lending and compound protocols, rewards might be auto-compounded
             rewards = 0;
         }
-        
+
         return rewards;
     }
 
@@ -587,17 +623,22 @@ commit
     /**
      * @dev Get user's time-locked stakes
      */
-    function getUserTimeLockedStakes(address _user) external view returns (TimeLockedStake[] memory) {
+    function getUserTimeLockedStakes(
+        address _user
+    ) external view returns (TimeLockedStake[] memory) {
         return userPositions[_user].timeLockedStakes;
     }
 
     /**
      * @dev Check if time-locked stake is matured
      */
-    function isTimeLockedStakeMatured(address _user, uint256 _stakeId) external view returns (bool) {
+    function isTimeLockedStakeMatured(
+        address _user,
+        uint256 _stakeId
+    ) external view returns (bool) {
         UserPosition storage position = userPositions[_user];
         if (_stakeId >= position.timeLockedStakes.length) return false;
-        
+
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
         return stake.isActive && !stake.isScheduled && block.timestamp >= stake.endTime;
     }
@@ -609,7 +650,7 @@ commit
         UserPosition storage position = userPositions[_user];
         uint256[] memory temp = new uint256[](position.timeLockedStakes.length);
         uint256 count = 0;
-        
+
         for (uint256 i = 0; i < position.timeLockedStakes.length; i++) {
             TimeLockedStake storage stake = position.timeLockedStakes[i];
             if (stake.isActive && stake.isScheduled && block.timestamp >= stake.startTime) {
@@ -617,13 +658,13 @@ commit
                 count++;
             }
         }
-        
+
         // Create properly sized array
         uint256[] memory result = new uint256[](count);
         for (uint256 i = 0; i < count; i++) {
             result[i] = temp[i];
         }
-        
+
         return result;
     }
 
@@ -659,8 +700,9 @@ commit
                     estimatedValue += balance;
                     // Add estimated accrued interest based on APY and time
                     uint256 timeElapsed = block.timestamp - protocolLastUpdate[protocolName];
-                    uint256 interest = (balance * protocols[protocolName].currentAPY * timeElapsed) /
-                        (365 days * 10000);
+                    uint256 interest = (balance *
+                        protocols[protocolName].currentAPY *
+                        timeElapsed) / (365 days * 10000);
                     totalRewards += interest;
                 }
             }
@@ -692,11 +734,7 @@ commit
     function getAllProtocols()
         external
         view
-        returns (
-            string[] memory names,
-            uint256[] memory apys,
-            bool[] memory activeStatus
-        )
+        returns (string[] memory names, uint256[] memory apys, bool[] memory activeStatus)
     {
         uint256 length = supportedProtocols.length;
         names = new string[](length);

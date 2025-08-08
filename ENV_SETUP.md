@@ -3,47 +3,56 @@
 ## 📋 Checklist Environment Setup
 
 ### 1. **Tạo file .env**
+
 ```bash
 # Copy template và rename
 cp env-template.txt .env
 ```
 
 ### 2. **Cấu hình Private Key**
+
 ```bash
 # Thêm private key của bạn (không có 0x prefix)
 PRIVATE_KEY=your_actual_private_key_here
 ```
 
-⚠️ **QUAN TRỌNG**: 
+⚠️ **QUAN TRỌNG**:
+
 - Không bao giờ commit private key lên git
 - File `.env` đã được thêm vào `.gitignore`
 
 ### 3. **Cấu hình RPC URLs**
 
 #### Polygon Mainnet:
+
 ```bash
 POLYGON_RPC_URL=https://polygon-rpc.com
 ```
 
 **Alternatives:**
+
 - `https://rpc.ankr.com/polygon`
 - `https://polygon.llamarpc.com`
 - `https://polygon.drpc.org`
 
 #### Amoy Testnet:
+
 ```bash
 AMOY_RPC_URL=https://polygon-amoy.drpc.org
 ```
 
 **Alternatives:**
+
 - `https://rpc-amoy.polygon.technology`
 
 ### 4. **Cấu hình API Keys**
 
 #### PolygonScan API Key:
+
 1. Đăng ký tại: https://polygonscan.com/apis
 2. Tạo API key mới
 3. Thêm vào `.env`:
+
 ```bash
 POLYGONSCAN_API_KEY=your_api_key_here
 ```
@@ -51,11 +60,12 @@ POLYGONSCAN_API_KEY=your_api_key_here
 ### 5. **Kiểm tra cấu hình**
 
 #### Test connection:
+
 ```bash
 # Test Amoy testnet
 yarn deploy:localhost
 
-# Test Amoy testnet  
+# Test Amoy testnet
 yarn deploy:amoy
 
 # Test Polygon mainnet (cần POL tokens)
@@ -67,6 +77,7 @@ yarn deploy:polygon
 ### Lỗi thường gặp:
 
 #### 1. **"insufficient funds for intrinsic transaction cost"**
+
 ```bash
 # Cần thêm POL/MATIC vào wallet
 # Amoy testnet: https://faucet.polygon.technology/
@@ -74,6 +85,7 @@ yarn deploy:polygon
 ```
 
 #### 2. **"could not detect network"**
+
 ```bash
 # Kiểm tra RPC URL
 # Thử RPC URL khác
@@ -81,6 +93,7 @@ POLYGON_RPC_URL=https://rpc.ankr.com/polygon
 ```
 
 #### 3. **"invalid private key"**
+
 ```bash
 # Đảm bảo private key không có 0x prefix
 # Đảm bảo private key có 64 ký tự
@@ -88,6 +101,7 @@ PRIVATE_KEY=abcd1234... # 64 characters
 ```
 
 #### 4. **"network does not exist"**
+
 ```bash
 # Kiểm tra hardhat.config.cjs
 # Đảm bảo network name đúng: polygon, amoy, localhost
@@ -95,11 +109,11 @@ PRIVATE_KEY=abcd1234... # 64 characters
 
 ## 📊 Network Information
 
-| Network | Chain ID | RPC URL | Explorer |
-|---------|----------|---------|----------|
-| Polygon Mainnet | 137 | https://polygon-rpc.com | https://polygonscan.com |
-| Amoy Testnet | 80002 | https://polygon-amoy.drpc.org | https://www.oklink.com/amoy |
-| Localhost | 1337 | http://127.0.0.1:8545 | - |
+| Network         | Chain ID | RPC URL                       | Explorer                    |
+| --------------- | -------- | ----------------------------- | --------------------------- |
+| Polygon Mainnet | 137      | https://polygon-rpc.com       | https://polygonscan.com     |
+| Amoy Testnet    | 80002    | https://polygon-amoy.drpc.org | https://www.oklink.com/amoy |
+| Localhost       | 1337     | http://127.0.0.1:8545         | -                           |
 
 ## 🎯 Deployment Commands
 
@@ -109,7 +123,7 @@ yarn compile
 
 # Deploy to different networks
 yarn deploy:localhost    # Local development
-yarn deploy:amoy        # Testnet deployment  
+yarn deploy:amoy        # Testnet deployment
 yarn deploy:polygon     # Mainnet deployment
 
 # Verify contracts

@@ -20,20 +20,28 @@ async function main() {
   console.log('🤝 Interacting with SoulBoundNFT contract...');
 
   // Read deployment info
-  const deploymentPath = path.join(__dirname, '..', 'soulbound-nft-deployment.json');
-  
+  const deploymentPath = path.join(
+    __dirname,
+    '..',
+    'soulbound-nft-deployment.json'
+  );
+
   if (!fs.existsSync(deploymentPath)) {
-    console.error('❌ Deployment file not found! Please deploy the contract first.');
+    console.error(
+      '❌ Deployment file not found! Please deploy the contract first.'
+    );
     console.log(`Expected file: ${deploymentPath}`);
     process.exit(1);
   }
 
-  const deploymentInfo: DeploymentInfo = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
-  
+  const deploymentInfo: DeploymentInfo = JSON.parse(
+    fs.readFileSync(deploymentPath, 'utf8')
+  );
+
   // Get network info
   const networkInfo = await hre.ethers.provider.getNetwork();
   const networkName = network.name;
-  
+
   console.log(`Network: ${networkName} (Chain ID: ${networkInfo.chainId})`);
   console.log(`Contract Address: ${deploymentInfo.contractAddress}`);
 
@@ -50,13 +58,13 @@ async function main() {
   try {
     console.log('\n📊 Reading Contract Information:');
     console.log('================================');
-    
+
     // Basic contract info
     const name = await contract.name();
     const symbol = await contract.symbol();
     const nextTokenId = await contract.nextTokenIdToMint();
     const isSoulBound = await contract.isSoulBound();
-    
+
     console.log(`Name: ${name}`);
     console.log(`Symbol: ${symbol}`);
     console.log(`Next Token ID: ${nextTokenId}`);
@@ -98,11 +106,15 @@ async function main() {
     // Try to transfer (should fail)
     console.log('\n3. Attempting transfer (should fail)...');
     try {
-      const transferTx = await contract.connect(user1).transferFrom(user1.address, user2.address, 0);
+      const transferTx = await contract
+        .connect(user1)
+        .transferFrom(user1.address, user2.address, 0);
       await transferTx.wait();
       console.log('❌ Transfer should have failed!');
     } catch (error: any) {
-      console.log(`✅ Transfer correctly failed: ${error.reason || error.message}`);
+      console.log(
+        `✅ Transfer correctly failed: ${error.reason || error.message}`
+      );
     }
 
     // Test admin management
@@ -134,7 +146,9 @@ async function main() {
 
     // Try transfer again (should work now)
     console.log('\n7. Attempting transfer (should work now)...');
-    const successfulTransferTx = await contract.connect(user1).transferFrom(user1.address, user2.address, 0);
+    const successfulTransferTx = await contract
+      .connect(user1)
+      .transferFrom(user1.address, user2.address, 0);
     await successfulTransferTx.wait();
     console.log('✅ Transfer successful after enabling');
 
@@ -160,9 +174,10 @@ async function main() {
 
     if (deploymentInfo.explorer) {
       console.log('\n🔗 Explorer Links:');
-      console.log(`- Contract: ${deploymentInfo.explorer}/address/${deploymentInfo.contractAddress}`);
+      console.log(
+        `- Contract: ${deploymentInfo.explorer}/address/${deploymentInfo.contractAddress}`
+      );
     }
-
   } catch (error) {
     console.error('❌ Interaction failed:', error);
     process.exit(1);
@@ -177,4 +192,4 @@ main()
   .catch(error => {
     console.error('❌ Interaction error:', error);
     process.exit(1);
-  }); 
+  });

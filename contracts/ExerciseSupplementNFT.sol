@@ -3,17 +3,17 @@
 /**
  * @title MIT License
  * @copyright 2024 Hiroshi Tanimoto / Sense It Smart Corporation
- * 
+ *
  * @notice Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * @notice The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * @notice THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,12 +21,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * @notice This project uses OpenZeppelin Contracts (https://github.com/OpenZeppelin/openzeppelin-contracts)
  * which is licensed under the MIT License.
- * 
- * @notice IMPORTANT: This software may be subject to patent rights. Your use of this software may be subject 
- * to additional terms and conditions as outlined in our Patent Policy. Please refer to our Patent 
+ *
+ * @notice IMPORTANT: This software may be subject to patent rights. Your use of this software may be subject
+ * to additional terms and conditions as outlined in our Patent Policy. Please refer to our Patent
  * Policy for more information:
  * Patent Policy: https://espl.jp/patentpolicy/
  */
@@ -269,15 +269,10 @@ library Math {
     /**
      * @notice Calculates sqrt(a), following the selected rounding direction.
      */
-    function sqrt(
-        uint256 a,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function sqrt(uint256 a, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = sqrt(a);
-            return
-                result +
-                (rounding == Rounding.Up && result * result < a ? 1 : 0);
+            return result + (rounding == Rounding.Up && result * result < a ? 1 : 0);
         }
     }
 
@@ -327,15 +322,10 @@ library Math {
      * @dev Return the log in base 2, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log2(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log2(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log2(value);
-            return
-                result +
-                (rounding == Rounding.Up && 1 << result < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 1 << result < value ? 1 : 0);
         }
     }
 
@@ -381,15 +371,10 @@ library Math {
      * @dev Return the log in base 10, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log10(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log10(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log10(value);
-            return
-                result +
-                (rounding == Rounding.Up && 10 ** result < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 10 ** result < value ? 1 : 0);
         }
     }
 
@@ -429,15 +414,10 @@ library Math {
      * @dev Return the log in base 256, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log256(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log256(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log256(value);
-            return
-                result +
-                (rounding == Rounding.Up && 1 << (result << 3) < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 1 << (result << 3) < value ? 1 : 0);
         }
     }
 }
@@ -484,13 +464,7 @@ library Strings {
      * @dev Converts a `int256` to its ASCII `string` decimal representation.
      */
     function toString(int256 value) internal pure returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    value < 0 ? "-" : "",
-                    toString(SignedMath.abs(value))
-                )
-            );
+        return string(abi.encodePacked(value < 0 ? "-" : "", toString(SignedMath.abs(value))));
     }
 
     /**
@@ -505,10 +479,7 @@ library Strings {
     /**
      * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
      */
-    function toHexString(
-        uint256 value,
-        uint256 length
-    ) internal pure returns (string memory) {
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
         bytes memory buffer = new bytes(2 * length + 2);
         buffer[0] = "0";
         buffer[1] = "x";
@@ -530,10 +501,7 @@ library Strings {
     /**
      * @dev Returns true if the two strings are equal.
      */
-    function equal(
-        string memory a,
-        string memory b
-    ) internal pure returns (bool) {
+    function equal(string memory a, string memory b) internal pure returns (bool) {
         return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 }
@@ -627,10 +595,7 @@ library ECDSA {
      * this is by receiving a hash of the original message (which may otherwise
      * be too long), and then calling {toEthSignedMessageHash} on it.
      */
-    function recover(
-        bytes32 hash,
-        bytes memory signature
-    ) internal pure returns (address) {
+    function recover(bytes32 hash, bytes memory signature) internal pure returns (address) {
         (address recovered, RecoverError error) = tryRecover(hash, signature);
         _throwError(error);
         return recovered;
@@ -649,9 +614,7 @@ library ECDSA {
         bytes32 vs
     ) internal pure returns (address, RecoverError) {
         bytes32 s = vs &
-            bytes32(
-                0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-            );
+            bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
         uint8 v = uint8((uint256(vs) >> 255) + 27);
         return tryRecover(hash, v, r, s);
     }
@@ -661,11 +624,7 @@ library ECDSA {
      *
      * _Available since v4.2._
      */
-    function recover(
-        bytes32 hash,
-        bytes32 r,
-        bytes32 vs
-    ) internal pure returns (address) {
+    function recover(bytes32 hash, bytes32 r, bytes32 vs) internal pure returns (address) {
         (address recovered, RecoverError error) = tryRecover(hash, r, vs);
         _throwError(error);
         return recovered;
@@ -692,10 +651,7 @@ library ECDSA {
         // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
         // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
         // these malleable signatures as well.
-        if (
-            uint256(s) >
-            0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
-        ) {
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
             return (address(0), RecoverError.InvalidSignatureS);
         }
 
@@ -712,12 +668,7 @@ library ECDSA {
      * @dev Overload of {ECDSA-recover} that receives the `v`,
      * `r` and `s` signature fields separately.
      */
-    function recover(
-        bytes32 hash,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) internal pure returns (address) {
+    function recover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) internal pure returns (address) {
         (address recovered, RecoverError error) = tryRecover(hash, v, r, s);
         _throwError(error);
         return recovered;
@@ -731,9 +682,7 @@ library ECDSA {
      *
      * See {recover}.
      */
-    function toEthSignedMessageHash(
-        bytes32 hash
-    ) internal pure returns (bytes32 message) {
+    function toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32 message) {
         // 32 is the length in bytes of hash,
         // enforced by the type signature above
         /// @solidity memory-safe-assembly
@@ -752,16 +701,10 @@ library ECDSA {
      *
      * See {recover}.
      */
-    function toEthSignedMessageHash(
-        bytes memory s
-    ) internal pure returns (bytes32) {
+    function toEthSignedMessageHash(bytes memory s) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encodePacked(
-                    "\x19Ethereum Signed Message:\n",
-                    Strings.toString(s.length),
-                    s
-                )
+                abi.encodePacked("\x19Ethereum Signed Message:\n", Strings.toString(s.length), s)
             );
     }
 
@@ -832,11 +775,7 @@ interface IAccessControlUpgradeable {
      * `sender` is the account that originated the contract call, an admin role
      * bearer except when using {AccessControl-_setupRole}.
      */
-    event RoleGranted(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
 
     /**
      * @dev Emitted when `account` is revoked `role`.
@@ -845,19 +784,12 @@ interface IAccessControlUpgradeable {
      *   - if using `revokeRole`, it is the admin role bearer
      *   - if using `renounceRole`, it is the role bearer (i.e. `account`)
      */
-    event RoleRevoked(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
 
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(
-        bytes32 role,
-        address account
-    ) external view returns (bool);
+    function hasRole(bytes32 role, address account) external view returns (bool);
 
     /**
      * @dev Returns the admin role that controls `role`. See {grantRole} and
@@ -988,9 +920,7 @@ library StorageSlotUpgradeable {
     /**
      * @dev Returns an `AddressSlot` with member `value` located at `slot`.
      */
-    function getAddressSlot(
-        bytes32 slot
-    ) internal pure returns (AddressSlot storage r) {
+    function getAddressSlot(bytes32 slot) internal pure returns (AddressSlot storage r) {
         /// @solidity memory-safe-assembly
         assembly {
             r.slot := slot
@@ -1000,9 +930,7 @@ library StorageSlotUpgradeable {
     /**
      * @dev Returns an `BooleanSlot` with member `value` located at `slot`.
      */
-    function getBooleanSlot(
-        bytes32 slot
-    ) internal pure returns (BooleanSlot storage r) {
+    function getBooleanSlot(bytes32 slot) internal pure returns (BooleanSlot storage r) {
         /// @solidity memory-safe-assembly
         assembly {
             r.slot := slot
@@ -1012,9 +940,7 @@ library StorageSlotUpgradeable {
     /**
      * @dev Returns an `Bytes32Slot` with member `value` located at `slot`.
      */
-    function getBytes32Slot(
-        bytes32 slot
-    ) internal pure returns (Bytes32Slot storage r) {
+    function getBytes32Slot(bytes32 slot) internal pure returns (Bytes32Slot storage r) {
         /// @solidity memory-safe-assembly
         assembly {
             r.slot := slot
@@ -1024,9 +950,7 @@ library StorageSlotUpgradeable {
     /**
      * @dev Returns an `Uint256Slot` with member `value` located at `slot`.
      */
-    function getUint256Slot(
-        bytes32 slot
-    ) internal pure returns (Uint256Slot storage r) {
+    function getUint256Slot(bytes32 slot) internal pure returns (Uint256Slot storage r) {
         /// @solidity memory-safe-assembly
         assembly {
             r.slot := slot
@@ -1093,19 +1017,10 @@ library TransferHelper {
         );
     }
 
-    function saveTransferEth(
-        address payable recipient,
-        uint256 amount
-    ) internal {
-        require(
-            address(this).balance >= amount,
-            "Address: insufficient balance"
-        );
-        (bool success, ) = recipient.call{value: amount}("");
-        require(
-            success,
-            "Address: unable to send value, recipient may have reverted"
-        );
+    function saveTransferEth(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, "Address: insufficient balance");
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
     }
 
     function safeMintNFT1155(
@@ -1134,11 +1049,7 @@ library TransferHelper {
         );
     }
 
-    function safeApproveForAllNFT1155(
-        address token,
-        address operator,
-        bool approved
-    ) internal {
+    function safeApproveForAllNFT1155(address token, address operator, bool approved) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa22cb465, operator, approved)
         );
@@ -1166,9 +1077,7 @@ library TransferHelper {
     }
 
     function safeMintNFT(address token, address to) internal {
-        (bool success, bytes memory data) = token.call(
-            abi.encodeWithSelector(0x40d097c3, to)
-        );
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x40d097c3, to));
         require(
             success && (data.length == 0 || abi.decode(data, (bool))),
             "TransferHelper: MINT_NFT_FAILED"
@@ -1185,12 +1094,7 @@ library TransferHelper {
         );
     }
 
-    function safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
+    function safeTransferFrom(address token, address from, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x23b872dd, from, to, value)
         );
@@ -1341,10 +1245,7 @@ library EnumerableSet {
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
-    function _contains(
-        Set storage set,
-        bytes32 value
-    ) private view returns (bool) {
+    function _contains(Set storage set, bytes32 value) private view returns (bool) {
         return set._indexes[value] != 0;
     }
 
@@ -1365,10 +1266,7 @@ library EnumerableSet {
      *
      * - `index` must be strictly less than {length}.
      */
-    function _at(
-        Set storage set,
-        uint256 index
-    ) private view returns (bytes32) {
+    function _at(Set storage set, uint256 index) private view returns (bytes32) {
         return set._values[index];
     }
 
@@ -1396,10 +1294,7 @@ library EnumerableSet {
      * Returns true if the value was added to the set, that is if it was not
      * already present.
      */
-    function add(
-        Bytes32Set storage set,
-        bytes32 value
-    ) internal returns (bool) {
+    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
         return _add(set._inner, value);
     }
 
@@ -1409,20 +1304,14 @@ library EnumerableSet {
      * Returns true if the value was removed from the set, that is if it was
      * present.
      */
-    function remove(
-        Bytes32Set storage set,
-        bytes32 value
-    ) internal returns (bool) {
+    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {
         return _remove(set._inner, value);
     }
 
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
-    function contains(
-        Bytes32Set storage set,
-        bytes32 value
-    ) internal view returns (bool) {
+    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {
         return _contains(set._inner, value);
     }
 
@@ -1443,10 +1332,7 @@ library EnumerableSet {
      *
      * - `index` must be strictly less than {length}.
      */
-    function at(
-        Bytes32Set storage set,
-        uint256 index
-    ) internal view returns (bytes32) {
+    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
         return _at(set._inner, index);
     }
 
@@ -1458,9 +1344,7 @@ library EnumerableSet {
      * this function has an unbounded cost, and using it as part of a state-changing function may render the function
      * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
      */
-    function values(
-        Bytes32Set storage set
-    ) internal view returns (bytes32[] memory) {
+    function values(Bytes32Set storage set) internal view returns (bytes32[] memory) {
         bytes32[] memory store = _values(set._inner);
         bytes32[] memory result;
 
@@ -1484,10 +1368,7 @@ library EnumerableSet {
      * Returns true if the value was added to the set, that is if it was not
      * already present.
      */
-    function add(
-        AddressSet storage set,
-        address value
-    ) internal returns (bool) {
+    function add(AddressSet storage set, address value) internal returns (bool) {
         return _add(set._inner, bytes32(uint256(uint160(value))));
     }
 
@@ -1497,20 +1378,14 @@ library EnumerableSet {
      * Returns true if the value was removed from the set, that is if it was
      * present.
      */
-    function remove(
-        AddressSet storage set,
-        address value
-    ) internal returns (bool) {
+    function remove(AddressSet storage set, address value) internal returns (bool) {
         return _remove(set._inner, bytes32(uint256(uint160(value))));
     }
 
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
-    function contains(
-        AddressSet storage set,
-        address value
-    ) internal view returns (bool) {
+    function contains(AddressSet storage set, address value) internal view returns (bool) {
         return _contains(set._inner, bytes32(uint256(uint160(value))));
     }
 
@@ -1531,10 +1406,7 @@ library EnumerableSet {
      *
      * - `index` must be strictly less than {length}.
      */
-    function at(
-        AddressSet storage set,
-        uint256 index
-    ) internal view returns (address) {
+    function at(AddressSet storage set, uint256 index) internal view returns (address) {
         return address(uint160(uint256(_at(set._inner, index))));
     }
 
@@ -1546,9 +1418,7 @@ library EnumerableSet {
      * this function has an unbounded cost, and using it as part of a state-changing function may render the function
      * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
      */
-    function values(
-        AddressSet storage set
-    ) internal view returns (address[] memory) {
+    function values(AddressSet storage set) internal view returns (address[] memory) {
         bytes32[] memory store = _values(set._inner);
         address[] memory result;
 
@@ -1582,20 +1452,14 @@ library EnumerableSet {
      * Returns true if the value was removed from the set, that is if it was
      * present.
      */
-    function remove(
-        UintSet storage set,
-        uint256 value
-    ) internal returns (bool) {
+    function remove(UintSet storage set, uint256 value) internal returns (bool) {
         return _remove(set._inner, bytes32(value));
     }
 
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
-    function contains(
-        UintSet storage set,
-        uint256 value
-    ) internal view returns (bool) {
+    function contains(UintSet storage set, uint256 value) internal view returns (bool) {
         return _contains(set._inner, bytes32(value));
     }
 
@@ -1616,10 +1480,7 @@ library EnumerableSet {
      *
      * - `index` must be strictly less than {length}.
      */
-    function at(
-        UintSet storage set,
-        uint256 index
-    ) internal view returns (uint256) {
+    function at(UintSet storage set, uint256 index) internal view returns (uint256) {
         return uint256(_at(set._inner, index));
     }
 
@@ -1631,9 +1492,7 @@ library EnumerableSet {
      * this function has an unbounded cost, and using it as part of a state-changing function may render the function
      * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
      */
-    function values(
-        UintSet storage set
-    ) internal view returns (uint256[] memory) {
+    function values(UintSet storage set) internal view returns (uint256[] memory) {
         bytes32[] memory store = _values(set._inner);
         uint256[] memory result;
 
@@ -1883,15 +1742,10 @@ library MathUpgradeable {
     /**
      * @notice Calculates sqrt(a), following the selected rounding direction.
      */
-    function sqrt(
-        uint256 a,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function sqrt(uint256 a, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = sqrt(a);
-            return
-                result +
-                (rounding == Rounding.Up && result * result < a ? 1 : 0);
+            return result + (rounding == Rounding.Up && result * result < a ? 1 : 0);
         }
     }
 
@@ -1941,15 +1795,10 @@ library MathUpgradeable {
      * @dev Return the log in base 2, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log2(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log2(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log2(value);
-            return
-                result +
-                (rounding == Rounding.Up && 1 << result < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 1 << result < value ? 1 : 0);
         }
     }
 
@@ -1995,15 +1844,10 @@ library MathUpgradeable {
      * @dev Return the log in base 10, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log10(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log10(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log10(value);
-            return
-                result +
-                (rounding == Rounding.Up && 10 ** result < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 10 ** result < value ? 1 : 0);
         }
     }
 
@@ -2043,15 +1887,10 @@ library MathUpgradeable {
      * @dev Return the log in base 10, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log256(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log256(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log256(value);
-            return
-                result +
-                (rounding == Rounding.Up && 1 << (result * 8) < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 1 << (result * 8) < value ? 1 : 0);
         }
     }
 }
@@ -2106,10 +1945,7 @@ library StringsUpgradeable {
     /**
      * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
      */
-    function toHexString(
-        uint256 value,
-        uint256 length
-    ) internal pure returns (string memory) {
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
         bytes memory buffer = new bytes(2 * length + 2);
         buffer[0] = "0";
         buffer[1] = "x";
@@ -2190,16 +2026,10 @@ library AddressUpgradeable {
      * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
      */
     function sendValue(address payable recipient, uint256 amount) internal {
-        require(
-            address(this).balance >= amount,
-            "Address: insufficient balance"
-        );
+        require(address(this).balance >= amount, "Address: insufficient balance");
 
-        (bool success, ) = recipient.call{value: amount}("");
-        require(
-            success,
-            "Address: unable to send value, recipient may have reverted"
-        );
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
     }
 
     /**
@@ -2220,17 +2050,8 @@ library AddressUpgradeable {
      *
      * _Available since v3.1._
      */
-    function functionCall(
-        address target,
-        bytes memory data
-    ) internal returns (bytes memory) {
-        return
-            functionCallWithValue(
-                target,
-                data,
-                0,
-                "Address: low-level call failed"
-            );
+    function functionCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionCallWithValue(target, data, 0, "Address: low-level call failed");
     }
 
     /**
@@ -2264,12 +2085,7 @@ library AddressUpgradeable {
         uint256 value
     ) internal returns (bytes memory) {
         return
-            functionCallWithValue(
-                target,
-                data,
-                value,
-                "Address: low-level call with value failed"
-            );
+            functionCallWithValue(target, data, value, "Address: low-level call with value failed");
     }
 
     /**
@@ -2284,20 +2100,9 @@ library AddressUpgradeable {
         uint256 value,
         string memory errorMessage
     ) internal returns (bytes memory) {
-        require(
-            address(this).balance >= value,
-            "Address: insufficient balance for call"
-        );
-        (bool success, bytes memory returndata) = target.call{value: value}(
-            data
-        );
-        return
-            verifyCallResultFromTarget(
-                target,
-                success,
-                returndata,
-                errorMessage
-            );
+        require(address(this).balance >= value, "Address: insufficient balance for call");
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
+        return verifyCallResultFromTarget(target, success, returndata, errorMessage);
     }
 
     /**
@@ -2310,12 +2115,7 @@ library AddressUpgradeable {
         address target,
         bytes memory data
     ) internal view returns (bytes memory) {
-        return
-            functionStaticCall(
-                target,
-                data,
-                "Address: low-level static call failed"
-            );
+        return functionStaticCall(target, data, "Address: low-level static call failed");
     }
 
     /**
@@ -2330,13 +2130,7 @@ library AddressUpgradeable {
         string memory errorMessage
     ) internal view returns (bytes memory) {
         (bool success, bytes memory returndata) = target.staticcall(data);
-        return
-            verifyCallResultFromTarget(
-                target,
-                success,
-                returndata,
-                errorMessage
-            );
+        return verifyCallResultFromTarget(target, success, returndata, errorMessage);
     }
 
     /**
@@ -2381,10 +2175,7 @@ library AddressUpgradeable {
         }
     }
 
-    function _revert(
-        bytes memory returndata,
-        string memory errorMessage
-    ) private pure {
+    function _revert(bytes memory returndata, string memory errorMessage) private pure {
         // Look for revert reason and bubble it up if present
         if (returndata.length > 0) {
             // The easiest way to bubble the revert reason is using memory via assembly
@@ -2484,8 +2275,7 @@ abstract contract Initializable {
         bool isTopLevelCall = !_initializing;
         require(
             (isTopLevelCall && _initialized < 1) ||
-                (!AddressUpgradeable.isContract(address(this)) &&
-                    _initialized == 1),
+                (!AddressUpgradeable.isContract(address(this)) && _initialized == 1),
             "Initializable: contract is already initialized"
         );
         _initialized = 1;
@@ -2609,8 +2399,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
      * @dev Returns the current implementation address.
      */
     function _getImplementation() internal view returns (address) {
-        return
-            StorageSlotUpgradeable.getAddressSlot(_IMPLEMENTATION_SLOT).value;
+        return StorageSlotUpgradeable.getAddressSlot(_IMPLEMENTATION_SLOT).value;
     }
 
     /**
@@ -2621,9 +2410,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
             AddressUpgradeable.isContract(newImplementation),
             "ERC1967: new implementation is not a contract"
         );
-        StorageSlotUpgradeable
-            .getAddressSlot(_IMPLEMENTATION_SLOT)
-            .value = newImplementation;
+        StorageSlotUpgradeable.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;
     }
 
     /**
@@ -2668,13 +2455,10 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
         if (StorageSlotUpgradeable.getBooleanSlot(_ROLLBACK_SLOT).value) {
             _setImplementation(newImplementation);
         } else {
-            try
-                IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID()
-            returns (bytes32 slot) {
-                require(
-                    slot == _IMPLEMENTATION_SLOT,
-                    "ERC1967Upgrade: unsupported proxiableUUID"
-                );
+            try IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID() returns (
+                bytes32 slot
+            ) {
+                require(slot == _IMPLEMENTATION_SLOT, "ERC1967Upgrade: unsupported proxiableUUID");
             } catch {
                 revert("ERC1967Upgrade: new implementation is not UUPS");
             }
@@ -2706,10 +2490,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
      * @dev Stores a new address in the EIP1967 admin slot.
      */
     function _setAdmin(address newAdmin) private {
-        require(
-            newAdmin != address(0),
-            "ERC1967: new admin is the zero address"
-        );
+        require(newAdmin != address(0), "ERC1967: new admin is the zero address");
         StorageSlotUpgradeable.getAddressSlot(_ADMIN_SLOT).value = newAdmin;
     }
 
@@ -2746,14 +2527,9 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
      * @dev Stores a new beacon in the EIP1967 beacon slot.
      */
     function _setBeacon(address newBeacon) private {
+        require(AddressUpgradeable.isContract(newBeacon), "ERC1967: new beacon is not a contract");
         require(
-            AddressUpgradeable.isContract(newBeacon),
-            "ERC1967: new beacon is not a contract"
-        );
-        require(
-            AddressUpgradeable.isContract(
-                IBeaconUpgradeable(newBeacon).implementation()
-            ),
+            AddressUpgradeable.isContract(IBeaconUpgradeable(newBeacon).implementation()),
             "ERC1967: beacon implementation is not a contract"
         );
         StorageSlotUpgradeable.getAddressSlot(_BEACON_SLOT).value = newBeacon;
@@ -2773,10 +2549,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
         _setBeacon(newBeacon);
         emit BeaconUpgraded(newBeacon);
         if (data.length > 0 || forceCall) {
-            _functionDelegateCall(
-                IBeaconUpgradeable(newBeacon).implementation(),
-                data
-            );
+            _functionDelegateCall(IBeaconUpgradeable(newBeacon).implementation(), data);
         }
     }
 
@@ -2790,10 +2563,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
         address target,
         bytes memory data
     ) private returns (bytes memory) {
-        require(
-            AddressUpgradeable.isContract(target),
-            "Address: delegate call to non-contract"
-        );
+        require(AddressUpgradeable.isContract(target), "Address: delegate call to non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = target.delegatecall(data);
@@ -2851,14 +2621,8 @@ abstract contract UUPSUpgradeable is
      * fail.
      */
     modifier onlyProxy() {
-        require(
-            address(this) != __self,
-            "Function must be called through delegatecall"
-        );
-        require(
-            _getImplementation() == __self,
-            "Function must be called through active proxy"
-        );
+        require(address(this) != __self, "Function must be called through delegatecall");
+        require(_getImplementation() == __self, "Function must be called through active proxy");
         _;
     }
 
@@ -2882,14 +2646,7 @@ abstract contract UUPSUpgradeable is
      * bricking a proxy that upgrades to it, by delegating to itself until out of gas. Thus it is critical that this
      * function revert if invoked through a proxy. This is guaranteed by the `notDelegated` modifier.
      */
-    function proxiableUUID()
-        external
-        view
-        virtual
-        override
-        notDelegated
-        returns (bytes32)
-    {
+    function proxiableUUID() external view virtual override notDelegated returns (bytes32) {
         return _IMPLEMENTATION_SLOT;
     }
 
@@ -3062,9 +2819,7 @@ abstract contract ERC165Upgradeable is Initializable, IERC165Upgradeable {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IERC165Upgradeable).interfaceId;
     }
 
@@ -3157,9 +2912,7 @@ abstract contract AccessControlUpgradeable is
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
             interfaceId == type(IAccessControlUpgradeable).interfaceId ||
             super.supportsInterface(interfaceId);
@@ -3168,10 +2921,7 @@ abstract contract AccessControlUpgradeable is
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(
-        bytes32 role,
-        address account
-    ) public view virtual override returns (bool) {
+    function hasRole(bytes32 role, address account) public view virtual override returns (bool) {
         return _roles[role].members[account];
     }
 
@@ -3215,9 +2965,7 @@ abstract contract AccessControlUpgradeable is
      *
      * To change a role's admin, use {_setRoleAdmin}.
      */
-    function getRoleAdmin(
-        bytes32 role
-    ) public view virtual override returns (bytes32) {
+    function getRoleAdmin(bytes32 role) public view virtual override returns (bytes32) {
         return _roles[role].adminRole;
     }
 
@@ -3274,14 +3022,8 @@ abstract contract AccessControlUpgradeable is
      *
      * May emit a {RoleRevoked} event.
      */
-    function renounceRole(
-        bytes32 role,
-        address account
-    ) public virtual override {
-        require(
-            account == _msgSender(),
-            "AccessControl: can only renounce roles for self"
-        );
+    function renounceRole(bytes32 role, address account) public virtual override {
+        require(account == _msgSender(), "AccessControl: can only renounce roles for self");
 
         _revokeRole(role, account);
     }
@@ -3369,29 +3111,17 @@ interface IERC721Upgradeable is IERC165Upgradeable {
     /**
      * @dev Emitted when `tokenId` token is transferred from `from` to `to`.
      */
-    event Transfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed tokenId
-    );
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
     /**
      * @dev Emitted when `owner` enables `approved` to manage the `tokenId` token.
      */
-    event Approval(
-        address indexed owner,
-        address indexed approved,
-        uint256 indexed tokenId
-    );
+    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
 
     /**
      * @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.
      */
-    event ApprovalForAll(
-        address indexed owner,
-        address indexed operator,
-        bool approved
-    );
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
 
     /**
      * @dev Returns the number of tokens in ``owner``'s account.
@@ -3441,11 +3171,7 @@ interface IERC721Upgradeable is IERC165Upgradeable {
      *
      * Emits a {Transfer} event.
      */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
 
     /**
      * @dev Transfers `tokenId` token from `from` to `to`.
@@ -3499,19 +3225,14 @@ interface IERC721Upgradeable is IERC165Upgradeable {
      *
      * - `tokenId` must exist.
      */
-    function getApproved(
-        uint256 tokenId
-    ) external view returns (address operator);
+    function getApproved(uint256 tokenId) external view returns (address operator);
 
     /**
      * @dev Returns if the `operator` is allowed to manage all of the assets of `owner`.
      *
      * See {setApprovalForAll}
      */
-    function isApprovedForAll(
-        address owner,
-        address operator
-    ) external view returns (bool);
+    function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 
 // File: ExerciseSupplementNFT/IERC721MetadataUpgradeable.sol
@@ -3583,10 +3304,7 @@ contract ERC721Upgradeable is
     /**
      * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection.
      */
-    function __ERC721_init(
-        string memory name_,
-        string memory symbol_
-    ) internal onlyInitializing {
+    function __ERC721_init(string memory name_, string memory symbol_) internal onlyInitializing {
         __ERC721_init_unchained(name_, symbol_);
     }
 
@@ -3603,13 +3321,7 @@ contract ERC721Upgradeable is
      */
     function supportsInterface(
         bytes4 interfaceId
-    )
-        public
-        view
-        virtual
-        override(ERC165Upgradeable, IERC165Upgradeable)
-        returns (bool)
-    {
+    ) public view virtual override(ERC165Upgradeable, IERC165Upgradeable) returns (bool) {
         return
             interfaceId == type(IERC721Upgradeable).interfaceId ||
             interfaceId == type(IERC721MetadataUpgradeable).interfaceId ||
@@ -3619,22 +3331,15 @@ contract ERC721Upgradeable is
     /**
      * @dev See {IERC721-balanceOf}.
      */
-    function balanceOf(
-        address owner
-    ) public view virtual override returns (uint256) {
-        require(
-            owner != address(0),
-            "ERC721: address zero is not a valid owner"
-        );
+    function balanceOf(address owner) public view virtual override returns (uint256) {
+        require(owner != address(0), "ERC721: address zero is not a valid owner");
         return _balances[owner];
     }
 
     /**
      * @dev See {IERC721-ownerOf}.
      */
-    function ownerOf(
-        uint256 tokenId
-    ) public view virtual override returns (address) {
+    function ownerOf(uint256 tokenId) public view virtual override returns (address) {
         address owner = _ownerOf(tokenId);
         require(owner != address(0), "ERC721: invalid token ID");
         return owner;
@@ -3657,16 +3362,12 @@ contract ERC721Upgradeable is
     /**
      * @dev See {IERC721Metadata-tokenURI}.
      */
-    function tokenURI(
-        uint256 tokenId
-    ) public view virtual override returns (string memory) {
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
         _requireMinted(tokenId);
 
         string memory baseURI = _baseURI();
         return
-            bytes(baseURI).length > 0
-                ? string(abi.encodePacked(baseURI, tokenId.toString()))
-                : "";
+            bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
     }
 
     /**
@@ -3696,9 +3397,7 @@ contract ERC721Upgradeable is
     /**
      * @dev See {IERC721-getApproved}.
      */
-    function getApproved(
-        uint256 tokenId
-    ) public view virtual override returns (address) {
+    function getApproved(uint256 tokenId) public view virtual override returns (address) {
         _requireMinted(tokenId);
 
         return _tokenApprovals[tokenId];
@@ -3707,10 +3406,7 @@ contract ERC721Upgradeable is
     /**
      * @dev See {IERC721-setApprovalForAll}.
      */
-    function setApprovalForAll(
-        address operator,
-        bool approved
-    ) public virtual override {
+    function setApprovalForAll(address operator, bool approved) public virtual override {
         _setApprovalForAll(_msgSender(), operator, approved);
     }
 
@@ -3727,11 +3423,7 @@ contract ERC721Upgradeable is
     /**
      * @dev See {IERC721-transferFrom}.
      */
-    function transferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public virtual override {
+    function transferFrom(address from, address to, uint256 tokenId) public virtual override {
         //solhint-disable-next-line max-line-length
         require(
             _isApprovedOrOwner(_msgSender(), tokenId),
@@ -3744,11 +3436,7 @@ contract ERC721Upgradeable is
     /**
      * @dev See {IERC721-safeTransferFrom}.
      */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) public virtual override {
+    function safeTransferFrom(address from, address to, uint256 tokenId) public virtual override {
         safeTransferFrom(from, to, tokenId, "");
     }
 
@@ -3853,11 +3541,7 @@ contract ERC721Upgradeable is
      * @dev Same as {xref-ERC721-_safeMint-address-uint256-}[`_safeMint`], with an additional `data` parameter which is
      * forwarded in {IERC721Receiver-onERC721Received} to contract recipients.
      */
-    function _safeMint(
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) internal virtual {
+    function _safeMint(address to, uint256 tokenId, bytes memory data) internal virtual {
         _mint(to, tokenId);
         require(
             _checkOnERC721Received(address(0), to, tokenId, data),
@@ -3946,11 +3630,7 @@ contract ERC721Upgradeable is
      *
      * Emits a {Transfer} event.
      */
-    function _transfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal virtual {
+    function _transfer(address from, address to, uint256 tokenId) internal virtual {
         require(
             ERC721Upgradeable.ownerOf(tokenId) == from,
             "ERC721: transfer from incorrect owner"
@@ -3999,11 +3679,7 @@ contract ERC721Upgradeable is
      *
      * Emits an {ApprovalForAll} event.
      */
-    function _setApprovalForAll(
-        address owner,
-        address operator,
-        bool approved
-    ) internal virtual {
+    function _setApprovalForAll(address owner, address operator, bool approved) internal virtual {
         require(owner != operator, "ERC721: approve to caller");
         _operatorApprovals[owner][operator] = approved;
         emit ApprovalForAll(owner, operator, approved);
@@ -4034,21 +3710,12 @@ contract ERC721Upgradeable is
     ) private returns (bool) {
         if (to.isContract()) {
             try
-                IERC721ReceiverUpgradeable(to).onERC721Received(
-                    _msgSender(),
-                    from,
-                    tokenId,
-                    data
-                )
+                IERC721ReceiverUpgradeable(to).onERC721Received(_msgSender(), from, tokenId, data)
             returns (bytes4 retval) {
-                return
-                    retval ==
-                    IERC721ReceiverUpgradeable.onERC721Received.selector;
+                return retval == IERC721ReceiverUpgradeable.onERC721Received.selector;
             } catch (bytes memory reason) {
                 if (reason.length == 0) {
-                    revert(
-                        "ERC721: transfer to non ERC721Receiver implementer"
-                    );
+                    revert("ERC721: transfer to non ERC721Receiver implementer");
                 } else {
                     /// @solidity memory-safe-assembly
                     assembly {
@@ -4111,10 +3778,7 @@ contract ERC721Upgradeable is
      * that `ownerOf(tokenId)` is `a`.
      */
     // solhint-disable-next-line func-name-mixedcase
-    function __unsafe_increaseBalance(
-        address account,
-        uint256 amount
-    ) internal {
+    function __unsafe_increaseBalance(address account, uint256 amount) internal {
         _balances[account] += amount;
     }
 
@@ -4295,19 +3959,16 @@ contract ExerciseSupplementNFT is
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // Define the role that can update contract activities
-    bytes32 public constant UPDATER_ACTIVITIES_ROLE =
-        keccak256("UPDATER_ACTIVITIES_ROLE");
+    bytes32 public constant UPDATER_ACTIVITIES_ROLE = keccak256("UPDATER_ACTIVITIES_ROLE");
 
     // Define the role that can mint new NFTs
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
     // Define the role that can interact with the Gacha contract
-    bytes32 public constant ALLOWED_CONTRACTS_GACHA =
-        keccak256("ALLOWED_CONTRACTS_GACHA");
+    bytes32 public constant ALLOWED_CONTRACTS_GACHA = keccak256("ALLOWED_CONTRACTS_GACHA");
 
     // Define the role that can interact with the Challenge contract
-    bytes32 public constant ALLOWED_CONTRACTS_CHALLENGE =
-        keccak256("ALLOWED_CONTRACTS_CHALLENGE");
+    bytes32 public constant ALLOWED_CONTRACTS_CHALLENGE = keccak256("ALLOWED_CONTRACTS_CHALLENGE");
 
     // Private variable to store information about Gacha instances.
     GachaInfos private gachaInfos;
@@ -4361,9 +4022,7 @@ contract ExerciseSupplementNFT is
      * @dev Set the base URI for all tokens.
      * @param _newBaseURI The new base URI to set.
      */
-    function setBaseURI(
-        string memory _newBaseURI
-    ) public onlyRole(UPDATER_ACTIVITIES_ROLE) {
+    function setBaseURI(string memory _newBaseURI) public onlyRole(UPDATER_ACTIVITIES_ROLE) {
         baseURI = _newBaseURI;
     }
 
@@ -4427,12 +4086,7 @@ contract ExerciseSupplementNFT is
         if (compareStrings(ERC721Upgradeable(_erc20Address).symbol(), "TTJP")) {
             typeTokenErc20[_erc20Address] = 1;
         } else {
-            if (
-                compareStrings(
-                    ERC721Upgradeable(_erc20Address).symbol(),
-                    "JPYC"
-                )
-            ) {
+            if (compareStrings(ERC721Upgradeable(_erc20Address).symbol(), "JPYC")) {
                 typeTokenErc20[_erc20Address] = 2;
             } else {
                 typeTokenErc20[_erc20Address] = 3;
@@ -4542,11 +4196,7 @@ contract ExerciseSupplementNFT is
         uint256 _indexToken,
         uint256 _rewardToken
     ) public onlyRole(ALLOWED_CONTRACTS_GACHA) {
-        bytes memory extraData = abi.encode(
-            _challengerAddress,
-            _indexToken,
-            _rewardToken
-        );
+        bytes memory extraData = abi.encode(_challengerAddress, _indexToken, _rewardToken);
 
         TransferHelper.safeMintNFT1155(
             _tokenAddress,
@@ -4585,7 +4235,7 @@ contract ExerciseSupplementNFT is
         uint256 indexNftAfterMint;
         bool hasSoulBoundMinted = false;
 
-        if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {            
+        if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {
             for (uint256 i = 0; i < requiredNftAddressesForSoulBound.length(); i++) {
                 address requiredNftAddress = requiredNftAddressesForSoulBound.at(i);
                 if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(msg.sender) > 0) {
@@ -4601,40 +4251,27 @@ contract ExerciseSupplementNFT is
             checkAmountDepositCondition(_createByToken, _totalReward)
         ) {
             if (
-                _awardReceiversPercent >=
-                listNftSpecialConditionInfo.dividendSuccess &&
+                _awardReceiversPercent >= listNftSpecialConditionInfo.dividendSuccess &&
                 _awardReceivers == donationWalletAddress &&
                 _dayRequired >= _duration - (_duration / listToleranceAmount[1])
             ) {
-                TransferHelper.safeMintNFT(
-                    listSpecialNftAddress.at(1),
-                    _challenger
-                );
+                TransferHelper.safeMintNFT(listSpecialNftAddress.at(1), _challenger);
                 curentAddressNftUse = listSpecialNftAddress.at(1);
-                indexNftAfterMint = ExerciseSupplementNFT(
-                    listSpecialNftAddress.at(1)
-                ).nextTokenIdToMint();
+                indexNftAfterMint = ExerciseSupplementNFT(listSpecialNftAddress.at(1))
+                    .nextTokenIdToMint();
             } else {
-                if (
-                    _dayRequired >=
-                    _duration - (_duration / (listToleranceAmount[0]))
-                ) {
-                    TransferHelper.safeMintNFT(
-                        listSpecialNftAddress.at(0),
-                        _challenger
-                    );
+                if (_dayRequired >= _duration - (_duration / (listToleranceAmount[0]))) {
+                    TransferHelper.safeMintNFT(listSpecialNftAddress.at(0), _challenger);
                     curentAddressNftUse = listSpecialNftAddress.at(0);
-                    indexNftAfterMint = ExerciseSupplementNFT(
-                        listSpecialNftAddress.at(0)
-                    ).nextTokenIdToMint();
+                    indexNftAfterMint = ExerciseSupplementNFT(listSpecialNftAddress.at(0))
+                        .nextTokenIdToMint();
                 }
             }
         } else {
-            if(soulBoundNftAddress == address(0) || !hasSoulBoundMinted) {
+            if (soulBoundNftAddress == address(0) || !hasSoulBoundMinted) {
                 TransferHelper.safeMintNFT(listNftAddress.at(0), _challenger);
                 curentAddressNftUse = listNftAddress.at(0);
-                indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0))
-                    .nextTokenIdToMint();
+                indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0)).nextTokenIdToMint();
             }
         }
 
@@ -4656,8 +4293,7 @@ contract ExerciseSupplementNFT is
     ) public onlyRole(ALLOWED_CONTRACTS_CHALLENGE) {
         require(!verifyHash[_signature], "Hash was used");
         require(
-            block.timestamp <= _data[1] &&
-                _data[1] - block.timestamp <= 10 minutes,
+            block.timestamp <= _data[1] && _data[1] - block.timestamp <= 10 minutes,
             "Signature is inaccessible"
         );
 
@@ -4666,15 +4302,10 @@ contract ExerciseSupplementNFT is
             chainId := chainid()
         }
 
-        bytes32 hash = keccak256(
-            abi.encodePacked(msg.sender, _day, _stepIndex, _data, chainId)
-        );
+        bytes32 hash = keccak256(abi.encodePacked(msg.sender, _day, _stepIndex, _data, chainId));
         bytes32 messageHash = hash.toEthSignedMessageHash();
 
-        require(
-            messageHash.recover(_signature) == securityAddress,
-            "Invalid signature"
-        );
+        require(messageHash.recover(_signature) == securityAddress, "Invalid signature");
 
         verifyHash[_signature] = true;
     }
@@ -4697,14 +4328,11 @@ contract ExerciseSupplementNFT is
         for (uint256 i = 0; i < lengthCur; i++) {
             if (_gachaAddress == gachaInfosCus.gachaAddress[i]) {
                 if (_flag) {
-                    gachaInfosCus.gachaRewardDestination[
-                            i
-                        ] = _gachaRewardDestination;
+                    gachaInfosCus.gachaRewardDestination[i] = _gachaRewardDestination;
                 } else {
                     uint256 lastIndex = lengthCur - 1;
                     if (i != lastIndex) {
-                        gachaInfosCus.gachaAddress[i] = gachaInfosCus
-                            .gachaAddress[lastIndex];
+                        gachaInfosCus.gachaAddress[i] = gachaInfosCus.gachaAddress[lastIndex];
                         gachaInfosCus.gachaRewardDestination[i] = gachaInfosCus
                             .gachaRewardDestination[lastIndex];
                     }
@@ -4774,8 +4402,7 @@ contract ExerciseSupplementNFT is
         // If the token type is specified and the total reward is greater than or equal to the required deposit amount in TTJP or JPYC
         if (
             (typeTokenErc20[_createByToken] == 1 &&
-                _totalReward >=
-                listNftSpecialConditionInfo.amountDepositTTJP) ||
+                _totalReward >= listNftSpecialConditionInfo.amountDepositTTJP) ||
             (typeTokenErc20[_createByToken] == 2 &&
                 _totalReward >= listNftSpecialConditionInfo.amountDepositJPYC)
         ) {
@@ -4845,18 +4472,14 @@ contract ExerciseSupplementNFT is
                         return challengerAddress;
                     }
 
-                    if (
-                        !challengeContract.isSuccess() &&
-                        challengeContract.isFinished()
-                    ) {
+                    if (!challengeContract.isSuccess() && challengeContract.isFinished()) {
                         return sponsorAddress;
                     }
 
                     return _gachaAddress;
                 }
                 if (
-                    gachaInfosCus.gachaRewardDestination[i] ==
-                    GachaRewardDestination.sendToSponsor
+                    gachaInfosCus.gachaRewardDestination[i] == GachaRewardDestination.sendToSponsor
                 ) {
                     return sponsorAddress;
                 }
@@ -4871,12 +4494,8 @@ contract ExerciseSupplementNFT is
      * @param b The second string to compare.
      * @return bool Returns true if the strings are equal, otherwise false.
      */
-    function compareStrings(
-        string memory a,
-        string memory b
-    ) private pure returns (bool) {
-        return (keccak256(abi.encodePacked((a))) ==
-            keccak256(abi.encodePacked((b))));
+    function compareStrings(string memory a, string memory b) private pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
     /**
@@ -4891,11 +4510,7 @@ contract ExerciseSupplementNFT is
      * @dev Get the list of tolerance amounts stored in the data structure listToleranceAmount.
      * @return An array of uint256 values representing the list of tolerance amounts.
      */
-    function getListToleranceAmount()
-        external
-        view
-        returns (uint256[2] memory)
-    {
+    function getListToleranceAmount() external view returns (uint256[2] memory) {
         return listToleranceAmount;
     }
 
@@ -4904,9 +4519,7 @@ contract ExerciseSupplementNFT is
      * @param _erc20Address The address of the ERC20 token to query.
      * @return The type of the ERC20 token (0 for unknown, 1 for MTK, 2 for USDT, etc.).
      */
-    function getTypeTokenErc20(
-        address _erc20Address
-    ) public view returns (uint256) {
+    function getTypeTokenErc20(address _erc20Address) public view returns (uint256) {
         return typeTokenErc20[_erc20Address];
     }
 
@@ -4916,10 +4529,7 @@ contract ExerciseSupplementNFT is
      * @param to The address of the last recipient to query.
      * @return The address of the sender who sent the NFT to the recipient.
      */
-    function getHistoryNFT(
-        uint256 tokenId,
-        address to
-    ) public view returns (address) {
+    function getHistoryNFT(uint256 tokenId, address to) public view returns (address) {
         return _historySendNFT[tokenId][to];
     }
 
@@ -4937,24 +4547,13 @@ contract ExerciseSupplementNFT is
      * @param tokenId uint256 ID of the token to query
      * @return string memory URI of the token
      */
-    function tokenURI(
-        uint256 tokenId
-    ) public view virtual override returns (string memory) {
-        require(
-            _exists(tokenId),
-            "ERC721METADATA: URI QUERY FOR NONEXISTENT TOKEN"
-        );
+    function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        require(_exists(tokenId), "ERC721METADATA: URI QUERY FOR NONEXISTENT TOKEN");
 
         string memory currentBaseURI = _baseURI();
         return
             bytes(currentBaseURI).length > 0
-                ? string(
-                    abi.encodePacked(
-                        currentBaseURI,
-                        tokenId.toString(),
-                        baseExtension
-                    )
-                )
+                ? string(abi.encodePacked(currentBaseURI, tokenId.toString(), baseExtension))
                 : "";
     }
 
@@ -4993,10 +4592,7 @@ contract ExerciseSupplementNFT is
         if (to != address(0) && from != address(0)) {
             if (hasRole(ALLOWED_CONTRACTS_CHALLENGE, to)) {
                 _historySendNFT[firstTokenId][to] = from;
-                require(
-                    !IChallenge(payable(to)).isFinished(),
-                    "ERC721: CHALLENGE WAS FINISHED"
-                );
+                require(!IChallenge(payable(to)).isFinished(), "ERC721: CHALLENGE WAS FINISHED");
             }
         }
     }
@@ -5009,16 +4605,11 @@ contract ExerciseSupplementNFT is
      */
     function supportsInterface(
         bytes4 interfaceId
-    )
-        public
-        view
-        override(ERC721Upgradeable, AccessControlUpgradeable)
-        returns (bool)
-    {
+    ) public view override(ERC721Upgradeable, AccessControlUpgradeable) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 
-     /**
+    /**
      * @dev Update or remove SoulBound contract address
      * @param _soulBoundNftAddress The address of the SoulBound contract
      * @param _flag true to update/replace, false to remove (set to address(0))
