@@ -544,6 +544,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         // Calculate shares to withdraw
         uint256 totalShares = position.tokenProtocolShares[_token][_protocol];
         uint256 totalBalance = position.tokenProtocolBalances[_token][_protocol];
+        require(totalBalance > 0, "No balance to withdraw");
         uint256 sharesToWithdraw = (totalShares * _amount) / totalBalance;
 
         // Withdraw from protocol

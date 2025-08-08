@@ -1,8 +1,6 @@
 import * as fs from 'fs';
-import { network, run } from 'hardhat';
+import { ethers, network, run } from 'hardhat';
 import * as path from 'path';
-
-const hre = require('hardhat');
 
 interface DeploymentInfo {
   network: string;
@@ -50,7 +48,7 @@ async function main() {
   );
 
   // Get network info
-  const networkInfo = await hre.ethers.provider.getNetwork();
+  const networkInfo = await ethers.provider.getNetwork();
   const networkName = network.name;
 
   console.log(`Network: ${networkName} (Chain ID: ${networkInfo.chainId})`);
