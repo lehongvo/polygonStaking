@@ -126,7 +126,6 @@ async function main() {
     await contract.addProtocol(
       protocol.name,
       protocol.contractAddress,
-      protocol.rewardToken,
       protocol.protocolType,
       protocol.initialAPY
     );

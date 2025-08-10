@@ -189,7 +189,6 @@ async function main() {
         await defiAggregator.addProtocol(
           protocolConfig.name,
           protocolConfig.address,
-          protocolConfig.rewardToken,
           protocolConfig.type,
           protocolConfig.apy
         );
