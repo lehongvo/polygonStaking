@@ -1,0 +1,30 @@
+{
+  "wmaticAddress": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+  "maxGasForExternalCall": 500000,
+  "emergencyWithdrawDelay": 86400,
+  "supportedTokens": [
+    {
+      "address": "0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB",
+      "symbol": "TTJP",
+      "decimals": 18,
+      "maxStakeAmount": "1000000000000000000000000"
+    },
+    {
+      "address": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+      "symbol": "POL",
+      "decimals": 18,
+      "maxStakeAmount": "1000000000000000000000000"
+    }
+  ],
+  "protocols": [
+    {
+      "name": "aave_lending",
+      "contractAddress": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+      "rewardToken": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+      "protocolType": "lending",
+      "initialAPY": 500,
+      "maxTVL": "10000000000000000000000000",
+      "isVerified": true
+    }
+  ]
+}

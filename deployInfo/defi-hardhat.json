@@ -1,0 +1,42 @@
+{
+  "network": "hardhat",
+  "contractAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "deploymentTime": "2025-08-10T14:12:54.488Z",
+  "blockNumber": 4,
+  "gasUsed": "TBD",
+  "configuration": {
+    "wmaticAddress": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    "maxGasForExternalCall": 500000,
+    "emergencyWithdrawDelay": 86400,
+    "supportedTokens": [
+      {
+        "address": "0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB",
+        "symbol": "TTJP",
+        "decimals": 18,
+        "maxStakeAmount": "1000000000000000000000000"
+      },
+      {
+        "address": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+        "symbol": "POL",
+        "decimals": 18,
+        "maxStakeAmount": "1000000000000000000000000"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "aave_lending",
+        "contractAddress": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+        "rewardToken": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+        "protocolType": "lending",
+        "initialAPY": 500,
+        "maxTVL": "10000000000000000000000000",
+        "isVerified": true
+      }
+    ]
+  },
+  "verification": {
+    "verified": false,
+    "explorerUrl": "Unknown network: hardhat"
+  }
+}
