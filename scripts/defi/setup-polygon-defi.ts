@@ -249,31 +249,35 @@ async function main() {
     }
   }
 
-  console.log('\n🎉 Enhanced PolygonDeFiAggregator setup completed!');
-  console.log('\n📝 How to use:');
+  console.log('\n🎉 Time-Locked PolygonDeFiAggregator setup completed!');
+  console.log('\n📝 How to use (SIMPLIFIED):');
+  console.log('❌ Regular stake() function has been REMOVED');
+  console.log('✅ Now using ONLY time-locked staking with immediate execution');
+  console.log('');
   console.log('1. Users approve tokens to DeFiAggregator');
   console.log(
-    "2. Call stake(tokenAddress, amount, 'protocol') for immediate staking"
+    '2. Call createTimeLockedStake(token, amount, protocol, duration)'
   );
+  console.log('3. Stake executes immediately, starts earning rewards');
   console.log(
-    '3. Call createTimeLockedStake(token, amount, protocol, startTime, duration) for time-locked staking'
+    '4. Call withdrawTimeLockedStake(stakeId) anytime for 100% return'
   );
-  console.log('4. Call claim(tokenAddress) to claim rewards');
-  console.log(
-    '5. Call withdrawImmediately(token, amount, protocol) to withdraw'
-  );
-  console.log(
-    '6. Call withdrawTimeLockedStake(stakeId) when time-lock expires'
-  );
+  console.log('');
+  console.log('🔒 Time-Lock Benefits:');
+  console.log('✅ Set custom lock duration (1-365 days)');
+  console.log('✅ Always 100% return (no penalties)');
+  console.log('✅ Immediate execution (no scheduling)');
+  console.log('✅ Flexible withdrawal anytime');
+  console.log('✅ Real-time reward accumulation');
 
   console.log('\n💡 Example usage:');
-  console.log(`// Stake TTJP immediately`);
+  console.log(`// Create time-locked TTJP stake (1 week, immediate execution)`);
   console.log(
-    `stake("${finalTokenAddresses.TTJP}", ethers.parseEther("1000"), "aave_lending")`
+    `createTimeLockedStake("${finalTokenAddresses.TTJP}", ethers.parseEther("1000"), "aave_lending", 7*24*3600)`
   );
-  console.log(`// Create time-locked POL stake`);
+  console.log(`// Create time-locked POL stake (30 days, immediate execution)`);
   console.log(
-    `createTimeLockedStake("${finalTokenAddresses.POL}", ethers.parseEther("500"), "aave_lending", block.timestamp + 86400, 2592000)`
+    `createTimeLockedStake("${finalTokenAddresses.POL}", ethers.parseEther("500"), "aave_lending", 30*24*3600)`
   );
 
   console.log('\n🌐 Network deployment info:');

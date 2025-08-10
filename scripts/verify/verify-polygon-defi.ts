@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import { ethers, network, run } from 'hardhat';
+import { network, run } from 'hardhat';
 import * as path from 'path';
 
 interface DeploymentInfo {
@@ -25,9 +25,7 @@ async function main() {
 
   // Read deployment info
   const deploymentPath = path.join(
-    __dirname,
-    '..',
-    '..',
+    process.cwd(),
     'deployInfo',
     'polygon-defi-deployment.json'
   );
@@ -48,10 +46,10 @@ async function main() {
   );
 
   // Get network info
-  const networkInfo = await ethers.provider.getNetwork();
   const networkName = network.name;
+  const chainId = deploymentInfo.chainId;
 
-  console.log(`Network: ${networkName} (Chain ID: ${networkInfo.chainId})`);
+  console.log(`Network: ${networkName} (Chain ID: ${chainId})`);
   console.log(`Contract Address: ${deploymentInfo.contractAddress}`);
   console.log(
     `Constructor Args: ${JSON.stringify(deploymentInfo.constructorArgs)}`

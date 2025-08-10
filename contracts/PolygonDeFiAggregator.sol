@@ -12,7 +12,6 @@ interface ILiquidStaking {
     function deposit(uint256 _amount) external returns (uint256);
     function withdraw(uint256 _shares) external returns (uint256);
     function getRewards() external view returns (uint256);
-    function claimRewards() external;
     function balanceOf(address user) external view returns (uint256);
     function totalSupply() external view returns (uint256);
 }
@@ -28,15 +27,6 @@ interface IAavePool {
     function withdraw(address asset, uint256 amount, address to) external returns (uint256);
 }
 
-// Interface cho QuickSwap/SushiSwap LP staking
-interface ILPStaking {
-    function stake(uint256 _amount) external;
-    function unstake(uint256 _amount) external;
-    function claim() external;
-    function earned(address account) external view returns (uint256);
-    function balanceOf(address account) external view returns (uint256);
-}
-
 // Interface cho Compound-style protocols
 interface ICompoundPool {
     function mint(uint256 mintAmount) external returns (uint256);
@@ -45,13 +35,12 @@ interface ICompoundPool {
     function exchangeRateStored() external view returns (uint256);
 }
 
-// Interface cho WMATIC (Wrapped MATIC)
+// Interface cho WMATIC
 interface IWMATIC {
     function deposit() external payable;
-    function withdraw(uint256 amount) external;
-    function balanceOf(address account) external view returns (uint256);
-    function transfer(address to, uint256 amount) external returns (bool);
-    function approve(address spender, uint256 amount) external returns (bool);
+    function withdraw(uint256 wad) external;
+    function balanceOf(address owner) external view returns (uint256);
+    function transfer(address to, uint256 value) external returns (bool);
 }
 
 /**
@@ -62,15 +51,11 @@ interface IWMATIC {
 contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
 
-    // Constants
-    address public constant WMATIC_ADDRESS = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
-
     struct TimeLockedStake {
         uint256 amount;
         uint256 shares;
         uint256 startTime;
         uint256 endTime;
-        uint256 lastClaimTime;
         address stakingToken; // Token được stake (TTJP, POL, etc.)
         string protocol; // Protocol name (ankr, aave, etc.)
         bool isActive;
@@ -79,7 +64,6 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
     struct UserPosition {
         uint256 totalDeposited;
-        uint256 totalClaimed;
         uint256 lastActionTime;
         mapping(address => mapping(string => uint256)) tokenProtocolBalances; // token => protocol => balance
         mapping(address => mapping(string => uint256)) tokenProtocolShares; // token => protocol => shares
@@ -88,11 +72,10 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
     struct ProtocolInfo {
         address contractAddress;
-        address rewardToken;
         bool isActive;
         uint256 totalDeposited;
         uint256 currentAPY; // in basis points (10000 = 100%)
-        string protocolType; // "liquid", "lending", "lp", "compound"
+        string protocolType; // "liquid", "lending", "compound"
         string protocolName;
     }
 
@@ -102,6 +85,9 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         uint8 decimals;
         bool isActive;
     }
+
+    // Constants
+    address public constant WMATIC_ADDRESS = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
 
     // State variables
     mapping(address => SupportedToken) public supportedTokens;
@@ -118,13 +104,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
     // Events
     event TokenAdded(address indexed token, string symbol, uint8 decimals);
-    event Staked(
-        address indexed user,
-        address indexed token,
-        string protocol,
-        uint256 amount,
-        uint256 timestamp
-    );
+
     event TimeLockedStakeCreated(
         address indexed user,
         uint256 indexed stakeId,
@@ -134,28 +114,15 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         uint256 startTime,
         uint256 endTime
     );
-    event ScheduledStakeExecuted(address indexed user, uint256 indexed stakeId, uint256 timestamp);
-    event WithdrawnImmediately(
-        address indexed user,
-        address indexed token,
-        string protocol,
-        uint256 amount,
-        uint256 timestamp
-    );
-    event WithdrawnMature(
+
+    event WithdrawTimeLockedStake(
         address indexed user,
         uint256 indexed stakeId,
         uint256 amount,
         uint256 rewards,
         uint256 timestamp
     );
-    event RewardsClaimed(
-        address indexed user,
-        address indexed token,
-        string protocol,
-        uint256 rewards,
-        uint256 timestamp
-    );
+
     event ProtocolAdded(string protocolName, address contractAddress, string protocolType);
     event APYUpdated(string protocolName, uint256 oldAPY, uint256 newAPY);
 
@@ -197,7 +164,6 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     function addProtocol(
         string memory _name,
         address _contractAddress,
-        address _rewardToken,
         string memory _protocolType,
         uint256 _initialAPY
     ) external onlyOwner {
@@ -206,14 +172,12 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         require(
             keccak256(bytes(_protocolType)) == keccak256(bytes("liquid")) ||
                 keccak256(bytes(_protocolType)) == keccak256(bytes("lending")) ||
-                keccak256(bytes(_protocolType)) == keccak256(bytes("lp")) ||
                 keccak256(bytes(_protocolType)) == keccak256(bytes("compound")),
             "Invalid protocol type"
         );
 
         protocols[_name] = ProtocolInfo({
             contractAddress: _contractAddress,
-            rewardToken: _rewardToken,
             isActive: true,
             totalDeposited: 0,
             currentAPY: _initialAPY,
@@ -230,228 +194,27 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     // ===== TIME-LOCKED STAKING FUNCTIONS =====
 
     /**
-     * @dev Create time-locked stake with custom start and end time
+     * @dev Create time-locked stake (immediate execution)
      * @param _token Token address to stake (TTJP, POL, etc.)
      * @param _amount Amount to stake
      * @param _protocol Protocol to stake in
-     * @param _startTime When to start staking (can be future)
      * @param _lockDuration How long to lock (in seconds)
      */
     function createTimeLockedStake(
         address _token,
         uint256 _amount,
         string memory _protocol,
-        uint256 _startTime,
         uint256 _lockDuration
-    ) external nonReentrant whenNotPaused {
-        require(_amount > 0, "Cannot stake 0");
+    ) external payable nonReentrant whenNotPaused {
         require(_lockDuration >= 1 days, "Minimum lock duration is 1 day");
         require(_lockDuration <= 365 days, "Maximum lock duration is 365 days");
-        require(_startTime >= block.timestamp, "Start time cannot be in the past");
 
-        // Check if token is supported
-        require(supportedTokens[_token].isActive, "Token not supported");
-
-        ProtocolInfo storage protocol = protocols[_protocol];
-        require(protocol.isActive, "Protocol not supported");
-
-        // Transfer tokens from user
-        IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-
-        uint256 endTime = _startTime + _lockDuration;
-        bool isScheduled = _startTime > block.timestamp;
-
-        // Create time-locked stake
-        UserPosition storage position = userPositions[msg.sender];
-        position.timeLockedStakes.push(
-            TimeLockedStake({
-                amount: _amount,
-                shares: 0, // Will be set when actually staked
-                startTime: _startTime,
-                endTime: endTime,
-                lastClaimTime: _startTime,
-                stakingToken: _token,
-                protocol: _protocol,
-                isActive: true,
-                isScheduled: isScheduled
-            })
-        );
-
-        uint256 stakeId = position.timeLockedStakes.length - 1;
-
-        // If start time is now, execute immediately
-        if (!isScheduled) {
-            _executeStake(msg.sender, stakeId);
-        }
-
-        emit TimeLockedStakeCreated(
-            msg.sender,
-            stakeId,
-            _token,
-            _protocol,
-            _amount,
-            _startTime,
-            endTime
-        );
-    }
-
-    /**
-     * @dev Execute scheduled stake when start time arrives
-     */
-    function executeScheduledStake(uint256 _stakeId) external nonReentrant {
-        UserPosition storage position = userPositions[msg.sender];
-        require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
-
-        TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
-        require(stake.isActive, "Stake not active");
-        require(stake.isScheduled, "Stake already executed");
-        require(block.timestamp >= stake.startTime, "Start time not reached");
-
-        _executeStake(msg.sender, _stakeId);
-
-        emit ScheduledStakeExecuted(msg.sender, _stakeId, block.timestamp);
-    }
-
-    /**
-     * @dev Internal function to execute staking
-     */
-    function _executeStake(address _user, uint256 _stakeId) internal {
-        UserPosition storage position = userPositions[_user];
-        TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
-
-        ProtocolInfo storage protocol = protocols[stake.protocol];
-
-        // Approve protocol contract
-        IERC20(stake.stakingToken).approve(protocol.contractAddress, stake.amount);
-
-        // Stake to protocol and get shares
-        uint256 sharesReceived = _stakeToProtocol(stake.stakingToken, stake.protocol, stake.amount);
-        stake.shares = sharesReceived;
-        stake.isScheduled = false;
-
-        // Update position tracking
-        position.totalDeposited += stake.amount;
-        position.tokenProtocolBalances[stake.stakingToken][stake.protocol] += stake.amount;
-        position.tokenProtocolShares[stake.stakingToken][stake.protocol] += sharesReceived;
-        position.lastActionTime = block.timestamp;
-
-        // Update protocol stats
-        protocol.totalDeposited += stake.amount;
-        tokenProtocolTVL[stake.stakingToken][stake.protocol] += stake.amount;
-    }
-
-    /**
-     * @dev Withdraw time-locked stake when matured (full amount + rewards)
-     */
-    function withdrawTimeLockedStake(uint256 _stakeId) external nonReentrant {
-        UserPosition storage position = userPositions[msg.sender];
-        require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
-
-        TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
-        require(stake.isActive, "Stake not active");
-        require(!stake.isScheduled, "Stake not yet executed");
-        require(block.timestamp >= stake.endTime, "Stake not yet matured");
-
-        ProtocolInfo storage protocol = protocols[stake.protocol];
-
-        // Withdraw from protocol
-        uint256 actualWithdrawn = _withdrawFromProtocol(
-            stake.stakingToken,
-            stake.protocol,
-            stake.shares
-        );
-
-        // Calculate rewards
-        uint256 rewards = actualWithdrawn > stake.amount ? actualWithdrawn - stake.amount : 0;
-
-        // Update state
-        stake.isActive = false;
-        position.tokenProtocolBalances[stake.stakingToken][stake.protocol] -= stake.amount;
-        position.tokenProtocolShares[stake.stakingToken][stake.protocol] -= stake.shares;
-        position.totalDeposited -= stake.amount;
-        position.totalClaimed += rewards;
-
-        // Update protocol stats
-        protocol.totalDeposited -= stake.amount;
-        tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
-
-        // Transfer tokens
-        IERC20(stake.stakingToken).safeTransfer(msg.sender, actualWithdrawn);
-
-        emit WithdrawnMature(msg.sender, _stakeId, stake.amount, rewards, block.timestamp);
-    }
-
-    /**
-     * @dev Withdraw time-locked stake early (with penalty)
-     */
-    function withdrawTimeLockedStakeEarly(uint256 _stakeId) external nonReentrant {
-        UserPosition storage position = userPositions[msg.sender];
-        require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
-
-        TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
-        require(stake.isActive, "Stake not active");
-        require(!stake.isScheduled, "Stake not yet executed");
-        require(
-            block.timestamp < stake.endTime,
-            "Stake already matured, use withdrawTimeLockedStake"
-        );
-
-        ProtocolInfo storage protocol = protocols[stake.protocol];
-
-        // Withdraw from protocol
-        uint256 actualWithdrawn = _withdrawFromProtocol(
-            stake.stakingToken,
-            stake.protocol,
-            stake.shares
-        );
-
-        // Apply early withdrawal penalty (5%)
-        uint256 penalty = (actualWithdrawn * 500) / 10000;
-        uint256 finalAmount = actualWithdrawn - penalty;
-
-        // Update state
-        stake.isActive = false;
-        position.tokenProtocolBalances[stake.stakingToken][stake.protocol] -= stake.amount;
-        position.tokenProtocolShares[stake.stakingToken][stake.protocol] -= stake.shares;
-        position.totalDeposited -= stake.amount;
-
-        // Update protocol stats
-        protocol.totalDeposited -= stake.amount;
-        tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
-
-        // Transfer tokens (minus penalty)
-        IERC20(stake.stakingToken).safeTransfer(msg.sender, finalAmount);
-
-        emit WithdrawnImmediately(
-            msg.sender,
-            stake.stakingToken,
-            stake.protocol,
-            finalAmount,
-            block.timestamp
-        );
-    }
-
-    // ===== ORIGINAL FUNCTIONS (for backward compatibility) =====
-
-    /**
-    /**
-     * @dev Stake tokens through specified DeFi protocol (immediate, no time lock)
-     * Enhanced to support native MATIC staking when _token is WMATIC
-     * @param _token Token address to stake (use WMATIC_ADDRESS for native MATIC)
-     * @param _amount Amount to stake (ignored if sending native MATIC)
-     * @param _protocol Protocol to stake in
-     */
-    function stake(
-        address _token,
-        uint256 _amount,
-        string memory _protocol
-    ) external payable nonReentrant whenNotPaused {
         ProtocolInfo storage protocol = protocols[_protocol];
         require(protocol.isActive, "Protocol not supported");
 
         uint256 actualAmount;
 
-        // Handle native MATIC staking (when _token is WMATIC and msg.value > 0)
+        // Handle native MATIC staking (wrap to WMATIC)
         if (_token == WMATIC_ADDRESS && msg.value > 0) {
             require(msg.value > 0, "Cannot stake 0 MATIC");
             require(
@@ -476,24 +239,101 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
             IERC20(_token).safeTransferFrom(msg.sender, address(this), actualAmount);
         }
 
-        // Update user position
-        UserPosition storage position = userPositions[msg.sender];
-        position.totalDeposited += actualAmount;
-        position.tokenProtocolBalances[_token][_protocol] += actualAmount;
-        position.lastActionTime = block.timestamp;
+        // Calculate end time (start immediately)
+        uint256 startTime = block.timestamp;
+        uint256 endTime = startTime + _lockDuration;
 
         // Approve protocol contract
         IERC20(_token).approve(protocol.contractAddress, actualAmount);
 
-        // Stake based on protocol type
+        // Stake to protocol and get shares
         uint256 sharesReceived = _stakeToProtocol(_token, _protocol, actualAmount);
+
+        // Create time-locked stake
+        UserPosition storage position = userPositions[msg.sender];
+        position.timeLockedStakes.push(
+            TimeLockedStake({
+                amount: actualAmount,
+                shares: sharesReceived,
+                startTime: startTime,
+                endTime: endTime,
+                stakingToken: _token,
+                protocol: _protocol,
+                isActive: true,
+                isScheduled: false // Always executed immediately
+            })
+        );
+
+        uint256 stakeId = position.timeLockedStakes.length - 1;
+
+        // Update position tracking
+        position.totalDeposited += actualAmount;
+        position.tokenProtocolBalances[_token][_protocol] += actualAmount;
         position.tokenProtocolShares[_token][_protocol] += sharesReceived;
+        position.lastActionTime = block.timestamp;
 
         // Update protocol stats
         protocol.totalDeposited += actualAmount;
         tokenProtocolTVL[_token][_protocol] += actualAmount;
 
-        emit Staked(msg.sender, _token, _protocol, actualAmount, block.timestamp);
+        emit TimeLockedStakeCreated(
+            msg.sender,
+            stakeId,
+            _token,
+            _protocol,
+            actualAmount,
+            startTime,
+            endTime
+        );
+    }
+
+    /**
+     * @dev Withdraw time-locked stake (always 100% return)
+     * @param _stakeId ID of the stake to withdraw
+     *
+     * Logic:
+     * - User ALWAYS gets 100% of actualWithdrawn (principal + rewards)
+     * - No penalty whether withdrawn early or at maturity
+     * - Flexible withdrawal anytime after stake execution
+     */
+    function withdrawTimeLockedStake(uint256 _stakeId) external nonReentrant {
+        UserPosition storage position = userPositions[msg.sender];
+        require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
+
+        TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
+        require(stake.isActive, "Stake not active");
+        require(!stake.isScheduled, "Stake not yet executed");
+
+        ProtocolInfo storage protocol = protocols[stake.protocol];
+
+        // Withdraw from protocol (gets principal + rewards)
+        uint256 actualWithdrawn = _withdrawFromProtocol(
+            stake.stakingToken,
+            stake.protocol,
+            stake.shares
+        );
+
+        // Calculate rewards
+        uint256 rewards = actualWithdrawn > stake.amount ? actualWithdrawn - stake.amount : 0;
+
+        // User always gets 100% of actualWithdrawn (principal + rewards)
+        uint256 finalAmount = actualWithdrawn;
+
+        // Update state
+        stake.isActive = false;
+        position.tokenProtocolBalances[stake.stakingToken][stake.protocol] -= stake.amount;
+        position.tokenProtocolShares[stake.stakingToken][stake.protocol] -= stake.shares;
+        position.totalDeposited -= stake.amount;
+
+        // Update protocol stats
+        protocol.totalDeposited -= stake.amount;
+        tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
+
+        // Transfer final amount to user
+        IERC20(stake.stakingToken).safeTransfer(msg.sender, finalAmount);
+
+        // Emit withdrawal event
+        emit WithdrawTimeLockedStake(msg.sender, _stakeId, stake.amount, rewards, block.timestamp);
     }
 
     /**
@@ -511,65 +351,11 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
             IAavePool(protocol.contractAddress).supply(_token, _amount, address(this), 0);
             shares = _amount; // 1:1 for simplicity
-        } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lp"))) {
-            ILPStaking(protocol.contractAddress).stake(_amount);
-            shares = _amount; // 1:1 for simplicity
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             shares = ICompoundPool(protocol.contractAddress).mint(_amount);
         }
 
         return shares;
-    }
-
-    /**
-     * @dev Withdraw immediately from protocol
-     */
-    function withdrawImmediately(
-        address _token,
-        uint256 _amount,
-        string memory _protocol
-    ) external nonReentrant {
-        require(_amount > 0, "Cannot withdraw 0");
-        require(supportedTokens[_token].isActive, "Token not supported");
-
-        ProtocolInfo storage protocol = protocols[_protocol];
-        require(protocol.isActive, "Protocol not supported");
-
-        UserPosition storage position = userPositions[msg.sender];
-        require(
-            position.tokenProtocolBalances[_token][_protocol] >= _amount,
-            "Insufficient balance"
-        );
-
-        // Calculate shares to withdraw
-        uint256 totalShares = position.tokenProtocolShares[_token][_protocol];
-        uint256 totalBalance = position.tokenProtocolBalances[_token][_protocol];
-        require(totalBalance > 0, "No balance to withdraw");
-        uint256 sharesToWithdraw = (totalShares * _amount) / totalBalance;
-
-        // Withdraw from protocol
-        uint256 actualWithdrawn = _withdrawFromProtocol(_token, _protocol, sharesToWithdraw);
-
-        // Apply early withdrawal penalty if less than 7 days
-        uint256 finalAmount = actualWithdrawn;
-        if (block.timestamp < position.lastActionTime + 7 days) {
-            uint256 penalty = (actualWithdrawn * 200) / 10000; // 2% penalty
-            finalAmount = actualWithdrawn - penalty;
-            // Keep penalty in contract as protocol boost
-        }
-
-        // Update user position
-        position.tokenProtocolBalances[_token][_protocol] -= _amount;
-        position.tokenProtocolShares[_token][_protocol] -= sharesToWithdraw;
-        position.totalDeposited -= _amount;
-
-        // Update protocol stats
-        protocol.totalDeposited -= _amount;
-        tokenProtocolTVL[_token][_protocol] -= _amount;
-
-        IERC20(_token).safeTransfer(msg.sender, finalAmount);
-
-        emit WithdrawnImmediately(msg.sender, _token, _protocol, finalAmount, block.timestamp);
     }
 
     /**
@@ -586,75 +372,11 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
             amount = ILiquidStaking(protocol.contractAddress).withdraw(_shares);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
             amount = IAavePool(protocol.contractAddress).withdraw(_token, _shares, address(this));
-        } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lp"))) {
-            ILPStaking(protocol.contractAddress).unstake(_shares);
-            amount = _shares; // 1:1 for simplicity
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             amount = ICompoundPool(protocol.contractAddress).redeem(_shares);
         }
 
         return amount;
-    }
-
-    /**
-     * @dev Claim rewards from all protocols for a specific token
-     */
-    function claim(address _token) external nonReentrant {
-        require(supportedTokens[_token].isActive, "Token not supported");
-
-        uint256 totalRewards = 0;
-
-        for (uint256 i = 0; i < supportedProtocols.length; i++) {
-            string memory protocolName = supportedProtocols[i];
-            ProtocolInfo storage protocol = protocols[protocolName];
-
-            if (userPositions[msg.sender].tokenProtocolBalances[_token][protocolName] > 0) {
-                uint256 rewards = _claimFromProtocol(_token, protocolName);
-                if (rewards > 0) {
-                    totalRewards += rewards;
-                    emit RewardsClaimed(msg.sender, _token, protocolName, rewards, block.timestamp);
-                }
-            }
-        }
-
-        if (totalRewards > 0) {
-            userPositions[msg.sender].totalClaimed += totalRewards;
-
-            // Transfer rewards (could be same token or reward token)
-            IERC20(_token).safeTransfer(msg.sender, totalRewards);
-        }
-    }
-
-    /**
-     * @dev Internal function to claim from specific protocol
-     */
-    function _claimFromProtocol(
-        address _token,
-        string memory _protocol
-    ) internal returns (uint256 rewards) {
-        ProtocolInfo storage protocol = protocols[_protocol];
-
-        // Get rewards before claiming to track the amount
-        uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
-
-        if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
-            try ILiquidStaking(protocol.contractAddress).claimRewards() {
-                rewards = IERC20(_token).balanceOf(address(this)) - balanceBefore;
-            } catch {
-                rewards = 0;
-            }
-        } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lp"))) {
-            try ILPStaking(protocol.contractAddress).claim() {
-                rewards = IERC20(_token).balanceOf(address(this)) - balanceBefore;
-            } catch {
-                rewards = 0;
-            }
-        } else {
-            // For lending and compound protocols, rewards might be auto-compounded
-            rewards = 0;
-        }
-
-        return rewards;
     }
 
     // ===== TIME-LOCKED VIEW FUNCTIONS =====
@@ -682,31 +404,6 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         return stake.isActive && !stake.isScheduled && block.timestamp >= stake.endTime;
     }
 
-    /**
-     * @dev Get pending scheduled stakes that can be executed
-     */
-    function getPendingScheduledStakes(address _user) external view returns (uint256[] memory) {
-        UserPosition storage position = userPositions[_user];
-        uint256[] memory temp = new uint256[](position.timeLockedStakes.length);
-        uint256 count = 0;
-
-        for (uint256 i = 0; i < position.timeLockedStakes.length; i++) {
-            TimeLockedStake storage stake = position.timeLockedStakes[i];
-            if (stake.isActive && stake.isScheduled && block.timestamp >= stake.startTime) {
-                temp[count] = i;
-                count++;
-            }
-        }
-
-        // Create properly sized array
-        uint256[] memory result = new uint256[](count);
-        for (uint256 i = 0; i < count; i++) {
-            result[i] = temp[i];
-        }
-
-        return result;
-    }
-
     // ===== ORIGINAL VIEW FUNCTIONS =====
 
     /**
@@ -714,19 +411,9 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
      */
     function getUserTotalPosition(
         address _user
-    )
-        external
-        view
-        returns (
-            uint256 totalDeposited,
-            uint256 totalClaimed,
-            uint256 estimatedValue,
-            uint256 totalRewards
-        )
-    {
+    ) external view returns (uint256 totalDeposited, uint256 estimatedValue, uint256 totalRewards) {
         UserPosition storage position = userPositions[_user];
         totalDeposited = position.totalDeposited;
-        totalClaimed = position.totalClaimed;
 
         // Calculate estimated current value and pending rewards
         for (uint256 i = 0; i < supportedTokensList.length; i++) {
