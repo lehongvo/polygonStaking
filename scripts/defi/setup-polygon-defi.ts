@@ -326,9 +326,7 @@ async function main() {
   };
 
   const deploymentPath = path.join(
-    __dirname,
-    '..',
-    '..',
+    process.cwd(),
     'deployInfo',
     'polygon-defi-deployment.json'
   );

@@ -1,6 +1,8 @@
 import * as fs from 'fs';
-import { ethers, network, run } from 'hardhat';
+import { network, run } from 'hardhat';
 import * as path from 'path';
+
+const hre = require('hardhat');
 
 interface DeploymentConfig {
   wmaticAddress: string;
@@ -27,11 +29,11 @@ async function main() {
   console.log('🚀 PROFESSIONAL PRODUCTION DEPLOYMENT');
   console.log('=====================================');
 
-  const [deployer] = await ethers.getSigners();
+  const [deployer] = await hre.ethers.getSigners();
   console.log(`📍 Network: ${network.name}`);
   console.log(`👤 Deployer: ${deployer.address}`);
   console.log(
-    `💰 Balance: ${ethers.formatEther(await ethers.provider.getBalance(deployer.address))} ETH`
+    `💰 Balance: ${hre.ethers.formatEther(await hre.ethers.provider.getBalance(deployer.address))} ETH`
   );
 
   // Load deployment configuration
@@ -54,18 +56,18 @@ async function main() {
   console.log('========================');
 
   // Check deployer balance
-  const balance = await ethers.provider.getBalance(deployer.address);
-  const minBalance = ethers.parseEther('0.1'); // Minimum 0.1 ETH
+  const balance = await hre.ethers.provider.getBalance(deployer.address);
+  const minBalance = hre.ethers.parseEther('0.1'); // Minimum 0.1 ETH
   if (balance < minBalance) {
     console.error(
-      `❌ Insufficient balance. Need at least ${ethers.formatEther(minBalance)} ETH`
+      `❌ Insufficient balance. Need at least ${hre.ethers.formatEther(minBalance)} ETH`
     );
     process.exit(1);
   }
   console.log('✅ Deployer balance sufficient');
 
   // Validate configuration
-  if (!config.wmaticAddress || !ethers.isAddress(config.wmaticAddress)) {
+  if (!config.wmaticAddress || !hre.ethers.isAddress(config.wmaticAddress)) {
     console.error('❌ Invalid WMATIC address in configuration');
     process.exit(1);
   }
@@ -75,7 +77,7 @@ async function main() {
   console.log('\n🏗️  DEPLOYING CONTRACT');
   console.log('======================');
 
-  const ContractFactory = await ethers.getContractFactory(
+  const ContractFactory = await hre.ethers.getContractFactory(
     'PolygonDeFiAggregator'
   );
 
@@ -90,7 +92,7 @@ async function main() {
   console.log('\n🔍 VERIFYING DEPLOYMENT');
   console.log('=======================');
 
-  const deployedCode = await ethers.provider.getCode(contractAddress);
+  const deployedCode = await hre.ethers.provider.getCode(contractAddress);
   if (deployedCode === '0x') {
     console.error('❌ Contract deployment failed - no code at address');
     process.exit(1);
@@ -181,7 +183,7 @@ async function main() {
     contractAddress: contractAddress,
     deployer: deployer.address,
     deploymentTime: new Date().toISOString(),
-    blockNumber: await ethers.provider.getBlockNumber(),
+    blockNumber: await hre.ethers.provider.getBlockNumber(),
     gasUsed: 'TBD', // Would need to track from deployment transaction
     configuration: config,
     verification: {
@@ -191,8 +193,8 @@ async function main() {
   };
 
   const outputPath = path.join(
-    __dirname,
-    `../../deployInfo/defi-${network.name}.json`
+    process.cwd(),
+    `deployInfo/defi-${network.name}.json`
   );
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
