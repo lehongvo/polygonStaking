@@ -103,6 +103,8 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     // Performance tracking
     mapping(address => mapping(string => uint256)) public tokenProtocolTVL; // token => protocol => TVL
     mapping(string => uint256) public protocolLastUpdate;
+    // Aggregate shares for interest-bearing protocols (e.g., Aave aTokens)
+    mapping(address => mapping(string => uint256)) public tokenProtocolTotalShares; // token => protocol => total minted shares
 
     // Events
     event TokenAdded(address indexed token, string symbol, uint8 decimals);
@@ -331,8 +333,16 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         protocol.totalDeposited -= stake.amount;
         tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
 
-        // Transfer final amount to user
-        IERC20(stake.stakingToken).safeTransfer(msg.sender, finalAmount);
+        // Handle withdrawal based on token type
+        if (stake.stakingToken == WMATIC_ADDRESS) {
+            // Unwrap WMATIC to native MATIC and send to user
+            IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
+            wmatic.withdraw(finalAmount);
+            (bool success, ) = msg.sender.call{value: finalAmount}("");
+            require(success, "MATIC transfer failed");
+        } else {
+            IERC20(stake.stakingToken).safeTransfer(msg.sender, finalAmount);
+        }
 
         // Emit withdrawal event
         emit WithdrawTimeLockedStake(msg.sender, _stakeId, stake.amount, rewards, block.timestamp);
@@ -351,8 +361,19 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             shares = ILiquidStaking(protocol.contractAddress).deposit(_amount);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
+            // For Aave lending, compute shares from actual aToken balance received
+            address aTokenAddress;
+            if (_token == WMATIC_ADDRESS) {
+                aTokenAddress = 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97; // aPolWM
+            } else {
+                revert("Unsupported token for Aave lending");
+            }
+
+            uint256 balanceBefore = IERC20(aTokenAddress).balanceOf(address(this));
             IAavePool(protocol.contractAddress).supply(_token, _amount, address(this), 0);
-            shares = _amount; // 1:1 for simplicity
+            uint256 balanceAfter = IERC20(aTokenAddress).balanceOf(address(this));
+            shares = balanceAfter - balanceBefore;
+            tokenProtocolTotalShares[_token][_protocol] += shares;
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             shares = ICompoundPool(protocol.contractAddress).mint(_amount);
         }
@@ -373,7 +394,21 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             amount = ILiquidStaking(protocol.contractAddress).withdraw(_shares);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            amount = IAavePool(protocol.contractAddress).withdraw(_token, _shares, address(this));
+            // For Aave lending, withdraw proportional underlying to include rewards
+            address aTokenAddress;
+            if (_token == WMATIC_ADDRESS) {
+                aTokenAddress = 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97; // aPolWM
+            } else {
+                revert("Unsupported token for Aave lending");
+            }
+
+            uint256 currentATokenBalance = IERC20(aTokenAddress).balanceOf(address(this));
+            uint256 totalShares = tokenProtocolTotalShares[_token][_protocol];
+            require(totalShares > 0, "No shares to withdraw");
+
+            uint256 underlyingToWithdraw = (currentATokenBalance * _shares) / totalShares;
+            amount = IAavePool(protocol.contractAddress).withdraw(_token, underlyingToWithdraw, address(this));
+            tokenProtocolTotalShares[_token][_protocol] -= _shares;
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             amount = ICompoundPool(protocol.contractAddress).redeem(_shares);
         }
