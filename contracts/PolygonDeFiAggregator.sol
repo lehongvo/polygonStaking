@@ -132,6 +132,10 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
     constructor() Ownable(msg.sender) {}
 
+    // Accept native MATIC (required for WMATIC unwrap)
+    receive() external payable {}
+    fallback() external payable {}
+
     /**
      * @dev Add supported token
      */
@@ -394,7 +398,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             amount = ILiquidStaking(protocol.contractAddress).withdraw(_shares);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            // For Aave lending, withdraw proportional underlying to include rewards
+            // Hotfix: withdraw max underlying from Aave, then pro-rate for the caller's shares
             address aTokenAddress;
             if (_token == WMATIC_ADDRESS) {
                 aTokenAddress = 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97; // aPolWM
@@ -402,13 +406,36 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
                 revert("Unsupported token for Aave lending");
             }
 
-            uint256 currentATokenBalance = IERC20(aTokenAddress).balanceOf(address(this));
-            uint256 totalShares = tokenProtocolTotalShares[_token][_protocol];
-            require(totalShares > 0, "No shares to withdraw");
+            uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
+            require(totalSharesBefore > 0, "No shares to withdraw");
 
-            uint256 underlyingToWithdraw = (currentATokenBalance * _shares) / totalShares;
-            amount = IAavePool(protocol.contractAddress).withdraw(_token, underlyingToWithdraw, address(this));
-            tokenProtocolTotalShares[_token][_protocol] -= _shares;
+            // 1) Withdraw all available underlying from Aave for this asset
+            uint256 withdrawnAll = IAavePool(protocol.contractAddress).withdraw(
+                _token,
+                type(uint256).max,
+                address(this)
+            );
+
+            // 2) Pro-rate the user's amount based on their shares
+            amount = (withdrawnAll * _shares) / totalSharesBefore;
+
+            // 3) Re-supply the remainder to keep other users invested
+            uint256 remainder = withdrawnAll - amount;
+            if (remainder > 0) {
+                // Approve and re-supply the remainder back to Aave
+                IERC20(_token).approve(protocol.contractAddress, remainder);
+                uint256 aTokenBalanceBefore = IERC20(aTokenAddress).balanceOf(address(this));
+                IAavePool(protocol.contractAddress).supply(_token, remainder, address(this), 0);
+                uint256 aTokenBalanceAfter = IERC20(aTokenAddress).balanceOf(address(this));
+                uint256 mintedShares = aTokenBalanceAfter - aTokenBalanceBefore;
+
+                // Update aggregate shares: remove user's shares, add back minted shares for remainder
+                // This keeps accounting aligned for the remaining positions
+                tokenProtocolTotalShares[_token][_protocol] = (totalSharesBefore - _shares) + mintedShares;
+            } else {
+                // No remainder, all funds withdrawn and will be sent to user
+                tokenProtocolTotalShares[_token][_protocol] = totalSharesBefore - _shares;
+            }
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             amount = ICompoundPool(protocol.contractAddress).redeem(_shares);
         }
