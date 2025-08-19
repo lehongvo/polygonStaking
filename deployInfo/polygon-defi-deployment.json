@@ -4,10 +4,10 @@
   "explorer": "https://polygonscan.com",
   "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
   "contractName": "PolygonDeFiAggregator",
-  "contractAddress": "0xa30d89A486f8Be4c306B5ce0f6583C8919ab8669",
+  "contractAddress": "0xc342b5a62EF54Fc8256dF8C4E0394060EDE98ad9",
   "constructorArgs": [],
-  "deploymentDate": "2025-08-10T14:15:31.364Z",
-  "verified": false,
+  "deploymentDate": "2025-08-18T13:10:14.680Z",
+  "verified": true,
   "tokens": {
     "TTJP": "0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB",
     "POL": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
