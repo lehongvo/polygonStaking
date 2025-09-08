@@ -1,5 +1,5 @@
 /**
- *Submitted for verification at polygonscan.com on 2024-07-15
+ *Submitted for verification at polygonscan.com on 2025-08-31
 */
 
 // SPDX-License-Identifier: MIT
@@ -3413,15 +3413,10 @@ contract Gacha is
 
         // Check if the number of times the challenger has activated gacha on the current date has not exceeded the limit set in the challengeInfo
         require(
-            countTimeActiveGacha[challengerAddress][currentDate] <
+            countTimeActiveGacha[_challengeAddress][currentDate] <
                 challengeInfo.timeLimitActiveGacha,
             "THE NUMBER OF ACTIVE GACHA TIMES IN A DAY HAS EXCEEDED THE LIMIT."
         );
-
-        // Increase the count of active gacha times for the current date of the challenger
-        countTimeActiveGacha[challengerAddress][
-            currentDate
-        ] = countTimeActiveGacha[challengerAddress][currentDate].add(1);
 
         // Initialize a new UserInfor object for the challenger
         UserInfor memory newUserInfor;
@@ -3436,9 +3431,14 @@ contract Gacha is
          * If not, return false and the gacha result will be skipped
          * Otherwise, continue to the next step
          */
-        if (checkRequireBalanceNft(_challengeAddress, _dataStep)) {
+        if (checkRequireBalanceNft(_challengeAddress, _dataStep, currentDate)) {
             // Generate a random index for the reward
             uint256 randomIndexReward = checkAbilityReward();
+
+            // Increase the count of active gacha times for the current date of the challenger
+            countTimeActiveGacha[_challengeAddress][
+                currentDate
+            ] = countTimeActiveGacha[_challengeAddress][currentDate].add(1);
 
             /**
              * If the random index reward is not equal to 0 (which means the user has the ability to win a reward),
@@ -4265,11 +4265,13 @@ contract Gacha is
     /**
      * @dev Checks if the required NFT balance conditions are met for the challenge.
      * @param _challengeAddress The address of the challenge contract.
+     * @param _currentDate The current date.
      * @return A boolean indicating whether the required NFT balance conditions are met.
      */
     function checkRequireBalanceNft(
         address _challengeAddress,
-        uint256[] memory _dataStep
+        uint256[] memory _dataStep,
+        uint256 _currentDate
     ) public view returns (bool) {
         // Check if the reward conditions are met
         if (!checkRewardConditions(_challengeAddress, _dataStep)) {
@@ -4282,11 +4284,9 @@ contract Gacha is
 
         // Get the address of the challenger from the challenge contract
         address challengerAddress = IChallenge(_challengeAddress).challenger();
-
-        // Calculate the current date in seconds
-        uint256 currentDate = block.timestamp.div(86400);
+    
         if (
-            countTimeActiveGacha[challengerAddress][currentDate] >=
+            countTimeActiveGacha[_challengeAddress][_currentDate] >=
             challengeInfo.timeLimitActiveGacha
         ) {
             return false;
