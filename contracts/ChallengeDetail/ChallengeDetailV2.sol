@@ -598,11 +598,54 @@ interface IERC20 {
      */
     function symbol() external view returns (string memory);
 }
-// File: Challenge/ChallengeDetail.sol
+// File: Challenge/IPolygonDeFiAggregator.sol
 
 pragma solidity ^0.8.16;
 
-contract ChallengeDetail is IERC721Receiver {
+/**
+ * @dev Interface for PolygonDeFiAggregator contract.
+ */
+interface IPolygonDeFiAggregator {
+    function createTimeLockedStake(
+        address _token,
+        uint256 _amount,
+        string memory _protocol,
+        uint256 _lockDuration
+    ) external payable returns (uint256 stakeId);
+    
+    function withdrawTimeLockedStake(uint256 _stakeId) external;
+    
+    function getUserTokenProtocolPosition(
+        address _user,
+        address _token,
+        string memory _protocol
+    ) external view returns (uint256 balance, uint256 shares, uint256 estimatedRewards);
+
+    // Expose WMATIC address from aggregator
+    function WMATIC_ADDRESS() external view returns (address);
+}
+
+// File: Challenge/IWMATIC.sol
+
+pragma solidity ^0.8.16;
+
+/**
+ * @dev Interface for WMATIC token.
+ */
+interface IWMATIC {
+    function deposit() external payable;
+    function withdraw(uint256 wad) external;
+    function balanceOf(address owner) external view returns (uint256);
+    function transfer(address to, uint256 value) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function allowance(address owner, address spender) external view returns (uint256);
+}
+
+// File: Challenge/ChallengeDetailV2.sol
+
+pragma solidity ^0.8.16;
+
+contract ChallengeDetailV2 is IERC721Receiver {
     /** @param ChallengeState currentState of challenge:
          1 : in processs
          2 : success
@@ -775,6 +818,20 @@ contract ChallengeDetail is IERC721Receiver {
     // Represents the amount of fail fee in percentage.
     uint8 private amountFailFee;
 
+    // ===== POLYGON DEFI INTEGRATION VARIABLES =====
+    
+    /** @dev AAVE_DEFI_CONTRACT_ADDRESS address of PolygonDeFiAggregator contract.
+     */
+    address public constant AAVE_DEFI_CONTRACT_ADDRESS = 0x21Df27Dbc12099668a678474aDE9040163DC71C7;
+    
+    /** @dev polygonDeFiContract instance of PolygonDeFiAggregator.
+     */
+    IPolygonDeFiAggregator public polygonDeFiContract;
+    
+    /** @dev stakingStakeId ID of the stake on PolygonDeFiAggregator.
+     */
+    uint256 public stakingStakeId;
+
     /**
      * @dev Emitted when the daily result is sent.
      * @param currentStatus The current status of the daily result.
@@ -799,6 +856,20 @@ contract ChallengeDetail is IERC721Receiver {
      * @param challengeStatus A boolean flag indicating whether the challenge was successful or not.
      */
     event CloseChallenge(bool indexed challengeStatus);
+
+    /**
+     * @dev Emitted when staking is created on PolygonDeFi.
+     * @param stakeId The ID of the created stake.
+     * @param amount The amount staked.
+     * @param duration The staking duration in seconds.
+     */
+    event StakingCreated(uint256 indexed stakeId, uint256 amount, uint256 duration);
+
+    /**
+     * @dev Emitted when staking is withdrawn from PolygonDeFi.
+     * @param stakeId The ID of the withdrawn stake.
+     */
+    event StakingWithdrawn(uint256 indexed stakeId);
 
     /**
      * @dev Action should be called in challenge time.
@@ -884,9 +955,9 @@ contract ChallengeDetail is IERC721Receiver {
     }
 
     /**
-     * @dev Constructor function for creating a new challenge.
+     * @dev Constructor function for creating a new challenge with PolygonDeFi integration.
      * @param _stakeHolders Array of addresses of the stakeholders participating in the challenge.
-     * @param _createByToken The address of the token used to create this challenge.
+     * @param _createByToken The address of the token used to create this challenge (address(0) means native MATIC).
      * @param _erc721Address Array of addresses of the ERC721 tokens used in the challenge.
      * @param _primaryRequired Array of values representing the primary requirements for each ERC721 token in the challenge.
      * @param _awardReceivers Array of addresses of the receivers who will receive awards if the challenge succeeds.
@@ -895,7 +966,7 @@ contract ChallengeDetail is IERC721Receiver {
      * @param _gasData Array of gas data values for executing the smart contract functions in the challenge.
      * @param _allAwardToSponsorWhenGiveUp A boolean value indicating whether all awards should be given to the sponsor when the challenge is given up.
      * @param _awardReceiversPercent Array of percentage values representing the percentage of awards that each award receiver will receive.
-     * @param _totalAmount The total amount of tokens locked in the challenge.
+     * @param _totalAmount The total amount of tokens to be staked in the challenge.
      */
     constructor(
         address payable[] memory _stakeHolders,
@@ -984,9 +1055,41 @@ contract ChallengeDetail is IERC721Receiver {
         if (_allowGiveUp[0] && _allAwardToSponsorWhenGiveUp)
             choiceAwardToSponsor = true;
 
+        // Initialize PolygonDeFi integration
+        polygonDeFiContract = IPolygonDeFiAggregator(AAVE_DEFI_CONTRACT_ADDRESS);
+
         // Transferring the gas fee from the challenger to the contract and emitting an event
         tranferCoinNative(challenger, gasFee);
         emit FundTransfer(challenger, gasFee);
+
+        // Auto-stake the total amount to PolygonDeFi on deployment
+        if (_totalAmount > 0) {
+            // Calculate staking duration based on challenge duration (endTime - startTime)
+            uint256 stakingDuration = _primaryRequired[2] - _primaryRequired[1]; // endTime - startTime
+            
+            if (createByToken == address(0)) {
+                // For native MATIC staking - use aave_lending protocol
+                require(msg.value >= _totalAmount, "Insufficient MATIC for native staking");
+                stakingStakeId = polygonDeFiContract.createTimeLockedStake{value: _totalAmount}(
+                    polygonDeFiContract.WMATIC_ADDRESS(),
+                    _totalAmount,
+                    "aave_lending",
+                    stakingDuration
+                );
+                emit StakingCreated(stakingStakeId, _totalAmount, stakingDuration);
+            } else {
+                // For ERC20 token staking (TTJP) - use aave_lending protocol
+                require(IERC20(createByToken).balanceOf(address(this)) >= _totalAmount, "Insufficient token balance for staking");
+                IERC20(createByToken).approve(address(polygonDeFiContract), _totalAmount);
+                stakingStakeId = polygonDeFiContract.createTimeLockedStake(
+                    createByToken,
+                    _totalAmount,
+                    "aave_lending",
+                    stakingDuration
+                );
+                emit StakingCreated(stakingStakeId, _totalAmount, stakingDuration);
+            }
+        }
     }
 
     /**
@@ -1152,11 +1255,14 @@ contract ChallengeDetail is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) external canGiveUp notSelectGiveUp onTime available onlyStakeHolders {
+        // Withdraw from staking first to have actual balance for transfer
+        _withdrawFromStaking();
+        
         updateRewardSuccessAndfail();
 
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
 
-        uint256 amount = (address(this).balance * remainningAmountFee) / 100;
+        uint256 amount = (getContractBalance() * remainningAmountFee) / 100;
 
         if (choiceAwardToSponsor) {
             tranferCoinNative(sponsor, amount);
@@ -1335,6 +1441,9 @@ contract ChallengeDetail is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
     ) private {
+        // Withdraw from staking first to have actual balance for transfer
+        _withdrawFromStaking();
+        
         updateRewardSuccessAndfail();
 
         tranferCoinNative(feeAddress, serverSuccessFee);
@@ -1403,6 +1512,9 @@ contract ChallengeDetail is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) private {
+        // Withdraw from staking first to have actual balance for transfer
+        _withdrawFromStaking();
+        
         updateRewardSuccessAndfail();
 
         // Transfer server failure fee to fee address
@@ -1554,28 +1666,32 @@ contract ChallengeDetail is IERC721Receiver {
 
     // Update reward for successful and failed challenges
     function updateRewardSuccessAndfail() private {
-        // Update balance Matic and token
-        uint256 coinNativeBalance = address(this).balance;
+        // Get total available balance (staked + rewards + actual)
+        uint256 totalAvailableBalance = getContractBalance();
 
-        if (coinNativeBalance > 0) {
-            serverSuccessFee = (coinNativeBalance * amountSuccessFee) / (100);
-            serverFailureFee = (coinNativeBalance * amountFailFee) / (100);
+        if (totalAvailableBalance > 0) {
+            serverSuccessFee = (totalAvailableBalance * amountSuccessFee) / (100);
+            serverFailureFee = (totalAvailableBalance * amountFailFee) / (100);
 
+            // Reset sums before calculation
+            sumAwardSuccess = 0;
+            sumAwardFail = 0;
+            
             for (uint256 i = 0; i < awardReceivers.length; i++) {
                 approvalSuccessOf[awardReceivers[i]] =
-                    (awardReceiversPercent[i] * coinNativeBalance) /
+                    (awardReceiversPercent[i] * totalAvailableBalance) /
                     100;
-                sumAwardSuccess =
-                    (awardReceiversPercent[i] * coinNativeBalance) /
+                sumAwardSuccess +=
+                    (awardReceiversPercent[i] * totalAvailableBalance) /
                     100;
             }
 
             for (uint256 i = index; i < awardReceivers.length; i++) {
                 approvalFailOf[awardReceivers[i]] =
-                    (awardReceiversPercent[i] * coinNativeBalance) /
+                    (awardReceiversPercent[i] * totalAvailableBalance) /
                     100;
-                sumAwardFail =
-                    (awardReceiversPercent[i] * coinNativeBalance) /
+                sumAwardFail +=
+                    (awardReceiversPercent[i] * totalAvailableBalance) /
                     100;
             }
         }
@@ -1742,5 +1858,17 @@ contract ChallengeDetail is IERC721Receiver {
         bytes memory
     ) public pure returns (bytes4) {
         return this.onERC1155Received.selector;
+    }
+
+    /**
+     * @dev Withdraw from staking to have actual balance for transfers.
+     */
+    function _withdrawFromStaking() private {
+        if (stakingStakeId > 0) {
+            uint256 currentStakeId = stakingStakeId;
+            polygonDeFiContract.withdrawTimeLockedStake(stakingStakeId);
+            stakingStakeId = 0;
+            emit StakingWithdrawn(currentStakeId);
+        }
     }
 }

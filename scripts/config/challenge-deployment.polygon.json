@@ -1,0 +1,24 @@
+{
+  "stakeHolders": [
+    "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+    "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50", 
+    "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
+  ],
+  "createByToken": "0x0000000000000000000000000000000000000000",
+  "erc721Addresses": [
+    "0x5f6E8dC2E8D99CC81F42200b91C3D4008c71e56F"
+  ],
+  "primaryRequired": [1000, 0, 0, 1000, 7],
+  "awardReceivers": [
+    "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
+  ],
+  "index": 1,
+  "allowGiveUp": [true, true, true],
+  "gasData": ["0.01", "0.01", "0.01"],
+  "allAwardToSponsorWhenGiveUp": true,
+  "awardReceiversPercent": [100],
+  "totalAmount": "1.0",
+  "exerciseSupplementNFT": "0x5f6E8dC2E8D99CC81F42200b91C3D4008c71e56F",
+  "challengeFee": "0x0000000000000000000000000000000000000000",
+  "ttjpToken": "0x431D5dfF03120AFA4bDf332c61A6e1766eF37BDB"
+}
