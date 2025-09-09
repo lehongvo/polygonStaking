@@ -78,6 +78,10 @@
     "node": "hardhat node",
     "coverage": "hardhat coverage",
     "gas": "REPORT_GAS=true hardhat test",
-    "update-contract-address": "ts-node scripts/utils/updateContractAddress.ts"
+    "update-contract-address": "ts-node scripts/utils/updateContractAddress.ts",
+    "deploy:challenge:amoy": "hardhat run scripts/challenge/deploy-challenge-detail-v2.ts --network amoy",
+    "deploy:challenge:polygon": "hardhat run scripts/challenge/deploy-challenge-detail-v2.ts --network polygon",
+    "verify:challenge:amoy": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network amoy",
+    "verify:challenge:polygon": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network polygon"
   }
 }
