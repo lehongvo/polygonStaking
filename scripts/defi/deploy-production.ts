@@ -111,11 +111,12 @@ async function main() {
   console.log('Adding supported tokens...');
   for (const token of config.supportedTokens) {
     console.log(`  Adding ${token.symbol}...`);
-    await contract.addSupportedToken(
+    const tx = await contract.addSupportedToken(
       token.address,
       token.symbol,
       token.decimals
     );
+    await tx.wait(2);
   }
   console.log('✅ Supported tokens added');
 
@@ -123,12 +124,13 @@ async function main() {
   console.log('Adding protocols...');
   for (const protocol of config.protocols) {
     console.log(`  Adding ${protocol.name}...`);
-    await contract.addProtocol(
+    const tx = await contract.addProtocol(
       protocol.name,
       protocol.contractAddress,
       protocol.protocolType,
       protocol.initialAPY
     );
+    await tx.wait(2);
   }
   console.log('✅ Protocols added');
 
