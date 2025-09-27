@@ -1,0 +1,60 @@
+{
+  "network": "polygon",
+  "contractName": "PolygonDeFiAggregator",
+  "contractAddress": "0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559",
+  "proxyAddress": "0x58aDb6Db865958d846ffE4c46d2a66c1c70288f0",
+  "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+  "deploymentTime": "2025-09-27T05:21:21.907Z",
+  "gasUsed": "226184",
+  "constructorArgs": [],
+  "verification": {
+    "status": "failed",
+    "etherscan": "https://polygonscan.com/address/0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559",
+    "note": "Verification failed: Failed to get logs for contract at address 0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559.\n\nEtherscan returned with message: NOTOK, reason: Invalid API Key (#err2)|POLY-2"
+  },
+  "setup": {
+    "protocols": [
+      {
+        "name": "aave_lending",
+        "address": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+        "type": "lending",
+        "apy": 500,
+        "active": true
+      }
+    ],
+    "tokens": [
+      {
+        "address": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+        "symbol": "WMATIC",
+        "decimals": 18,
+        "active": true
+      }
+    ],
+    "constants": {
+      "WMATIC_ADDRESS": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270"
+    }
+  },
+  "features": [
+    "Time-locked staking",
+    "Multi-protocol support (Aave, Compound, Liquid Staking)",
+    "Native MATIC support",
+    "Flexible withdrawal",
+    "Pro-rate withdrawal mechanism",
+    "Emergency functions",
+    "Reentrancy protection",
+    "Pausable functionality",
+    "Upgradeable contract (UUPS pattern)"
+  ],
+  "usage": {
+    "createTimeLockedStake": "Stake tokens with time lock",
+    "withdrawTimeLockedStake": "Withdraw staked tokens + rewards",
+    "getUserTokenProtocolPosition": "Get user position details",
+    "addProtocol": "Add new DeFi protocol (owner only)",
+    "addSupportedToken": "Add new supported token (owner only)"
+  },
+  "integration": {
+    "challengeDetailV2": "Ready for integration with ChallengeDetailV2",
+    "note": "Upgradeable contract deployed and configured for ChallengeDetailV2 integration",
+    "status": "ready_for_deployment"
+  }
+}
