@@ -1,4 +1,5 @@
 require('@nomicfoundation/hardhat-toolbox');
+require('@openzeppelin/hardhat-upgrades');
 require('dotenv/config');
 
 const config = {
@@ -7,7 +8,7 @@ const config = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200,
+        runs: 1,
       },
       viaIR: true,
     },
@@ -32,10 +33,17 @@ const config = {
     },
   },
   etherscan: {
-    apiKey: {
-      polygon: process.env.POLYGONSCAN_API_KEY || '',
-      polygonAmoy: process.env.POLYGONSCAN_API_KEY || '',
-    },
+    apiKey: process.env.POLYGONSCAN_API_KEY || '',
+    customChains: [
+      {
+        network: "polygon",
+        chainId: 137,
+        urls: {
+          apiURL: "https://api.polygonscan.com/api",
+          browserURL: "https://polygonscan.com"
+        }
+      }
+    ]
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,

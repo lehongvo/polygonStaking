@@ -1,0 +1,69 @@
+{
+  "network": "polygon",
+  "contractName": "ChallengeDetailV2",
+  "contractAddress": "0x03A6Be094818532f8f3f3fec82945f76bC335EE2",
+  "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+  "deploymentTime": "2025-09-27T06:47:34.972Z",
+  "blockNumber": 76955186,
+  "constructorArgs": {
+    "stakeHolders": [
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+    ],
+    "createByToken": "0x0000000000000000000000000000000000000000",
+    "erc721Addresses": [
+      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
+    ],
+    "primaryRequired": [
+      1,
+      1752742657,
+      1759742657,
+      100,
+      1
+    ],
+    "awardReceivers": [
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+    ],
+    "index": 1,
+    "allowGiveUp": [
+      true,
+      true,
+      true
+    ],
+    "gasData": [
+      "200000000000000000",
+      "200000000000000000",
+      "0"
+    ],
+    "allAwardToSponsorWhenGiveUp": true,
+    "awardReceiversPercent": [
+      100,
+      100
+    ],
+    "totalAmount": "1000000000000"
+  },
+  "contractDetails": {
+    "sponsor": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+    "challenger": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+    "startTime": 1752742657,
+    "endTime": 1759742657,
+    "goal": 100,
+    "dayRequired": 1,
+    "stakingStakeId": 0,
+    "createByToken": "0x0000000000000000000000000000000000000000",
+    "autoStaking": false
+  },
+  "stakingInfo": {
+    "enabled": false,
+    "stakeId": 0,
+    "tokenType": "MATIC",
+    "protocol": "aave_lending",
+    "duration": 7000000
+  },
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://polygonscan.com/address/0x03A6Be094818532f8f3f3fec82945f76bC335EE2"
+  }
+}

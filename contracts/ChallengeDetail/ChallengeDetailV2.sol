@@ -822,7 +822,7 @@ contract ChallengeDetailV2 is IERC721Receiver {
     
     /** @dev AAVE_DEFI_CONTRACT_ADDRESS address of PolygonDeFiAggregator contract.
      */
-    address public constant AAVE_DEFI_CONTRACT_ADDRESS = 0x21Df27Dbc12099668a678474aDE9040163DC71C7;
+    address public constant AAVE_DEFI_CONTRACT_ADDRESS = 0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559;
     
     /** @dev polygonDeFiContract instance of PolygonDeFiAggregator.
      */
@@ -1058,7 +1058,7 @@ contract ChallengeDetailV2 is IERC721Receiver {
         // Initialize PolygonDeFi integration
         polygonDeFiContract = IPolygonDeFiAggregator(AAVE_DEFI_CONTRACT_ADDRESS);
 
-        // Transferring the gas fee from the challenger to the contract and emitting an event
+        // // Transferring the gas fee from the challenger to the contract and emitting an event
         tranferCoinNative(challenger, gasFee);
         emit FundTransfer(challenger, gasFee);
 
@@ -1074,7 +1074,7 @@ contract ChallengeDetailV2 is IERC721Receiver {
                     polygonDeFiContract.WMATIC_ADDRESS(),
                     _totalAmount,
                     "aave_lending",
-                    stakingDuration
+                    2 days
                 );
                 emit StakingCreated(stakingStakeId, _totalAmount, stakingDuration);
             } else {

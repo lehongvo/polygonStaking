@@ -6,23 +6,17 @@ import * as path from 'path';
 const hre = require('hardhat');
 
 interface ChallengeDeploymentConfig {
-  // Challenge parameters
   stakeHolders: string[];
-  createByToken: string; // address(0) for MATIC, token address for ERC20
+  createByToken: string;
   erc721Addresses: string[];
-  primaryRequired: number[]; // [duration, startTime, endTime, goal, dayRequired]
+  primaryRequired: number[];
   awardReceivers: string[];
   index: number;
   allowGiveUp: boolean[];
-  gasData: string[]; // [gas1, gas2, gas3] in wei
+  gasData: string[];
   allAwardToSponsorWhenGiveUp: boolean;
   awardReceiversPercent: number[];
-  totalAmount: string; // in wei
-  
-  // Network specific addresses
-  exerciseSupplementNFT: string;
-  challengeFee: string;
-  ttjpToken?: string; // Optional TTJP token address
+  totalAmount: string;
 }
 
 async function main() {
@@ -36,33 +30,24 @@ async function main() {
     `💰 Balance: ${hre.ethers.formatEther(await hre.ethers.provider.getBalance(deployer.address))} ETH`
   );
 
-  // Load deployment configuration
   const configPath = path.join(
     __dirname,
     `../config/challenge-deployment.${network.name}.json`
   );
-  
-  let config: ChallengeDeploymentConfig;
-  
+
+  let config: ChallengeDeploymentConfig | any;
+
   try {
-    if (fs.existsSync(configPath)) {
-      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      console.log('✅ Configuration loaded from file');
-    } else {
-      // Use default configuration for testing
-      config = getDefaultConfig(network.name);
-      console.log('⚠️  Using default configuration (create config file for production)');
+    const envConfigRaw = process.env.CONFIG_DEPLOY_CHALLENGE;
+    if (envConfigRaw && envConfigRaw.trim().length > 0) {
+      const parsed = parseEnvConfig(envConfigRaw);
+      config = normalizeConfig(parsed);
+      console.log('✅ Configuration loaded from ENV (CONFIG_DEPLOY_CHALLENGE)');
     }
   } catch (error) {
     console.error('❌ Failed to load configuration:', error);
     process.exit(1);
   }
-
-  // Pre-deployment checks
-  console.log('\n🔍 PRE-DEPLOYMENT CHECKS');
-  console.log('========================');
-
-  // Check deployer balance
   const balance = await hre.ethers.provider.getBalance(deployer.address);
   const minBalance = hre.ethers.parseEther('0.1');
   if (balance < minBalance) {
@@ -73,44 +58,6 @@ async function main() {
   }
   console.log('✅ Deployer balance sufficient');
 
-  // Validate configuration
-  if (!hre.ethers.isAddress(config.exerciseSupplementNFT)) {
-    console.error('❌ Invalid ExerciseSupplementNFT address');
-    process.exit(1);
-  }
-  console.log('✅ Configuration validated');
-
-  // Use timing from config or calculate if needed
-  let startTime, endTime, challengeDuration;
-  
-  if (config.primaryRequired[1] > 0 && config.primaryRequired[2] > 0) {
-    // Use existing timing from config
-    startTime = config.primaryRequired[1];
-    endTime = config.primaryRequired[2];
-    challengeDuration = endTime - startTime;
-  } else {
-    // Calculate new timing
-    const now = Math.floor(Date.now() / 1000);
-    startTime = now + 3600; // Start in 1 hour
-    endTime = now + (7 * 24 * 3600); // End in 7 days
-    challengeDuration = endTime - startTime;
-    
-    // Update primaryRequired with calculated times
-    config.primaryRequired = [
-      config.primaryRequired[0], // duration (steps) - keep original
-      startTime, // startTime
-      endTime, // endTime
-      config.primaryRequired[3], // goal - keep original
-      config.primaryRequired[4] // dayRequired - keep original
-    ];
-  }
-
-  console.log(`📅 Challenge Duration: ${Math.floor(challengeDuration / 86400)} days`);
-  console.log(`📅 Start Time: ${new Date(startTime * 1000).toISOString()}`);
-  console.log(`📅 End Time: ${new Date(endTime * 1000).toISOString()}`);
-
-  // Prepare constructor parameters
-  const totalAmountWei = hre.ethers.parseEther(config.totalAmount);
   const constructorArgs = [
     config.stakeHolders,
     config.createByToken,
@@ -119,27 +66,46 @@ async function main() {
     config.awardReceivers,
     config.index,
     config.allowGiveUp,
-    config.gasData.map(g => hre.ethers.parseEther(g)),
+    config.gasData,
     config.allAwardToSponsorWhenGiveUp,
     config.awardReceiversPercent,
-    totalAmountWei
+    config.totalAmount
   ];
 
-  // Deploy contract
   console.log('\n🏗️  DEPLOYING CONTRACT');
   console.log('======================');
 
   const ContractFactory = await hre.ethers.getContractFactory('ChallengeDetailV2');
 
-  console.log('⏳ Deploying ChallengeDetailV2...');
-  
-  // Determine if we need to send value (for MATIC staking)
-  const deployOptions = config.createByToken === hre.ethers.ZeroAddress 
-    ? { value: totalAmountWei }
-    : {};
+  console.log('⏳ Deploying ChallengeDetailV2...', constructorArgs);
+  let contract: any;
+  try {
+    const baseOverrides = (config.allowGiveUp && config.allowGiveUp[1]) ? { value: config.totalAmount.toString() } : {};
+    console.log('baseOverrides', baseOverrides);
 
-  const contract = await ContractFactory.deploy(...constructorArgs, deployOptions);
-  await contract.waitForDeployment();
+    // Estimate gas and fees
+    const unsignedTx = await ContractFactory.getDeployTransaction(...constructorArgs, baseOverrides);
+    const [signer] = await hre.ethers.getSigners();
+    const estimatedGas = await signer.estimateGas(unsignedTx);
+    // const feeData = await hre.ethers.provider.getFeeData();
+    // const defaultGasPrice = hre.ethers.parseUnits('40', 'gwei');
+    // const gasPrice = feeData.gasPrice ?? defaultGasPrice;
+    // const estCostWei = estimatedGas * gasPrice;
+    console.log(`Estimated gas: ${estimatedGas.toString()}`);
+    // console.log(`Estimated cost: ${hre.ethers.formatEther(estCostWei)} ETH`);
+
+    // Add 20% buffer to gas limit
+    // const gasLimit = Math.ceil(estimatedGas * 1.01);
+    // const overrides = feeData.maxFeePerGas && feeData.maxPriorityFeePerGas
+    //   ? { ...baseOverrides, gasLimit, maxFeePerGas: feeData.maxFeePerGas, maxPriorityFeePerGas: feeData.maxPriorityFeePerGas }
+    //   : { ...baseOverrides, gasLimit, gasPrice };
+
+    contract = await ContractFactory.deploy(...constructorArgs, baseOverrides);
+    await contract.waitForDeployment();
+  } catch (error) {
+    console.error('❌ Deployment failed:', error);
+    process.exit(1);
+  }
 
   const contractAddress = await contract.getAddress();
   console.log(`✅ Contract deployed at: ${contractAddress}`);
@@ -166,8 +132,8 @@ async function main() {
     const endTime = await contract.endTime();
     const goal = await contract.goal();
     const dayRequired = await contract.dayRequired();
-    const stakingStakeId = await contract.stakingStakeId();
     const createByToken = await contract.createByToken();
+    const stakingStakeId = await contract.stakingStakeId();
 
     console.log(`✅ Sponsor: ${sponsor}`);
     console.log(`✅ Challenger: ${challenger}`);
@@ -175,8 +141,8 @@ async function main() {
     console.log(`✅ End Time: ${new Date(Number(endTime) * 1000).toISOString()}`);
     console.log(`✅ Goal: ${goal} steps`);
     console.log(`✅ Day Required: ${dayRequired} days`);
-    console.log(`✅ Staking Stake ID: ${stakingStakeId}`);
     console.log(`✅ Create By Token: ${createByToken}`);
+    console.log(`✅ Staking Stake ID: ${stakingStakeId}`);
     console.log(`✅ Auto-staking: ${stakingStakeId > 0 ? 'Enabled' : 'Disabled'}`);
     
     console.log('✅ All basic functionality tests passed');
@@ -245,7 +211,7 @@ async function main() {
       stakeId: Number(await contract.stakingStakeId()),
       tokenType: config.createByToken === hre.ethers.ZeroAddress ? 'MATIC' : 'ERC20',
       protocol: 'aave_lending',
-      duration: challengeDuration,
+      duration: Number(await contract.endTime()) - Number(await contract.startTime()),
     },
     verification: {
       verified: network.name !== 'hardhat' && network.name !== 'localhost',
@@ -272,7 +238,7 @@ async function main() {
   console.log(`Time: ${deploymentInfo.deploymentTime}`);
   console.log(`Auto-staking: ${deploymentInfo.stakingInfo.enabled ? 'Enabled' : 'Disabled'}`);
   console.log(`Token Type: ${deploymentInfo.stakingInfo.tokenType}`);
-  console.log(`Duration: ${Math.floor(challengeDuration / 86400)} days`);
+  console.log(`Duration: ${Math.floor(+(Number(await contract.endTime()) - Number(await contract.startTime())) / 86400)} days`);
   console.log(`Explorer: ${deploymentInfo.verification.explorerUrl}`);
 
   console.log('\n🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!');
@@ -290,36 +256,6 @@ async function main() {
   console.log('4. Prepare for production use');
 }
 
-function getDefaultConfig(networkName: string): ChallengeDeploymentConfig {
-  // Data from mock/index.js
-  const stakeHolders = [
-    "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0", // sponsor
-    "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0", // challenger  
-    "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"  // feeAddress
-  ];
-  
-  return {
-    stakeHolders: stakeHolders,
-    createByToken: "0x0000000000000000000000000000000000000000", // Use MATIC
-    erc721Addresses: [
-      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
-    ],
-    primaryRequired: [1, 1752742657, 1759742657, 100, 1], // Will be updated with real times
-    awardReceivers: [
-      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0", 
-      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
-    ],
-    index: 1,
-    allowGiveUp: [true, true, true],
-    gasData: ['0.2', '0.2', '0'], // Convert from wei: 200000000000000000 = 0.2 ETH
-    allAwardToSponsorWhenGiveUp: true,
-    awardReceiversPercent: [100, 100],
-    totalAmount: '0.001', // Convert from wei: 1000000000000 = 0.001 ETH (small amount for testing)
-    exerciseSupplementNFT: "0x55285EcCef5487E87C5980C880131aCadDE7767C",
-    challengeFee: "0x0000000000000000000000000000000000000000",
-  };
-}
-
 function getExplorerUrl(networkName: string, address: string): string {
   const explorers: { [key: string]: string } = {
     polygon: `https://polygonscan.com/address/${address}`,
@@ -331,6 +267,47 @@ function getExplorerUrl(networkName: string, address: string): string {
   };
 
   return explorers[networkName] || `Unknown network: ${networkName}`;
+}
+
+function parseEnvConfig(raw: string): any {
+  try {
+    // Accept JSON or JS-like object from .env
+    const normalized = raw.trim().startsWith('{') ? raw : raw.replace(/^CONFIG_DEPLOY_CHALLENGE\s*=\s*/,'');
+    return JSON.parse(normalized);
+  } catch (e) {
+    throw new Error('Invalid CONFIG_DEPLOY_CHALLENGE JSON in .env');
+  }
+}
+
+function toWei(value: string): bigint {
+  // Accept plain wei ("1000...") or decimal ether-like ("1.0")
+  if (/^\d+$/.test(value)) {
+    return BigInt(value);
+  }
+  // Decimal ether string
+  const [intPart, fracPart = ''] = value.split('.');
+  const frac = (fracPart + '0'.repeat(18)).slice(0, 18);
+  const combined = `${intPart}${frac}`.replace(/^0+(?=\d)/, '');
+  if (!/^\d+$/.test(combined)) throw new Error('Invalid decimal amount');
+  return BigInt(combined || '0');
+}
+
+function normalizeConfig(input: any): ChallengeDeploymentConfig {
+  const toBool = (v: any) => (typeof v === 'boolean' ? v : String(v).toLowerCase() === 'true');
+  const toNum = (v: any) => (typeof v === 'number' ? v : Number(v));
+  return {
+    stakeHolders: input.stakeHolders,
+    createByToken: input.createByToken,
+    erc721Addresses: input.erc721Addresses,
+    primaryRequired: input.primaryRequired.map((n: any) => toNum(n)),
+    awardReceivers: input.awardReceivers,
+    index: toNum(input.index),
+    allowGiveUp: input.allowGiveUp.map((b: any) => toBool(b)),
+    gasData: input.gasData.map((g: any) => String(g)),
+    allAwardToSponsorWhenGiveUp: toBool(input.allAwardToSponsorWhenGiveUp),
+    awardReceiversPercent: input.awardReceiversPercent.map((n: any) => toNum(n)),
+    totalAmount: String(input.totalAmount),
+  };
 }
 
 main()
