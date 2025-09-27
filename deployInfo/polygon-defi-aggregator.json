@@ -56,5 +56,20 @@
     "challengeDetailV2": "Ready for integration with ChallengeDetailV2",
     "note": "Upgradeable contract deployed and configured for ChallengeDetailV2 integration",
     "status": "ready_for_deployment"
+  },
+  "implementation": "0xd14076C64c4FE7061e0C8FD9C43d7e52F46b24F1",
+  "lastUpgrade": {
+    "network": "polygon",
+    "proxyAddress": "0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559",
+    "oldImplementation": "0xdc0CA8e8E605881124D916b8A99C7dba8966866F",
+    "newImplementation": "0xd14076C64c4FE7061e0C8FD9C43d7e52F46b24F1",
+    "upgradeTime": "2025-09-27T15:52:16.066Z",
+    "gasUsed": "37667",
+    "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+    "verification": {
+      "status": "success",
+      "etherscan": "https://polygonscan.com/address/0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559",
+      "note": "New implementation verified successfully on PolygonScan"
+    }
   }
 }

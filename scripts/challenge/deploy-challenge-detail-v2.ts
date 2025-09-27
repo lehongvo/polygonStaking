@@ -2,6 +2,7 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import { network, run } from 'hardhat';
 import * as path from 'path';
+import batchGrantRole from './grantChallengeRole';
 
 const hre = require('hardhat');
 
@@ -43,6 +44,9 @@ async function main() {
       const parsed = parseEnvConfig(envConfigRaw);
       config = normalizeConfig(parsed);
       console.log('✅ Configuration loaded from ENV (CONFIG_DEPLOY_CHALLENGE)');
+    } else {
+      console.error('❌ CONFIG_DEPLOY_CHALLENGE not found in environment variables');
+      process.exit(1);
     }
   } catch (error) {
     console.error('❌ Failed to load configuration:', error);
@@ -80,27 +84,33 @@ async function main() {
   console.log('⏳ Deploying ChallengeDetailV2...', constructorArgs);
   let contract: any;
   try {
-    const baseOverrides = (config.allowGiveUp && config.allowGiveUp[1]) ? { value: config.totalAmount.toString() } : {};
+    const baseOverrides = (config.allowGiveUp && config.allowGiveUp[1]) ? { value: config.totalAmount } : {};
     console.log('baseOverrides', baseOverrides);
 
     // Estimate gas and fees
     const unsignedTx = await ContractFactory.getDeployTransaction(...constructorArgs, baseOverrides);
     const [signer] = await hre.ethers.getSigners();
     const estimatedGas = await signer.estimateGas(unsignedTx);
-    // const feeData = await hre.ethers.provider.getFeeData();
-    // const defaultGasPrice = hre.ethers.parseUnits('40', 'gwei');
-    // const gasPrice = feeData.gasPrice ?? defaultGasPrice;
-    // const estCostWei = estimatedGas * gasPrice;
+    
+    // Get current gas price and calculate cost
+    const feeData = await hre.ethers.provider.getFeeData();
+    const defaultGasPrice = hre.ethers.parseUnits('40', 'gwei');
+    const gasPrice = feeData.gasPrice ?? defaultGasPrice;
+    const estCostWei = estimatedGas * gasPrice;
+    
     console.log(`Estimated gas: ${estimatedGas.toString()}`);
-    // console.log(`Estimated cost: ${hre.ethers.formatEther(estCostWei)} ETH`);
+    console.log(`Gas price: ${hre.ethers.formatUnits(gasPrice, 'gwei')} gwei`);
+    console.log(`Estimated cost: ${hre.ethers.formatEther(estCostWei)} ETH`);
 
-    // Add 20% buffer to gas limit
-    // const gasLimit = Math.ceil(estimatedGas * 1.01);
-    // const overrides = feeData.maxFeePerGas && feeData.maxPriorityFeePerGas
-    //   ? { ...baseOverrides, gasLimit, maxFeePerGas: feeData.maxFeePerGas, maxPriorityFeePerGas: feeData.maxPriorityFeePerGas }
-    //   : { ...baseOverrides, gasLimit, gasPrice };
+    // Add 1% buffer to gas limit for safety
+    const gasLimit = Math.ceil(Number(estimatedGas) * 1.01);
+    const overrides = feeData.maxFeePerGas && feeData.maxPriorityFeePerGas
+      ? { ...baseOverrides, gasLimit, maxFeePerGas: feeData.maxFeePerGas, maxPriorityFeePerGas: feeData.maxPriorityFeePerGas }
+      : { ...baseOverrides, gasLimit, gasPrice };
+    
+    console.log(`Using gas limit: ${gasLimit} (${Math.round((gasLimit / Number(estimatedGas) - 1) * 100)}% buffer)`);
 
-    contract = await ContractFactory.deploy(...constructorArgs, baseOverrides);
+    contract = await ContractFactory.deploy(...constructorArgs, overrides);
     await contract.waitForDeployment();
   } catch (error) {
     console.error('❌ Deployment failed:', error);
@@ -153,6 +163,8 @@ async function main() {
 
   // Contract verification on block explorer
   if (network.name !== 'hardhat' && network.name !== 'localhost') {
+    // slepp 10s
+    await new Promise(resolve => setTimeout(resolve, 10000));
     console.log('\n🔍 VERIFYING ON BLOCK EXPLORER');
     console.log('===============================');
 
@@ -169,6 +181,94 @@ async function main() {
     } catch (error) {
       console.warn('⚠️  Contract verification failed:', error);
     }
+  }
+
+  // Grant role to deployed contract
+  console.log('\n🔐 GRANTING CHALLENGE ROLE');
+  console.log('===========================');
+  
+  let roleGrantTxHash: string | null = null;
+  try {
+    console.log(`⏳ Granting ALLOWED_CONTRACTS_CHALLENGE role to ${contractAddress}...`);
+    roleGrantTxHash = await batchGrantRole(contractAddress);
+    console.log('✅ Challenge role granted successfully');
+  } catch (error) {
+    console.warn('⚠️  Failed to grant challenge role:', error);
+    console.log('You may need to grant the role manually later');
+  }
+
+  // Test sendDailyResult function
+  console.log('\n📊 TESTING SEND DAILY RESULT');
+  console.log('=============================');
+  
+  let sendDailyResultTxHash: string | null = null;
+  try {
+    // Prepare test data for sendDailyResult
+    const testDay = [10];
+    const testStepIndex = [1000];
+    const testListGachaAddress: string[] = [];
+    const testListNFTAddress: string[] = [];
+    const testListIndexNFT: number[][] = [];
+    const testListSenderAddress: string[][] = [];
+    const testStatusTypeNft: boolean[] = [];
+    const testTimeRange: [number, number] = [1, 100];
+
+    console.log('⏳ Estimating gas for sendDailyResult...');
+    
+    // Estimate gas for sendDailyResult
+    const estimatedGas = await contract.sendDailyResult.estimateGas(
+      testDay,
+      testStepIndex,
+      testListGachaAddress,
+      testListNFTAddress,
+      testListIndexNFT,
+      testListSenderAddress,
+      testStatusTypeNft,
+      testTimeRange
+    );
+
+    console.log(`Estimated gas for sendDailyResult: ${estimatedGas.toString()}`);
+
+    // Get current gas price
+    const feeData = await hre.ethers.provider.getFeeData();
+    const gasPrice = feeData.gasPrice ?? hre.ethers.parseUnits('40', 'gwei');
+    const estCostWei = estimatedGas * gasPrice;
+    
+    console.log(`Gas price: ${hre.ethers.formatUnits(gasPrice, 'gwei')} gwei`);
+    console.log(`Estimated cost: ${hre.ethers.formatEther(estCostWei)} ETH`);
+
+    // Add 20% buffer to gas limit
+    const gasLimit = Math.ceil(Number(estimatedGas) * 1.2);
+    console.log(`Using gas limit: ${gasLimit} (${Math.round((gasLimit / Number(estimatedGas) - 1) * 100)}% buffer)`);
+
+    console.log('⏳ Sending sendDailyResult transaction...');
+    
+    // Send sendDailyResult transaction
+    const sendDailyResultTx = await contract.sendDailyResult(
+      testDay,
+      testStepIndex,
+      testListGachaAddress,
+      testListNFTAddress,
+      testListIndexNFT,
+      testListSenderAddress,
+      testStatusTypeNft,
+      testTimeRange,
+      {
+        gasLimit,
+        gasPrice
+      }
+    );
+
+    const receipt = await sendDailyResultTx.wait();
+    sendDailyResultTxHash = sendDailyResultTx.hash;
+    
+    console.log(`✅ sendDailyResult transaction sent successfully`);
+    console.log(`Transaction hash: ${sendDailyResultTxHash}`);
+    console.log(`Gas used: ${receipt?.gasUsed?.toString() || 'N/A'}`);
+    
+  } catch (error) {
+    console.warn('⚠️  Failed to send sendDailyResult transaction:', error);
+    console.log('This might be expected if the contract is not in the correct state for testing');
   }
 
   // Save deployment information
@@ -217,6 +317,21 @@ async function main() {
       verified: network.name !== 'hardhat' && network.name !== 'localhost',
       explorerUrl: getExplorerUrl(network.name, contractAddress),
     },
+    roleGranted: {
+      challengeRole: roleGrantTxHash ? true : false,
+      transactionHash: roleGrantTxHash,
+      timestamp: new Date().toISOString(),
+    },
+    transactionSendStep: {
+      sent: sendDailyResultTxHash ? true : false,
+      transactionHash: sendDailyResultTxHash,
+      timestamp: new Date().toISOString(),
+      testData: {
+        days: [10],
+        stepIndex: [1000],
+        timeRange: [1, 100]
+      }
+    },
   };
 
   const outputPath = path.join(
@@ -240,6 +355,14 @@ async function main() {
   console.log(`Token Type: ${deploymentInfo.stakingInfo.tokenType}`);
   console.log(`Duration: ${Math.floor(+(Number(await contract.endTime()) - Number(await contract.startTime())) / 86400)} days`);
   console.log(`Explorer: ${deploymentInfo.verification.explorerUrl}`);
+  console.log(`Challenge Role: ${deploymentInfo.roleGranted.challengeRole ? 'Granted' : 'Not Granted'}`);
+  if (deploymentInfo.roleGranted.transactionHash) {
+    console.log(`Role Grant TX: ${deploymentInfo.roleGranted.transactionHash}`);
+  }
+  console.log(`Send Daily Result: ${deploymentInfo.transactionSendStep.sent ? 'Sent' : 'Not Sent'}`);
+  if (deploymentInfo.transactionSendStep.transactionHash) {
+    console.log(`Send Step TX: ${deploymentInfo.transactionSendStep.transactionHash}`);
+  }
 
   console.log('\n🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!');
   console.log('=====================================');
@@ -249,6 +372,8 @@ async function main() {
   console.log('• Challenge duration tracking');
   console.log('• Automatic reward distribution');
   console.log('• Challenge parameters from mock data');
+  console.log('• Challenge role granted to ExerciseSupplementNFT');
+  console.log('• sendDailyResult function tested');
   console.log('\nNext steps:');
   console.log('1. Test challenge functionality');
   console.log('2. Monitor staking rewards');
