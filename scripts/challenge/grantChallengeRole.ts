@@ -1,9 +1,6 @@
-require('dotenv').config();
-const { ethers } = require('ethers');
-const munbai = "https://matic-mumbai.chainstacklabs.com";
-const polygon = "https://polygon-rpc.com";
-const goerli = "https://goerli.infura.io/v3/982727d220c946f8910109c11f31dbb0";
-const astar = "https://evm.astar.network";
+import 'dotenv/config';
+import { ethers } from 'ethers';
+
 
 const ExerciseSupplementNFT_ABI = [
 	{
@@ -1341,18 +1338,29 @@ const ExerciseSupplementNFT_ABI = [
 		"stateMutability": "payable",
 		"type": "function"
 	}
-]
+] as const;
 
-const adminKey = process.env.PRIVATE_KEY;
+const adminKey = process.env.ADMIN_PRIVATE_KEY;
+const network = process.env.POLYGON_RPC_URL;
+const ExerciseSupplementNFTAddress = process.env.EXERCISE_SUPPLEMENT_NFT_ADDRESS;
 
-const batchGrantRole = async(network, ExerciseSupplementNFTAddress, listChallengeAddress) => {
+console.log("adminKey", adminKey);
+console.log("network", network);
+console.log("ExerciseSupplementNFTAddress", ExerciseSupplementNFTAddress);
+
+const batchGrantRole = async (challengeAddress: string): Promise<string> => {
     try {
-        const provider = new ethers.JsonRpcProvider(network);
-        let signer = new ethers.Wallet(adminKey, provider);
+        console.log("\n================================================");
+        console.log("Batch grant role to challenge address", challengeAddress);
+        
+        const provider = new ethers.JsonRpcProvider(network?.toString() || "");
+        const signer = new ethers.Wallet(adminKey?.toString() || "", provider);
+        const listChallengeAddress = [challengeAddress.toString()];
+        
         console.log("Active by account", signer.address);
 
         const exerciseSupplementNFT = new ethers.Contract(
-            ExerciseSupplementNFTAddress,
+            ExerciseSupplementNFTAddress || "",
             ExerciseSupplementNFT_ABI,
             signer
         );
@@ -1370,19 +1378,19 @@ const batchGrantRole = async(network, ExerciseSupplementNFTAddress, listChalleng
             listChallengeAddress,
             {
                 gasLimit: ethers.toBeHex(Math.ceil(Number(etmBatchGrantRole) * 1.1)),
-				gasPrice: ethers.toBeHex(Math.ceil(Number(gasPrice.gasPrice) * 1.1)),
+                gasPrice: ethers.toBeHex(Math.ceil(Number(gasPrice.gasPrice) * 1.1)),
             }
-        )
+        );
 
-        await batchGrantRoleTx.wait();
-        console.log("batchGrantRoleTx", batchGrantRoleTx.hash);
+        const receipt = await batchGrantRoleTx.wait();
+        console.log(`✅ Transaction hash: ${batchGrantRoleTx.hash}`);
+        console.log("================================================\n");
+        
+        return batchGrantRoleTx.hash;
     } catch (error) {
         console.log(error);
+        throw error;
     }
-}
+};
 
-batchGrantRole(
-    polygon,
-    "0x55285EcCef5487E87C5980C880131aCadDE7767C",
-    ["0x7ee3327a3E65970507673C7b8D4817898D87d2a5"]
-)
+export default batchGrantRole;

@@ -1,14 +1,14 @@
 {
   "network": "polygon",
   "contractName": "ChallengeDetailV2",
-  "contractAddress": "0x03A6Be094818532f8f3f3fec82945f76bC335EE2",
+  "contractAddress": "0xa101c5Fe4835434c25CF73170abA7260c1F20aA7",
   "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
-  "deploymentTime": "2025-09-27T06:47:34.972Z",
-  "blockNumber": 76955186,
+  "deploymentTime": "2025-09-27T15:56:20.510Z",
+  "blockNumber": 76970676,
   "constructorArgs": {
     "stakeHolders": [
-      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
-      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
       "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
     ],
     "createByToken": "0x0000000000000000000000000000000000000000",
@@ -19,12 +19,12 @@
       1,
       1752742657,
       1759742657,
-      100,
+      10,
       1
     ],
     "awardReceivers": [
-      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
-      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
     ],
     "index": 1,
     "allowGiveUp": [
@@ -45,11 +45,11 @@
     "totalAmount": "1000000000000"
   },
   "contractDetails": {
-    "sponsor": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
-    "challenger": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+    "sponsor": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+    "challenger": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
     "startTime": 1752742657,
     "endTime": 1759742657,
-    "goal": 100,
+    "goal": 10,
     "dayRequired": 1,
     "stakingStakeId": 0,
     "createByToken": "0x0000000000000000000000000000000000000000",
@@ -64,6 +64,28 @@
   },
   "verification": {
     "verified": true,
-    "explorerUrl": "https://polygonscan.com/address/0x03A6Be094818532f8f3f3fec82945f76bC335EE2"
+    "explorerUrl": "https://polygonscan.com/address/0xa101c5Fe4835434c25CF73170abA7260c1F20aA7"
+  },
+  "roleGranted": {
+    "challengeRole": true,
+    "transactionHash": "0x0e6f18ae061abdc76e1004667897c378de1e244966361e27ed0c159f70fafff0",
+    "timestamp": "2025-09-27T15:56:24.551Z"
+  },
+  "transactionSendStep": {
+    "sent": true,
+    "transactionHash": "0x40e5b35970618401313eb02ca802ea638906c74085afbe2a6b7ebc87d3daf135",
+    "timestamp": "2025-09-27T15:56:24.551Z",
+    "testData": {
+      "days": [
+        10
+      ],
+      "stepIndex": [
+        1000
+      ],
+      "timeRange": [
+        1,
+        100
+      ]
+    }
   }
 }

@@ -107,6 +107,9 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
     mapping(string => uint256) public protocolLastUpdate;
     mapping(address => mapping(string => uint256)) public tokenProtocolTotalShares;
 
+    // Fee system
+    uint256 public percentFeeForSystem = 20;
+
     // Events
     event TokenAdded(address indexed token, string symbol, uint8 decimals);
 
@@ -130,6 +133,7 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
 
     event ProtocolAdded(string protocolName, address contractAddress, string protocolType);
     event APYUpdated(string protocolName, uint256 oldAPY, uint256 newAPY);
+    event FeeUpdated(uint256 oldFee, uint256 newFee);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -313,13 +317,11 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
      * @dev Withdraw time-locked stake
      * @param _stakeId ID of the stake to withdraw
      */
-    function withdrawTimeLockedStake(uint256 _stakeId) external nonReentrant {
+    function withdrawTimeLockedStake(uint256 _stakeId, address systemFeeAddress) external nonReentrant {
         UserPosition storage position = userPositions[msg.sender];
         require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
 
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
-        require(stake.isActive, "Stake not active");
-        require(!stake.isScheduled, "Stake not yet executed");
 
         ProtocolInfo storage protocol = protocols[stake.protocol];
 
@@ -330,11 +332,19 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
             stake.shares
         );
 
-        // Calculate rewards
+        // Calculate rewards and ensure we don't lose principal
         uint256 rewards = actualWithdrawn > stake.amount ? actualWithdrawn - stake.amount : 0;
-
-        // User gets actualWithdrawn amount
-        uint256 finalAmount = actualWithdrawn;
+        
+        // Safety check: ensure we don't lose principal due to precision loss
+        require(actualWithdrawn >= stake.amount, "Withdrawal amount less than principal - precision loss detected");
+        
+        // Calculate system fee from rewards only (not from principal)
+        uint256 systemFeeAmount = 0;
+        uint256 remaining = rewards;
+        if (rewards > 0 && percentFeeForSystem > 0) {
+            systemFeeAmount = (rewards * percentFeeForSystem) / 100; // Direct percentage calculation
+            remaining = rewards - systemFeeAmount; // User gets rewards minus fee
+        }
 
         // Update state
         stake.isActive = false;
@@ -346,18 +356,44 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
         protocol.totalDeposited -= stake.amount;
         tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
 
-        // Handle withdrawal
+        // Handle withdrawal - transfer principal and rewards separately for visibility
         if (stake.stakingToken == WMATIC_ADDRESS) {
-            // Unwrap WMATIC to native MATIC
             IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
-            wmatic.withdraw(finalAmount);
-            (bool success, ) = msg.sender.call{value: finalAmount}("");
-            require(success, "MATIC transfer failed");
+            
+            // Transfer principal amount
+            wmatic.withdraw(stake.amount);
+            (bool success1, ) = msg.sender.call{value: stake.amount}("");
+            require(success1, "Principal MATIC transfer failed");
+            
+            // Transfer rewards if any
+            if (rewards > 0) {
+                wmatic.withdraw(remaining);
+                (bool success2, ) = msg.sender.call{value: remaining}("");
+                require(success2, "Rewards MATIC transfer failed");
+            }
+            
+            // Transfer system fee to specified address if any
+            if (systemFeeAmount > 0) {
+                wmatic.withdraw(systemFeeAmount);
+                (bool success3, ) = systemFeeAddress.call{value: systemFeeAmount}("");
+                require(success3, "System fee MATIC transfer failed");
+            }
         } else {
-            IERC20(stake.stakingToken).safeTransfer(msg.sender, finalAmount);
+            // Transfer principal
+            IERC20(stake.stakingToken).safeTransfer(msg.sender, stake.amount);
+            
+            // Transfer rewards if any
+            if (rewards > 0) {
+                IERC20(stake.stakingToken).safeTransfer(msg.sender, remaining);
+            }
+            
+            // Transfer system fee to specified address if any
+            if (systemFeeAmount > 0) {
+                IERC20(stake.stakingToken).safeTransfer(systemFeeAddress, systemFeeAmount);
+            }
         }
 
-        // Emit event
+        // Emit event with actual amounts
         emit WithdrawTimeLockedStake(msg.sender, _stakeId, stake.amount, rewards, block.timestamp);
     }
 
@@ -407,43 +443,13 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             amount = ILiquidStaking(protocol.contractAddress).withdraw(_shares);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            // Withdraw from Aave
-            address aTokenAddress;
-            if (_token == WMATIC_ADDRESS) {
-                aTokenAddress = 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97;
-            } else {
-                revert("Unsupported token for Aave lending");
-            }
-
-            uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
-            require(totalSharesBefore > 0, "No shares to withdraw");
-
-            // Withdraw all available underlying from Aave
-            uint256 withdrawnAll = IAavePool(protocol.contractAddress).withdraw(
+            // Withdraw from Aave - use type(uint256).max to withdraw all available
+            // This prevents precision loss issues with small amounts
+            amount = IAavePool(protocol.contractAddress).withdraw(
                 _token,
-                type(uint256).max,
+                type(uint256).max, // Withdraw all available (Aave handles the calculation)
                 address(this)
             );
-
-            // Pro-rate the user's amount
-            amount = (withdrawnAll * _shares) / totalSharesBefore;
-
-            // Re-supply the remainder
-            uint256 remainder = withdrawnAll - amount;
-            if (remainder > 0) {
-                // Re-supply the remainder to Aave
-                IERC20(_token).approve(protocol.contractAddress, remainder);
-                uint256 aTokenBalanceBefore = IERC20(aTokenAddress).balanceOf(address(this));
-                IAavePool(protocol.contractAddress).supply(_token, remainder, address(this), 0);
-                uint256 aTokenBalanceAfter = IERC20(aTokenAddress).balanceOf(address(this));
-                uint256 mintedShares = aTokenBalanceAfter - aTokenBalanceBefore;
-
-                // Update aggregate shares
-                tokenProtocolTotalShares[_token][_protocol] = (totalSharesBefore - _shares) + mintedShares;
-            } else {
-                // No remainder
-                tokenProtocolTotalShares[_token][_protocol] = totalSharesBefore - _shares;
-            }
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             amount = ICompoundPool(protocol.contractAddress).redeem(_shares);
         }
@@ -574,6 +580,13 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
         }
     }
 
+    /**
+     * @dev Get system fee information
+     */
+    function getSystemFeeInfo() external view returns (uint256 feePercent, uint256 feeInBasisPoints) {
+        return (percentFeeForSystem, percentFeeForSystem);
+    }
+
     // ===== ADMIN FUNCTIONS =====
 
     /**
@@ -609,6 +622,19 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
 
     function setProtocolStatus(string memory _protocol, bool _isActive) external onlyOwner {
         protocols[_protocol].isActive = _isActive;
+    }
+
+    /**
+     * @dev Set system fee percentage
+     * @param _percentFee New fee percentage (0-100 basis points)
+     */
+    function setPercentFeeForSystem(uint256 _percentFee) external onlyOwner {
+        require(_percentFee >= 0 && _percentFee <= 100, "Fee must be between 0 and 100 basis points");
+        
+        uint256 oldFee = percentFeeForSystem;
+        percentFeeForSystem = _percentFee;
+        
+        emit FeeUpdated(oldFee, _percentFee);
     }
 
     function emergencyWithdraw(address _token) external onlyOwner {

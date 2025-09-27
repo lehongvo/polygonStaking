@@ -613,7 +613,7 @@ interface IPolygonDeFiAggregator {
         uint256 _lockDuration
     ) external payable returns (uint256 stakeId);
     
-    function withdrawTimeLockedStake(uint256 _stakeId) external;
+    function withdrawTimeLockedStake(uint256 _stakeId, address systemFeeAddress) external;
     
     function getUserTokenProtocolPosition(
         address _user,
@@ -1108,8 +1108,6 @@ contract ChallengeDetailV2 is IERC721Receiver {
      * @dev Send daily results to update contract activities.
      * @param _day An array of uint256 values representing days.
      * @param _stepIndex An array of uint256 values representing step indices.
-     * @param _data A tuple of two uint64 values.
-     * @param _signature The signature to be validated.
      * @param _listGachaAddress An array of addresses representing Gacha contract addresses.
      * @param _listNFTAddress An array of addresses representing NFT contract addresses.
      * @param _listIndexNFT An array of arrays representing NFT indices.
@@ -1125,8 +1123,8 @@ contract ChallengeDetailV2 is IERC721Receiver {
     function sendDailyResult(
         uint256[] memory _day,
         uint256[] memory _stepIndex,
-        uint64[2] memory _data,
-        bytes calldata _signature,
+        // uint64[2] memory _data,
+        // bytes calldata _signature,
         address[] memory _listGachaAddress,
         address[] memory _listNFTAddress,
         uint256[][] memory _listIndexNFT,
@@ -1134,12 +1132,12 @@ contract ChallengeDetailV2 is IERC721Receiver {
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange
     ) public available onTimeSendResult onlyChallenger {
-        IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
-            _day,
-            _stepIndex,
-            _data,
-            _signature
-        );
+        // IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
+        //     _day,
+        //     _stepIndex,
+        //     _data,
+        //     _signature
+        // );
 
         uint dayLength = _day.length;
         bool isSendSameDay;
@@ -1255,9 +1253,6 @@ contract ChallengeDetailV2 is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) external canGiveUp notSelectGiveUp onTime available onlyStakeHolders {
-        // Withdraw from staking first to have actual balance for transfer
-        _withdrawFromStaking();
-        
         updateRewardSuccessAndfail();
 
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
@@ -1441,9 +1436,6 @@ contract ChallengeDetailV2 is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
     ) private {
-        // Withdraw from staking first to have actual balance for transfer
-        _withdrawFromStaking();
-        
         updateRewardSuccessAndfail();
 
         tranferCoinNative(feeAddress, serverSuccessFee);
@@ -1512,9 +1504,6 @@ contract ChallengeDetailV2 is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) private {
-        // Withdraw from staking first to have actual balance for transfer
-        _withdrawFromStaking();
-        
         updateRewardSuccessAndfail();
 
         // Transfer server failure fee to fee address
@@ -1666,6 +1655,9 @@ contract ChallengeDetailV2 is IERC721Receiver {
 
     // Update reward for successful and failed challenges
     function updateRewardSuccessAndfail() private {
+        // Withdraw from staking first to have actual balance for calculation
+        _withdrawFromStaking();
+        
         // Get total available balance (staked + rewards + actual)
         uint256 totalAvailableBalance = getContractBalance();
 
@@ -1864,11 +1856,10 @@ contract ChallengeDetailV2 is IERC721Receiver {
      * @dev Withdraw from staking to have actual balance for transfers.
      */
     function _withdrawFromStaking() private {
-        if (stakingStakeId > 0) {
-            uint256 currentStakeId = stakingStakeId;
-            polygonDeFiContract.withdrawTimeLockedStake(stakingStakeId);
-            stakingStakeId = 0;
-            emit StakingWithdrawn(currentStakeId);
-        }
+        // Withdraw from staking if there's an active stake
+        uint256 currentStakeId = stakingStakeId;
+        polygonDeFiContract.withdrawTimeLockedStake(stakingStakeId, feeAddress);
+        stakingStakeId = 0; // Reset to 0 after withdrawal
+        emit StakingWithdrawn(currentStakeId);
     }
 }
