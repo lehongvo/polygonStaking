@@ -110,8 +110,6 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
     // Fee system
     uint256 public percentFeeForSystem = 20;
 
-    // Aave Rewards Controller (configurable by owner)
-    address public AAVE_REWARDS_CONTROLLER;
     // Aave Reward token (e.g., WMATIC on Polygon) - used for v3 getUserUnclaimedRewards
     address public AAVE_REWARD_TOKEN;
 
