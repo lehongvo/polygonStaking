@@ -73,7 +73,7 @@ function formatWei(value: bigint): string {
  * @param challengeContractAddress Address of ChallengeDetailV2
  * @param rpcUrl Optional RPC URL
  */
-export async function getCurrent(
+export async function calReward(
   endTime: number,
   apyPerSecond: string,
   feeSystem: number,
