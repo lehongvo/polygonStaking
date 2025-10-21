@@ -22,9 +22,14 @@ const config = {
       chainId: 137,
     },
     amoy: {
-      url: process.env.AMOY_RPC_URL || 'https://polygon-amoy.drpc.org',
+      url: process.env.AMOY_RPC_URL || 'https://polygon-amoy-bor-rpc.publicnode.com',
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 80002,
+    },
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL || 'https://sepolia.drpc.org',
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 11155111,
     },
     localhost: {
       url: 'http://127.0.0.1:8545',
@@ -32,10 +37,25 @@ const config = {
     },
   },
   etherscan: {
-    apiKey: {
-      polygon: process.env.POLYGONSCAN_API_KEY || '',
-      polygonAmoy: process.env.POLYGONSCAN_API_KEY || '',
-    },
+    apiKey: process.env.API_ETHEREUM_KEY || '',
+    customChains: [
+      {
+        network: "polygon",
+        chainId: 137,
+        urls: {
+          apiURL: "https://api.polygonscan.com/api",
+          browserURL: "https://polygonscan.com"
+        }
+      },
+      {
+        network: "polygonAmoy",
+        chainId: 80002,
+        urls: {
+          apiURL: "https://api-amoy.polygonscan.com/api",
+          browserURL: "https://amoy.polygonscan.com"
+        }
+      }
+    ]
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
