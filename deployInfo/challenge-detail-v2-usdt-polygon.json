@@ -1,10 +1,10 @@
 {
   "network": "polygon",
   "contractName": "ChallengeDetailV2",
-  "contractAddress": "0xAa157e7b5C51B804138Cd937E7157e4c0419EBfa",
+  "contractAddress": "0x18B5c4992914Ce6c74AF4Ec58ad297831e02B7B7",
   "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
-  "deploymentTime": "2025-10-23T10:39:57.639Z",
-  "blockNumber": 78055587,
+  "deploymentTime": "2025-10-23T14:05:33.952Z",
+  "blockNumber": 78061755,
   "constructorArgs": {
     "stakeHolders": [
       "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
@@ -64,17 +64,17 @@
   },
   "verification": {
     "verified": true,
-    "explorerUrl": "https://polygonscan.com/address/0xAa157e7b5C51B804138Cd937E7157e4c0419EBfa"
+    "explorerUrl": "https://polygonscan.com/address/0x18B5c4992914Ce6c74AF4Ec58ad297831e02B7B7"
   },
   "roleGranted": {
     "challengeRole": true,
-    "transactionHash": "0x0cbd129624826206c07b04934bcd6c02605a2a30d64ec133c77c386516dfbb51",
-    "timestamp": "2025-10-23T10:40:00.216Z"
+    "transactionHash": "0xe9a4f83b63e124a43099c5273c1d7886820a5740f2b0a9289df4b791e64161b5",
+    "timestamp": "2025-10-23T14:05:35.744Z"
   },
   "transactionSendStep": {
     "sent": true,
-    "transactionHash": "0x22d1852aec0f60f9c0bc2eb384591654f651503836309aaacd5ec1688d328ea6",
-    "timestamp": "2025-10-23T10:40:00.216Z",
+    "transactionHash": "0x3b5196b293f9530bf27fa78734faeccd6c71c0e17215a89a2dc07b9823c7b608",
+    "timestamp": "2025-10-23T14:05:35.744Z",
     "testData": {
       "days": [
         10

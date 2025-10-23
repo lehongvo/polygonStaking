@@ -1,10 +1,10 @@
 {
   "network": "polygon",
   "contractName": "ChallengeDetailV2",
-  "contractAddress": "0xb00Bbe7Ea2755F08E9e6cC385C3d0387a4060DE5",
+  "contractAddress": "0xb89414CEBb4Ca61aCC6d3299D31B13EEeFc03060",
   "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
-  "deploymentTime": "2025-10-23T10:38:48.787Z",
-  "blockNumber": 78055532,
+  "deploymentTime": "2025-10-23T14:13:59.268Z",
+  "blockNumber": 78062007,
   "constructorArgs": {
     "stakeHolders": [
       "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
@@ -51,30 +51,30 @@
     "endTime": 1759742657,
     "goal": 10,
     "dayRequired": 1,
-    "stakingStakeId": 0,
+    "stakingStakeId": 1,
     "createByToken": "0x0000000000000000000000000000000000000000",
-    "autoStaking": false
+    "autoStaking": true
   },
   "stakingInfo": {
-    "enabled": false,
-    "stakeId": 0,
+    "enabled": true,
+    "stakeId": 1,
     "tokenType": "MATIC",
     "protocol": "aave_lending",
     "duration": 7000000
   },
   "verification": {
     "verified": true,
-    "explorerUrl": "https://polygonscan.com/address/0xb00Bbe7Ea2755F08E9e6cC385C3d0387a4060DE5"
+    "explorerUrl": "https://polygonscan.com/address/0xb89414CEBb4Ca61aCC6d3299D31B13EEeFc03060"
   },
   "roleGranted": {
     "challengeRole": true,
-    "transactionHash": "0x85fbf643f48c182ebc8eb66777f7c6da2c05b1bc27741742ba03ea1cd833f7db",
-    "timestamp": "2025-10-23T10:38:50.795Z"
+    "transactionHash": "0x3b980afcc792d6926f9df247068f6fd1ae1fda063dcf089b69f8bb7f05726a69",
+    "timestamp": "2025-10-23T14:14:03.287Z"
   },
   "transactionSendStep": {
-    "sent": true,
-    "transactionHash": "0xf767361f30b42f73a59f8db39eca813c7b79d0e7c534f216470fc2557e8f9153",
-    "timestamp": "2025-10-23T10:38:50.795Z",
+    "sent": false,
+    "transactionHash": null,
+    "timestamp": "2025-10-23T14:14:03.287Z",
     "testData": {
       "days": [
         10
