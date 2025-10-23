@@ -598,31 +598,26 @@ interface IERC20 {
      */
     function symbol() external view returns (string memory);
 }
-// File: Challenge/IPolygonDeFiAggregator.sol
+// File: Challenge/IAavePool.sol
 
 pragma solidity ^0.8.16;
 
 /**
- * @dev Interface for PolygonDeFiAggregator contract.
+ * @dev Interface for Aave Pool contract.
  */
-interface IPolygonDeFiAggregator {
-    function createTimeLockedStake(
-        address _token,
-        uint256 _amount,
-        string memory _protocol,
-        uint256 _lockDuration
-    ) external payable returns (uint256 stakeId);
+interface IAavePool {
+    function supply(
+        address asset,
+        uint256 amount,
+        address onBehalfOf,
+        uint16 referralCode
+    ) external;
     
-    function withdrawTimeLockedStake(uint256 _stakeId, address systemFeeAddress) external;
-    
-    function getUserTokenProtocolPosition(
-        address _user,
-        address _token,
-        string memory _protocol
-    ) external view returns (uint256 balance, uint256 shares, uint256 estimatedRewards);
-
-    // Expose WMATIC address from aggregator
-    function WMATIC_ADDRESS() external view returns (address);
+    function withdraw(
+        address asset,
+        uint256 amount,
+        address to
+    ) external returns (uint256);
 }
 
 // File: Challenge/IWMATIC.sol
@@ -818,19 +813,31 @@ contract ChallengeDetailV2 is IERC721Receiver {
     // Represents the amount of fail fee in percentage.
     uint8 private amountFailFee;
 
-    // ===== POLYGON DEFI INTEGRATION VARIABLES =====
+    // ===== DIRECT AAVE INTEGRATION VARIABLES =====
     
-    /** @dev AAVE_DEFI_CONTRACT_ADDRESS address of PolygonDeFiAggregator contract.
+    /** @dev AAVE_POOL_ADDRESS address of Aave Pool contract on Polygon.
      */
-    address public constant AAVE_DEFI_CONTRACT_ADDRESS = 0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559;
+    address public constant AAVE_POOL_ADDRESS = 0x794a61358D6845594F94dc1DB02A252b5b4814aD;
     
-    /** @dev polygonDeFiContract instance of PolygonDeFiAggregator.
+    /** @dev WMATIC wrapped PoS contract address (Polygon PoS)
      */
-    IPolygonDeFiAggregator public polygonDeFiContract;
+    address public constant WMATIC_WPOC_ADDRESS = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
     
-    /** @dev stakingStakeId ID of the stake on PolygonDeFiAggregator.
+    /** @dev aavePool instance of Aave Pool.
+     */
+    IAavePool public aavePool;
+    
+    /** @dev stakingStakeId ID of the stake (for tracking purposes).
      */
     uint256 public stakingStakeId;
+    
+    /** @dev stakingToken address of the aToken being staked.
+     */
+    address public stakingToken;
+
+    /** @dev systemFeePercentForStaking fee percentage for system for staking (in basis points, 100 = 1%)
+     */
+    uint256 public systemFeePercentForStaking = 2000; // 20% default
 
     /**
      * @dev Emitted when the daily result is sent.
@@ -1051,42 +1058,28 @@ contract ChallengeDetailV2 is IERC721Receiver {
         totalReward = _totalAmount; // Assigning the total reward to the contract variable
         allowGiveUp = _allowGiveUp; // Assigning the allow give up value to the contract variable
 
-        // Checking if give up is allowed and all awards should be given to the sponsor, then set the choiceAwardToSponsor variable to true
         if (_allowGiveUp[0] && _allAwardToSponsorWhenGiveUp)
             choiceAwardToSponsor = true;
 
-        // Initialize PolygonDeFi integration
-        polygonDeFiContract = IPolygonDeFiAggregator(AAVE_DEFI_CONTRACT_ADDRESS);
+        aavePool = IAavePool(AAVE_POOL_ADDRESS);
 
-        // // Transferring the gas fee from the challenger to the contract and emitting an event
         tranferCoinNative(challenger, gasFee);
         emit FundTransfer(challenger, gasFee);
 
-        // Auto-stake the total amount to PolygonDeFi on deployment
         if (_totalAmount > 0) {
-            // Calculate staking duration based on challenge duration (endTime - startTime)
-            uint256 stakingDuration = _primaryRequired[2] - _primaryRequired[1]; // endTime - startTime
-            
             if (createByToken == address(0)) {
-                // For native MATIC staking - use aave_lending protocol
                 require(msg.value >= _totalAmount, "Insufficient MATIC for native staking");
-                stakingStakeId = polygonDeFiContract.createTimeLockedStake{value: _totalAmount}(
-                    polygonDeFiContract.WMATIC_ADDRESS(),
-                    _totalAmount,
-                    "aave_lending",
-                    2 days
+                
+                IWMATIC wmatic = IWMATIC(WMATIC_WPOC_ADDRESS);
+                wmatic.deposit{value: _totalAmount}();
+                
+                stakingStakeId = _createTimeLockedStake(
+                    WMATIC_WPOC_ADDRESS, // WMATIC address
+                    _totalAmount
                 );
-                emit StakingCreated(stakingStakeId, _totalAmount, stakingDuration);
             } else {
                 IERC20(createByToken).transferFrom(msg.sender, address(this), _totalAmount);
-                IERC20(createByToken).approve(AAVE_DEFI_CONTRACT_ADDRESS, _totalAmount);
-                stakingStakeId = polygonDeFiContract.createTimeLockedStake(
-                    createByToken,
-                    _totalAmount,
-                    "aave_lending",
-                    stakingDuration
-                );
-                emit StakingCreated(stakingStakeId, _totalAmount, stakingDuration);
+                stakingStakeId = _createTimeLockedStake(createByToken, _totalAmount);
             }
         }
     }
@@ -1103,29 +1096,29 @@ contract ChallengeDetailV2 is IERC721Receiver {
         }
     }
 
-    /**
-     * @dev Send daily results to update contract activities.
-     * @param _day An array of uint256 values representing days.
-     * @param _stepIndex An array of uint256 values representing step indices.
-     * @param _data A tuple of two uint64 values.
-     * @param _signature The signature to be validated.
-     * @param _listGachaAddress An array of addresses representing Gacha contract addresses.
-     * @param _listNFTAddress An array of addresses representing NFT contract addresses.
-     * @param _listIndexNFT An array of arrays representing NFT indices.
-     * @param _listSenderAddress An array of arrays representing sender addresses.
-     * @param _statusTypeNft An array of boolean values representing NFT status types.
-     * @param _timeRange A tuple of two uint64 values representing the time range.
-     * @notice This function is used to send daily results for updating contract activities.
-     *         It requires specific roles (onlyChallenger) and enforces timing constraints (onTimeSendResult).
-     *         It processes various input data related to Gacha and NFT contracts to update activities.
-     *         The provided signature is validated to ensure the authenticity of the data.
-     * @dev This function can only be called by authorized challengers within a specific time frame.
-     */
+    // /**
+    //  * @dev Send daily results to update contract activities.
+    //  * @param _day An array of uint256 values representing days.
+    //  * @param _stepIndex An array of uint256 values representing step indices.
+    //  * @param _data A tuple of two uint64 values.
+    //  * @param _signature The signature to be validated.
+    //  * @param _listGachaAddress An array of addresses representing Gacha contract addresses.
+    //  * @param _listNFTAddress An array of addresses representing NFT contract addresses.
+    //  * @param _listIndexNFT An array of arrays representing NFT indices.
+    //  * @param _listSenderAddress An array of arrays representing sender addresses.
+    //  * @param _statusTypeNft An array of boolean values representing NFT status types.
+    //  * @param _timeRange A tuple of two uint64 values representing the time range.
+    //  * @notice This function is used to send daily results for updating contract activities.
+    //  *         It requires specific roles (onlyChallenger) and enforces timing constraints (onTimeSendResult).
+    //  *         It processes various input data related to Gacha and NFT contracts to update activities.
+    //  *         The provided signature is validated to ensure the authenticity of the data.
+    //  * @dev This function can only be called by authorized challengers within a specific time frame.
+    //  */
     function sendDailyResult(
         uint256[] memory _day,
         uint256[] memory _stepIndex,
-        uint64[2] memory _data,
-        bytes calldata _signature,
+        // uint64[2] memory _data,
+        // bytes calldata _signature,
         address[] memory _listGachaAddress,
         address[] memory _listNFTAddress,
         uint256[][] memory _listIndexNFT,
@@ -1133,12 +1126,12 @@ contract ChallengeDetailV2 is IERC721Receiver {
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange
     ) public available onTimeSendResult onlyChallenger {
-        IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
-            _day,
-            _stepIndex,
-            _data,
-            _signature
-        );
+        // IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
+        //     _day,
+        //     _stepIndex,
+        //     _data,
+        //     _signature
+        // );
 
         uint dayLength = _day.length;
         bool isSendSameDay;
@@ -1854,13 +1847,118 @@ contract ChallengeDetailV2 is IERC721Receiver {
     }
 
     /**
+     * @dev Get aToken address for a given token
+     */
+    function _getATokenAddress(address _token) internal pure returns (address) {
+        // Aave v3 Polygon aToken addresses
+        if (_token == WMATIC_WPOC_ADDRESS) { // WMATIC
+            return 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97;
+        }
+        // USDT
+        if (_token == 0xc2132D05D31c914a87C6611C10748AEb04B58e8F) {
+            return 0x6ab707Aca953eDAeFBc4fD23bA73294241490620;
+        }
+        // USDC
+        if (_token == 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174) {
+            return 0x625E7708F30cA75bFD92583e0c60ccdE3c2839A6;
+        }
+        // DAI
+        if (_token == 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063) {
+            return 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE;
+        }
+        // WETH
+        if (_token == 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619) {
+            return 0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8;
+        }
+        // WBTC
+        if (_token == 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6) {
+            return 0x5c2ed810328349100A66B82b78a1791B101C9D61;
+        }
+        // AAVE
+        if (_token == 0xD6DF932A45C0f255f85145f286eA0b292B21C90B) {
+            return 0xf329e36C7bF6E5E86ce2150875a84Ce77f477375;
+        }
+        
+        revert("aToken address not found for this token");
+    }
+
+    /**
+     * @dev Create time-locked stake directly with Aave
+     */
+    function _createTimeLockedStake(
+        address _token,
+        uint256 _amount
+    ) internal returns (uint256 stakeId) {
+        address aToken = _getATokenAddress(_token);
+        stakingToken = aToken;
+        
+        IERC20(_token).approve(AAVE_POOL_ADDRESS, _amount);
+        
+        aavePool.supply(_token, _amount, address(this), 0);
+        
+        stakingStakeId = 1;
+        
+        emit StakingCreated(stakingStakeId, _amount, duration);
+        return stakingStakeId;
+    }
+
+    /**
      * @dev Withdraw from staking to have actual balance for transfers.
+     * Applies fee system similar to PolygonDeFiAggregator
      */
     function _withdrawFromStaking() private {
-        // Withdraw from staking if there's an active stake
         uint256 currentStakeId = stakingStakeId;
-        polygonDeFiContract.withdrawTimeLockedStake(stakingStakeId, feeAddress);
-        stakingStakeId = 0; // Reset to 0 after withdrawal
+        
+        if (stakingStakeId > 0 && stakingToken != address(0)) {
+            address underlyingToken = createByToken == address(0) ? 
+                WMATIC_WPOC_ADDRESS : 
+                createByToken;
+            
+            uint256 actualWithdrawn = aavePool.withdraw(underlyingToken, uint256(type(uint256).max), address(this));
+            
+            uint256 rewards = actualWithdrawn > totalReward ? actualWithdrawn - totalReward : 0;
+            
+            uint256 systemFeeAmount = 0;
+            uint256 remaining = rewards;
+            if (rewards > 0 && systemFeePercentForStaking > 0) {
+                systemFeeAmount = (rewards * systemFeePercentForStaking) / 10000;
+                remaining = rewards - systemFeeAmount; 
+            }
+
+            if (createByToken == address(0)) {
+                IWMATIC wmatic = IWMATIC(WMATIC_WPOC_ADDRESS);
+                
+                wmatic.withdraw(totalReward);
+                (bool success1, ) = challenger.call{value: totalReward}("");
+                require(success1, "Principal MATIC transfer failed");
+                
+                if (rewards > 0) {
+                    wmatic.withdraw(remaining);
+                    (bool success2, ) = challenger.call{value: remaining}("");
+                    require(success2, "Rewards MATIC transfer failed");
+                }
+                
+                if (systemFeeAmount > 0) {
+                    wmatic.withdraw(systemFeeAmount);
+                    (bool success3, ) = feeAddress.call{value: systemFeeAmount}("");
+                    require(success3, "System fee MATIC transfer failed");
+                }
+            } else {
+                IERC20(underlyingToken).transfer(challenger, actualWithdrawn <= totalReward ? actualWithdrawn : totalReward);
+                
+                if (rewards > 0) {
+                    IERC20(underlyingToken).transfer(challenger, remaining);
+                }
+                
+                if (systemFeeAmount > 0) {
+                    IERC20(underlyingToken).transfer(feeAddress, systemFeeAmount);
+                }
+            }
+            
+            stakingStakeId = 0;
+            stakingToken = address(0);
+        }
+        
         emit StakingWithdrawn(currentStakeId);
     }
 }

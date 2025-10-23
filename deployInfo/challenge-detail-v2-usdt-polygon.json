@@ -1,14 +1,14 @@
 {
   "network": "polygon",
   "contractName": "ChallengeDetailV2",
-  "contractAddress": "0xd28ab1874fa18c4eE764b0963cb029b8A6F19dc9",
+  "contractAddress": "0xAa157e7b5C51B804138Cd937E7157e4c0419EBfa",
   "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
-  "deploymentTime": "2025-10-23T01:00:11.702Z",
-  "blockNumber": 78038195,
+  "deploymentTime": "2025-10-23T10:39:57.639Z",
+  "blockNumber": 78055587,
   "constructorArgs": {
     "stakeHolders": [
-      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
-      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
       "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
     ],
     "createByToken": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
@@ -45,8 +45,8 @@
     "totalAmount": "200"
   },
   "contractDetails": {
-    "sponsor": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
-    "challenger": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+    "sponsor": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+    "challenger": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
     "startTime": 1752742657,
     "endTime": 1759742657,
     "goal": 10,
@@ -64,17 +64,17 @@
   },
   "verification": {
     "verified": true,
-    "explorerUrl": "https://polygonscan.com/address/0xd28ab1874fa18c4eE764b0963cb029b8A6F19dc9"
+    "explorerUrl": "https://polygonscan.com/address/0xAa157e7b5C51B804138Cd937E7157e4c0419EBfa"
   },
   "roleGranted": {
     "challengeRole": true,
-    "transactionHash": "0x0c09a606f8ce40945faf2907184076c045b0f528d8e1df75b83b732e3622303f",
-    "timestamp": "2025-10-23T01:00:13.802Z"
+    "transactionHash": "0x0cbd129624826206c07b04934bcd6c02605a2a30d64ec133c77c386516dfbb51",
+    "timestamp": "2025-10-23T10:40:00.216Z"
   },
   "transactionSendStep": {
-    "sent": false,
-    "transactionHash": null,
-    "timestamp": "2025-10-23T01:00:13.802Z",
+    "sent": true,
+    "transactionHash": "0x22d1852aec0f60f9c0bc2eb384591654f651503836309aaacd5ec1688d328ea6",
+    "timestamp": "2025-10-23T10:40:00.216Z",
     "testData": {
       "days": [
         10
