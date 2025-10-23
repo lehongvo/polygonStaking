@@ -57,19 +57,19 @@
     "note": "Upgradeable contract deployed and configured for ChallengeDetailV2 integration",
     "status": "ready_for_deployment"
   },
-  "implementation": "0xd14076C64c4FE7061e0C8FD9C43d7e52F46b24F1",
+  "implementation": "0xEB2f4E99d476E59327362421cDB8340Bcb10E6E2",
   "lastUpgrade": {
     "network": "polygon",
     "proxyAddress": "0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559",
-    "oldImplementation": "0xdc0CA8e8E605881124D916b8A99C7dba8966866F",
-    "newImplementation": "0xd14076C64c4FE7061e0C8FD9C43d7e52F46b24F1",
-    "upgradeTime": "2025-09-27T15:52:16.066Z",
-    "gasUsed": "37667",
+    "oldImplementation": "0x224992Af2fd11F787B231B3F1BbF2012a5506Ec5",
+    "newImplementation": "0xEB2f4E99d476E59327362421cDB8340Bcb10E6E2",
+    "upgradeTime": "2025-10-13T17:09:55.688Z",
+    "gasUsed": "37689",
     "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
     "verification": {
-      "status": "success",
+      "status": "failed",
       "etherscan": "https://polygonscan.com/address/0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559",
-      "note": "New implementation verified successfully on PolygonScan"
+      "note": "Implementation verification failed: Cannot read properties of undefined (reading 'run')"
     }
   }
 }

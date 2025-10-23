@@ -1,0 +1,91 @@
+{
+  "network": "polygon",
+  "contractName": "ChallengeDetailV2",
+  "contractAddress": "0xd28ab1874fa18c4eE764b0963cb029b8A6F19dc9",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2025-10-23T01:00:11.702Z",
+  "blockNumber": 78038195,
+  "constructorArgs": {
+    "stakeHolders": [
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+    ],
+    "createByToken": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+    "erc721Addresses": [
+      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
+    ],
+    "primaryRequired": [
+      1,
+      1752742657,
+      1759742657,
+      10,
+      1
+    ],
+    "awardReceivers": [
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
+    ],
+    "index": 1,
+    "allowGiveUp": [
+      true,
+      false,
+      true
+    ],
+    "gasData": [
+      "200000000000000000",
+      "200000000000000000",
+      "0"
+    ],
+    "allAwardToSponsorWhenGiveUp": true,
+    "awardReceiversPercent": [
+      100,
+      100
+    ],
+    "totalAmount": "200"
+  },
+  "contractDetails": {
+    "sponsor": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+    "challenger": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+    "startTime": 1752742657,
+    "endTime": 1759742657,
+    "goal": 10,
+    "dayRequired": 1,
+    "stakingStakeId": 0,
+    "createByToken": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+    "autoStaking": false
+  },
+  "stakingInfo": {
+    "enabled": false,
+    "stakeId": 0,
+    "tokenType": "ERC20",
+    "protocol": "aave_lending",
+    "duration": 7000000
+  },
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://polygonscan.com/address/0xd28ab1874fa18c4eE764b0963cb029b8A6F19dc9"
+  },
+  "roleGranted": {
+    "challengeRole": true,
+    "transactionHash": "0x0c09a606f8ce40945faf2907184076c045b0f528d8e1df75b83b732e3622303f",
+    "timestamp": "2025-10-23T01:00:13.802Z"
+  },
+  "transactionSendStep": {
+    "sent": false,
+    "transactionHash": null,
+    "timestamp": "2025-10-23T01:00:13.802Z",
+    "testData": {
+      "days": [
+        10
+      ],
+      "stepIndex": [
+        1000
+      ],
+      "timeRange": [
+        1,
+        100
+      ]
+    }
+  }
+}

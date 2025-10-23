@@ -1078,9 +1078,8 @@ contract ChallengeDetailV2 is IERC721Receiver {
                 );
                 emit StakingCreated(stakingStakeId, _totalAmount, stakingDuration);
             } else {
-                // For ERC20 token staking (TTJP) - use aave_lending protocol
-                require(IERC20(createByToken).balanceOf(address(this)) >= _totalAmount, "Insufficient token balance for staking");
-                IERC20(createByToken).approve(address(polygonDeFiContract), _totalAmount);
+                IERC20(createByToken).transferFrom(msg.sender, address(this), _totalAmount);
+                IERC20(createByToken).approve(AAVE_DEFI_CONTRACT_ADDRESS, _totalAmount);
                 stakingStakeId = polygonDeFiContract.createTimeLockedStake(
                     createByToken,
                     _totalAmount,
