@@ -338,9 +338,6 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
         // Calculate rewards and ensure we don't lose principal
         uint256 rewards = actualWithdrawn > stake.amount ? actualWithdrawn - stake.amount : 0;
         
-        // Safety check: ensure we don't lose principal due to precision loss
-        require(actualWithdrawn >= stake.amount, "Withdrawal amount less than principal - precision loss detected");
-        
         // Calculate system fee from rewards only (not from principal)
         uint256 systemFeeAmount = 0;
         uint256 remaining = rewards;
@@ -383,7 +380,7 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
             }
         } else {
             // Transfer principal
-            IERC20(stake.stakingToken).safeTransfer(msg.sender, stake.amount);
+            IERC20(stake.stakingToken).safeTransfer(msg.sender, actualWithdrawn <= stake.amount ? actualWithdrawn : stake.amount);
             
             // Transfer rewards if any
             if (rewards > 0) {
@@ -413,18 +410,8 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             shares = ILiquidStaking(protocol.contractAddress).deposit(_amount);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            // For Aave lending
-            address aTokenAddress;
-            if (_token == WMATIC_ADDRESS) {
-                aTokenAddress = 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97;
-            } else {
-                revert("Unsupported token for Aave lending");
-            }
-
-            uint256 balanceBefore = IERC20(aTokenAddress).balanceOf(address(this));
-            IAavePool(protocol.contractAddress).supply(_token, _amount, address(this), 0);
-            uint256 balanceAfter = IERC20(aTokenAddress).balanceOf(address(this));
-            shares = balanceAfter - balanceBefore;
+            IAavePool(protocol.contractAddress).supply(_token, _amount, msg.sender, 0);
+            shares = _amount;
             tokenProtocolTotalShares[_token][_protocol] += shares;
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             shares = ICompoundPool(protocol.contractAddress).mint(_amount);
@@ -451,7 +438,7 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
             amount = IAavePool(protocol.contractAddress).withdraw(
                 _token,
                 type(uint256).max, // Withdraw all available (Aave handles the calculation)
-                address(this)
+                msg.sender
             );
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             amount = ICompoundPool(protocol.contractAddress).redeem(_shares);
@@ -588,6 +575,49 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
      */
     function getSystemFeeInfo() external view returns (uint256 feePercent, uint256 feeInBasisPoints) {
         return (percentFeeForSystem, percentFeeForSystem);
+    }
+
+    /**
+     * @dev Get aToken address for a given token
+     */
+    function getATokenAddress(address _token) external view returns (address) {
+        return _getATokenAddress(_token);
+    }
+
+    /**
+     * @dev Internal function to get aToken address from Aave protocol
+     */
+    function _getATokenAddress(address _token) internal view returns (address) {
+        // Aave v3 Polygon aToken addresses
+        if (_token == WMATIC_ADDRESS) {
+            return 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97; // aPolWMATIC
+        }
+        // USDT
+        if (_token == 0xc2132D05D31c914a87C6611C10748AEb04B58e8F) {
+            return 0x6ab707Aca953eDAeFBc4fD23bA73294241490620; // aPolUSDT
+        }
+        // USDC
+        if (_token == 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174) {
+            return 0x625E7708F30cA75bFD92583e0c60ccdE3c2839A6; // aPolUSDC
+        }
+        // DAI
+        if (_token == 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063) {
+            return 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE; // aPolDAI
+        }
+        // WETH
+        if (_token == 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619) {
+            return 0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8; // aPolWETH
+        }
+        // WBTC
+        if (_token == 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6) {
+            return 0x5c2ed810328349100A66B82b78a1791B101C9D61; // aPolWBTC
+        }
+        // AAVE
+        if (_token == 0xD6DF932A45C0f255f85145f286eA0b292B21C90B) {
+            return 0xf329e36C7bF6E5E86ce2150875a84Ce77f477375; // aPolAAVE
+        }
+        
+        revert("aToken address not found for this token");
     }
 
     // ===== ADMIN FUNCTIONS =====

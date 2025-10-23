@@ -1344,10 +1344,6 @@ const adminKey = process.env.ADMIN_PRIVATE_KEY;
 const network = process.env.POLYGON_RPC_URL;
 const ExerciseSupplementNFTAddress = process.env.EXERCISE_SUPPLEMENT_NFT_ADDRESS;
 
-console.log("adminKey", adminKey);
-console.log("network", network);
-console.log("ExerciseSupplementNFTAddress", ExerciseSupplementNFTAddress);
-
 const batchGrantRole = async (challengeAddress: string): Promise<string> => {
     try {
         console.log("\n================================================");

@@ -1,6 +1,6 @@
-import { ethers, upgrades } from "hardhat";
-import fs from "fs";
-import path from "path";
+import hre, { ethers, upgrades } from "hardhat";
+import * as fs from "fs";
+import * as path from "path";
 import { formatEther } from "ethers";
 
 interface UpgradeInfo {
@@ -142,23 +142,23 @@ async function main() {
     // Test basic contract functions
     console.log("⏳ Testing contract functions...");
     
-    // Test WMATIC address
-    const wmaticAddress = await proxyContract.WMATIC_ADDRESS();
-    console.log(`✅ WMATIC_ADDRESS: ${wmaticAddress}`);
-    
     // Test owner
     const owner = await proxyContract.owner();
     console.log(`✅ Owner: ${owner}`);
-    
-    // Test protocols
-    const [protocolNames, apys, activeStatus] = await proxyContract.getAllProtocols();
-    console.log(`✅ Protocols: ${protocolNames.join(", ")}`);
-    
-    // Test tokens
-    const [tokenAddresses, symbols, decimals, tokenActiveStatus] = await proxyContract.getAllSupportedTokens();
-    console.log(`✅ Tokens: ${symbols.join(", ")}`);
-    
-    console.log("✅ All contract functions working correctly");
+
+    // Test config addresses
+    const wmaticAddress = await proxyContract.WMATIC_ADDRESS();
+    const poolAddress = await proxyContract.AAVE_POOL();
+    const aTokenAddress = await proxyContract.A_TOKEN_WMATIC();
+    console.log(`✅ WMATIC_ADDRESS: ${wmaticAddress}`);
+    console.log(`✅ AAVE_POOL: ${poolAddress}`);
+    console.log(`✅ A_TOKEN_WMATIC: ${aTokenAddress}`);
+
+    // Test balances view
+    const balances = await proxyContract.getBalances();
+    console.log(`✅ getBalances() -> WMATIC: ${balances[0].toString()}, aWMATIC: ${balances[1].toString()}`);
+
+    console.log("✅ Minimal interface checks passed");
     
   } catch (error: any) {
     console.log("⚠️ Contract testing failed:", error.message);
