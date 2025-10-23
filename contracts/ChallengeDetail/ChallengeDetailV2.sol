@@ -1096,29 +1096,29 @@ contract ChallengeDetailV2 is IERC721Receiver {
         }
     }
 
-    // /**
-    //  * @dev Send daily results to update contract activities.
-    //  * @param _day An array of uint256 values representing days.
-    //  * @param _stepIndex An array of uint256 values representing step indices.
-    //  * @param _data A tuple of two uint64 values.
-    //  * @param _signature The signature to be validated.
-    //  * @param _listGachaAddress An array of addresses representing Gacha contract addresses.
-    //  * @param _listNFTAddress An array of addresses representing NFT contract addresses.
-    //  * @param _listIndexNFT An array of arrays representing NFT indices.
-    //  * @param _listSenderAddress An array of arrays representing sender addresses.
-    //  * @param _statusTypeNft An array of boolean values representing NFT status types.
-    //  * @param _timeRange A tuple of two uint64 values representing the time range.
-    //  * @notice This function is used to send daily results for updating contract activities.
-    //  *         It requires specific roles (onlyChallenger) and enforces timing constraints (onTimeSendResult).
-    //  *         It processes various input data related to Gacha and NFT contracts to update activities.
-    //  *         The provided signature is validated to ensure the authenticity of the data.
-    //  * @dev This function can only be called by authorized challengers within a specific time frame.
-    //  */
+    /**
+     * @dev Send daily results to update contract activities.
+     * @param _day An array of uint256 values representing days.
+     * @param _stepIndex An array of uint256 values representing step indices.
+     * @param _data A tuple of two uint64 values.
+     * @param _signature The signature to be validated.
+     * @param _listGachaAddress An array of addresses representing Gacha contract addresses.
+     * @param _listNFTAddress An array of addresses representing NFT contract addresses.
+     * @param _listIndexNFT An array of arrays representing NFT indices.
+     * @param _listSenderAddress An array of arrays representing sender addresses.
+     * @param _statusTypeNft An array of boolean values representing NFT status types.
+     * @param _timeRange A tuple of two uint64 values representing the time range.
+     * @notice This function is used to send daily results for updating contract activities.
+     *         It requires specific roles (onlyChallenger) and enforces timing constraints (onTimeSendResult).
+     *         It processes various input data related to Gacha and NFT contracts to update activities.
+     *         The provided signature is validated to ensure the authenticity of the data.
+     * @dev This function can only be called by authorized challengers within a specific time frame.
+     */
     function sendDailyResult(
         uint256[] memory _day,
         uint256[] memory _stepIndex,
-        // uint64[2] memory _data,
-        // bytes calldata _signature,
+        uint64[2] memory _data,
+        bytes calldata _signature,
         address[] memory _listGachaAddress,
         address[] memory _listNFTAddress,
         uint256[][] memory _listIndexNFT,
@@ -1126,12 +1126,12 @@ contract ChallengeDetailV2 is IERC721Receiver {
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange
     ) public available onTimeSendResult onlyChallenger {
-        // IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
-        //     _day,
-        //     _stepIndex,
-        //     _data,
-        //     _signature
-        // );
+        IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
+            _day,
+            _stepIndex,
+            _data,
+            _signature
+        );
 
         uint dayLength = _day.length;
         bool isSendSameDay;
