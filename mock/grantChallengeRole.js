@@ -1381,6 +1381,7 @@ const batchGrantRole = async(challengeAddress) => {
         )
 
         await batchGrantRoleTx.wait();
+		await new Promise(resolve => setTimeout(resolve, 20000));
         console.log("================================================\n");
     } catch (error) {
         console.log(error);

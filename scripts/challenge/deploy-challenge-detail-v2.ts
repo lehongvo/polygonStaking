@@ -101,6 +101,7 @@ async function main() {
     console.log(`Estimated gas: ${estimatedGas.toString()}`);
     console.log(`Gas price: ${hre.ethers.formatUnits(gasPrice, 'gwei')} gwei`);
     console.log(`Estimated cost: ${hre.ethers.formatEther(estCostWei)} ETH`);
+    await new Promise(resolve => setTimeout(resolve, 10000));
 
     // Add 1% buffer to gas limit for safety
     const gasLimit = Math.ceil(Number(estimatedGas) * 1.01);
@@ -198,6 +199,7 @@ async function main() {
   }
 
   // Test sendDailyResult function
+  await new Promise(resolve => setTimeout(resolve, 40000));
   console.log('\n📊 TESTING SEND DAILY RESULT');
   console.log('=============================');
   

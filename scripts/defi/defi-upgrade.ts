@@ -62,18 +62,20 @@ async function main() {
   const PolygonDeFiAggregator = await ethers.getContractFactory("PolygonDeFiAggregator");
   console.log("⏳ Deploying new implementation...");
   
-  const newImplementation = await PolygonDeFiAggregator.deploy();
-  await newImplementation.waitForDeployment();
-  const newImplementationAddress = await newImplementation.getAddress();
+  // const newImplementation = await PolygonDeFiAggregator.deploy();
+  // await newImplementation.waitForDeployment();
+  // const newImplementationAddress = await newImplementation.getAddress();
+  const newImplementationAddress = "0x17aC91ce64b683236a3f955848fC975F35343f3c";
   
   console.log(`✅ New implementation deployed at: ${newImplementationAddress}`);
+  await new Promise(resolve => setTimeout(resolve, 10000));
   
-  // Get deployment transaction details
-  const deployTx = newImplementation.deploymentTransaction();
-  const deployReceipt = await deployTx?.wait();
-  const deployGasUsed = deployReceipt?.gasUsed.toString() || "unknown";
+  // // Get deployment transaction details
+  // const deployTx = newImplementation.deploymentTransaction();
+  // const deployReceipt = await deployTx?.wait();
+  // const deployGasUsed = deployReceipt?.gasUsed.toString() || "unknown";
   
-  console.log(`⛽ Implementation deployment gas: ${deployGasUsed}`);
+  // console.log(`⛽ Implementation deployment gas: ${deployGasUsed}`);
   
   console.log("\n🔄 UPGRADING PROXY CONTRACT");
   console.log("==========================");

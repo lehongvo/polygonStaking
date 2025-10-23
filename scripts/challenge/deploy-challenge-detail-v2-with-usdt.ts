@@ -97,8 +97,8 @@ async function main() {
     const approveTx = await usdtContract.approve(contractAddress, config.totalAmount);
     console.log('approveTx hash', approveTx.hash);
     await approveTx.wait();
-    console.log('Waiting for 20 seconds...');
-    await new Promise(resolve => setTimeout(resolve, 20000));
+    console.log('Waiting for 60 seconds...');
+    await new Promise(resolve => setTimeout(resolve, 60000));
     console.log('✅ USDT approved for pre-calculated contract address');
   }
 
@@ -225,8 +225,8 @@ async function main() {
     console.log('⏳ Estimating gas for sendDailyResult...');
     
     // await 20 minutes
-    console.log('Waiting for 20 seconds...');
-    await new Promise(resolve => setTimeout(resolve, 20000));
+    console.log('Waiting for 30 seconds...');
+    await new Promise(resolve => setTimeout(resolve, 30000));
     // Estimate gas for sendDailyResult
     const estimatedGas = await contract.sendDailyResult.estimateGas(
       testDay,

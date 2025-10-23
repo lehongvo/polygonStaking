@@ -1,9 +1,9 @@
 {
   "network": "polygon",
   "proxyAddress": "0xC56E28efdcf5c1974F3b7148a0a72c8bc2Fdb559",
-  "oldImplementation": "0x224992Af2fd11F787B231B3F1BbF2012a5506Ec5",
-  "newImplementation": "0xEB2f4E99d476E59327362421cDB8340Bcb10E6E2",
-  "upgradeTime": "2025-10-13T17:09:55.688Z",
+  "oldImplementation": "0x9f94D11e60A83696C94b7eDeFF5De7e1ED08bd78",
+  "newImplementation": "0x17aC91ce64b683236a3f955848fC975F35343f3c",
+  "upgradeTime": "2025-10-23T09:07:23.186Z",
   "gasUsed": "37689",
   "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
   "verification": {
