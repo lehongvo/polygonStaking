@@ -837,7 +837,7 @@ contract ChallengeDetailV2 is IERC721Receiver {
 
     /** @dev systemFeePercentForStaking fee percentage for system for staking (in basis points, 100 = 1%)
      */
-    uint256 public systemFeePercentForStaking = 2000; // 20% default
+    uint256 public systemFeePercentForStaking;
 
     /**
      * @dev Emitted when the daily result is sent.
@@ -974,6 +974,7 @@ contract ChallengeDetailV2 is IERC721Receiver {
      * @param _allAwardToSponsorWhenGiveUp A boolean value indicating whether all awards should be given to the sponsor when the challenge is given up.
      * @param _awardReceiversPercent Array of percentage values representing the percentage of awards that each award receiver will receive.
      * @param _totalAmount The total amount of tokens to be staked in the challenge.
+     * @param _systemFeePercentForStaking Fee percentage for system for staking (in basis points, 10000 = 100%).
      */
     constructor(
         address payable[] memory _stakeHolders,
@@ -986,7 +987,8 @@ contract ChallengeDetailV2 is IERC721Receiver {
         uint256[] memory _gasData,
         bool _allAwardToSponsorWhenGiveUp,
         uint256[] memory _awardReceiversPercent,
-        uint256 _totalAmount
+        uint256 _totalAmount,
+        uint256 _systemFeePercentForStaking
     ) payable {
         require(_allowGiveUp.length == 3, "Invalid allow give up"); // Checking if _allowGiveUp array length is 3.
 
@@ -997,7 +999,7 @@ contract ChallengeDetailV2 is IERC721Receiver {
         uint256 i;
 
         require(_index > 0, "Invalid value"); // Checking if _index is greater than 0.
-
+        
         _totalAmount = _totalAmount - _gasData[2]; // Subtracting _gasData[2] from _totalAmount.
 
         uint256[] memory awardReceiversApprovalsTamp = new uint256[](
@@ -1057,6 +1059,7 @@ contract ChallengeDetailV2 is IERC721Receiver {
 
         totalReward = _totalAmount; // Assigning the total reward to the contract variable
         allowGiveUp = _allowGiveUp; // Assigning the allow give up value to the contract variable
+        systemFeePercentForStaking = _systemFeePercentForStaking; // Assigning the system fee percentage for staking
 
         if (_allowGiveUp[0] && _allAwardToSponsorWhenGiveUp)
             choiceAwardToSponsor = true;
