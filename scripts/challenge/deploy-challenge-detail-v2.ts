@@ -18,6 +18,7 @@ interface ChallengeDeploymentConfig {
   allAwardToSponsorWhenGiveUp: boolean;
   awardReceiversPercent: number[];
   totalAmount: string;
+  systemFeePercentForStaking: number;
 }
 
 async function main() {
@@ -73,8 +74,10 @@ async function main() {
     config.gasData,
     config.allAwardToSponsorWhenGiveUp,
     config.awardReceiversPercent,
-    config.totalAmount
+    config.totalAmount,
+    config.systemFeePercentForStaking
   ];
+  console.log('constructorArgs', constructorArgs);
 
   console.log('\n🏗️  DEPLOYING CONTRACT');
   console.log('======================');
@@ -434,6 +437,7 @@ function normalizeConfig(input: any): ChallengeDeploymentConfig {
     allAwardToSponsorWhenGiveUp: toBool(input.allAwardToSponsorWhenGiveUp),
     awardReceiversPercent: input.awardReceiversPercent.map((n: any) => toNum(n)),
     totalAmount: String(input.totalAmount),
+    systemFeePercentForStaking: toNum(input.systemFeePercentForStaking),
   };
 }
 
