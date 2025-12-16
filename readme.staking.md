@@ -1,9 +1,11 @@
 ### Staking API Documentation
 
 #### References
+
 - Slide deck: [`staking20250627` (slide id p5)](https://docs.google.com/presentation/d/1P6fSZBXPllAH9RSwPtFjpv5l_FWDfaWK/edit?slide=id.p5#slide=id.p5)
 
 ## Overview
+
 - **Base URL**: `https://api.espl.jp`
 - **Audience**: Backend services and admin tooling integrating staking discovery, status, and reward calculations.
 - **Auth**: JWT Bearer token via `Authorization` header.
@@ -11,24 +13,29 @@
 - **Versioning**: Prefer `v2` endpoints; `v1` maintained for legacy.
 
 ## Environments
+
 - **Production**: `https://api.espl.jp`
 - **Staging/Sandbox**: liên hệ đội ngũ để cấp `baseURL` và token sandbox
 
 ## Headers
+
 - `Authorization: <JWT_TOKEN>` (bắt buộc)
 - `Content-Type: application/json`
 - `Accept: application/json`
 
 ## Quy ước (VI)
+
 - Thời gian: Unix timestamp (giây)
 - Số lượng: dạng chuỗi thập phân để tránh tràn số
 - Địa chỉ: địa chỉ EVM `0x...` (khuyến nghị checksum)
 
 ## Authentication
+
 - Send header: `Authorization: <JWT_TOKEN>`
 - Tokens are required on all endpoints below.
 
 ## Conventions
+
 - All timestamps use Unix seconds, unless otherwise specified.
 - Amounts are decimal strings unless noted. Do not assume integer-safe ranges.
 - Addresses are EVM `0x` addresses with checksum recommended but not required.
@@ -36,16 +43,20 @@
 ## Endpoints
 
 ### GET /api/v2/staking
+
 - **Purpose**: List available staking options on a given network.
 - **Query params**:
   - `networkId` (number, required): EVM network identifier supported by the service.
 - **Request example**:
+
 ```bash
 curl --location 'https://api.espl.jp/api/v2/staking?networkId=5' \
 --header 'Authorization: <YOUR_BEARER_TOKEN>' \
 --header 'Content-Type: application/json'
 ```
+
 - **200 Response example**:
+
 ```json
 {
   "status": 200,
@@ -76,6 +87,7 @@ curl --location 'https://api.espl.jp/api/v2/staking?networkId=5' \
   "error": 0
 }
 ```
+
 - **Schema (response item)**:
   - `id` (number): Internal staking option id
   - `defi_platform` (string): Platform label
@@ -96,15 +108,26 @@ curl --location 'https://api.espl.jp/api/v2/staking?networkId=5' \
   - 5xx: provider/internal
 
 - **JSON Schema (response item)**:
+
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "required": [
-    "id", "defi_platform", "protocol_name", "contract_address", "type",
-    "apy", "operator_fee", "same_as_deposit", "network_id",
-    "type_contract_address", "address_provider", "rpc",
-    "created_at", "updated_at"
+    "id",
+    "defi_platform",
+    "protocol_name",
+    "contract_address",
+    "type",
+    "apy",
+    "operator_fee",
+    "same_as_deposit",
+    "network_id",
+    "type_contract_address",
+    "address_provider",
+    "rpc",
+    "created_at",
+    "updated_at"
   ],
   "properties": {
     "id": { "type": "integer", "minimum": 1 },
@@ -127,7 +150,10 @@ curl --location 'https://api.espl.jp/api/v2/staking?networkId=5' \
     "network_id": { "type": "integer" },
     "created_at": { "type": "string", "format": "date-time" },
     "updated_at": { "type": "string", "format": "date-time" },
-    "type_contract_address": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
+    "type_contract_address": {
+      "type": "string",
+      "pattern": "^0x[0-9a-fA-F]{40}$"
+    },
     "address_provider": { "type": "string", "pattern": "^0x[0-9a-fA-F]{40}$" },
     "rpc": { "type": "string", "minLength": 10 }
   }
@@ -135,29 +161,36 @@ curl --location 'https://api.espl.jp/api/v2/staking?networkId=5' \
 ```
 
 ### GET /api/v1/users/settings/get-deploy
+
 - **Purpose**: Return deployment configuration (bytecode and metadata).
 - **Request example**:
+
 ```bash
 curl --location 'https://api.espl.jp/api/v1/users/settings/get-deploy' \
 --header 'Authorization: <YOUR_BEARER_TOKEN>' \
 --header 'Content-Type: application/json'
 ```
+
 - **Notes**:
   - Fields include `contract_bytecode`, `contract_staking_bytecode`, and lengths.
   - Response is large; store securely if needed, avoid verbose logs.
 
 ### GET /api/v2/staking/isStaking
+
 - **Purpose**: Check whether the specified challenge is currently staking.
 - **Query params**:
   - `networkId` (number, required)
   - `challengeContract` (string, required): Challenge contract address
 - **Request example**:
+
 ```bash
 curl --location 'https://api.espl.jp/api/v2/staking/isStaking?networkId=5&challengeContract=0xa101c5Fe4835434c25CF73170abA7260c1F20aA7' \
 --header 'Authorization: <YOUR_BEARER_TOKEN>' \
 --header 'Content-Type: application/json'
 ```
+
 - **200 Response example**:
+
 ```json
 {
   "status": 200,
@@ -166,6 +199,7 @@ curl --location 'https://api.espl.jp/api/v2/staking/isStaking?networkId=5&challe
   "error": 0
 }
 ```
+
 - **Schema**:
   - `data.isStaking` (boolean)
 - **Errors**:
@@ -174,6 +208,7 @@ curl --location 'https://api.espl.jp/api/v2/staking/isStaking?networkId=5&challe
   - 404: not found for `networkId`
 
 - **JSON Schema (response)**:
+
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -193,27 +228,28 @@ curl --location 'https://api.espl.jp/api/v2/staking/isStaking?networkId=5&challe
 ```
 
 ### GET /api/v2/staking/calReward
+
 - **Purpose**: Calculate rewards for a challenge up to a cutoff time.
 - **Query params**:
   - `networkId` (number, required)
   - `challengeContract` (string, required)
   - `endTime` (number, required): Unix seconds
 - **Request example**:
+
 ```bash
 curl --location 'https://api.espl.jp/api/v2/staking/calReward?networkId=5&challengeContract=0xa101c5Fe4835434c25CF73170abA7260c1F20aA7&endTime=1752842658' \
 --header 'Authorization: <YOUR_BEARER_TOKEN>' \
 --header 'Content-Type: application/json'
 ```
+
 - **200 Response example**:
+
 ```json
 {
   "status": 200,
   "data": {
     "listReceiversSuccess": [],
-    "listReceiversFailed": [
-      "0.00000661538007314",
-      "0.00000661538007314"
-    ],
+    "listReceiversFailed": ["0.00000661538007314", "0.00000661538007314"],
     "totalReward": "0.000008269225091424",
     "totalFeeSystem": "0.000001653845018284",
     "totalReceiver": "0.00000661538007314",
@@ -223,6 +259,7 @@ curl --location 'https://api.espl.jp/api/v2/staking/calReward?networkId=5&challe
   "error": 0
 }
 ```
+
 - **Schema**:
   - `data.listReceiversSuccess` (array)
   - `data.listReceiversFailed` (array)
@@ -237,6 +274,7 @@ curl --location 'https://api.espl.jp/api/v2/staking/calReward?networkId=5&challe
   - 5xx: provider/internal
 
 - **JSON Schema (response)**:
+
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -247,8 +285,12 @@ curl --location 'https://api.espl.jp/api/v2/staking/calReward?networkId=5&challe
     "data": {
       "type": "object",
       "required": [
-        "listReceiversSuccess", "listReceiversFailed",
-        "totalReward", "totalFeeSystem", "totalReceiver", "indexSplit"
+        "listReceiversSuccess",
+        "listReceiversFailed",
+        "totalReward",
+        "totalFeeSystem",
+        "totalReceiver",
+        "indexSplit"
       ],
       "properties": {
         "listReceiversSuccess": { "type": "array" },
@@ -266,7 +308,9 @@ curl --location 'https://api.espl.jp/api/v2/staking/calReward?networkId=5&challe
 ```
 
 ## Error Model
+
 - Standard error body:
+
 ```json
 {
   "status": <http_code>,
@@ -274,11 +318,13 @@ curl --location 'https://api.espl.jp/api/v2/staking/calReward?networkId=5&challe
   "error": <error_code_numeric>
 }
 ```
+
 - `status`: mirrors HTTP status
 - `message`: human-readable description
 - `error`: service-specific numeric code (0 on success)
 
 ### Common error codes
+
 - **0**: success
 - **1001**: invalid parameter
 - **1002**: unauthorized or token expired
@@ -286,26 +332,32 @@ curl --location 'https://api.espl.jp/api/v2/staking/calReward?networkId=5&challe
 - **1099**: provider/internal error
 
 ### Error examples
+
 ```json
 { "status": 400, "message": "missing networkId", "error": 1001 }
 ```
+
 ```json
 { "status": 401, "message": "invalid token", "error": 1002 }
 ```
 
 ## Rate Limits and Retries
+
 - Some endpoints may return 429 on high volume.
 - Use exponential backoff: 250ms, 500ms, 1s, 2s (jittered).
 - Avoid parallel fan-out beyond 5 concurrent requests per token.
 - Honor `Retry-After` header (seconds) if present on 429.
 
 ## Security Notes
+
 - Treat the bearer token as a secret. Do not store in client apps.
 - Validate addresses and parameters before sending.
 - Prefer HTTPS. Do not use query params for sensitive data other than addresses/ids.
 
 ## TypeScript typings (SDK for app)
+
 Define shared types to integrate safely on client/app.
+
 ```ts
 export type ApySnapshot = {
   daily: number;
@@ -340,6 +392,7 @@ export type ApiEnvelope<T> = {
 ```
 
 ### Client helpers
+
 ```ts
 import axios from 'axios';
 
@@ -353,7 +406,9 @@ const api = axios.create({
   timeout: 10000,
 });
 
-export async function fetchStaking(networkId: number): Promise<ApiEnvelope<StakingItem[]>> {
+export async function fetchStaking(
+  networkId: number
+): Promise<ApiEnvelope<StakingItem[]>> {
   const { data } = await api.get('/api/v2/staking', { params: { networkId } });
   return data;
 }
@@ -372,14 +427,16 @@ export async function fetchCalReward(
   networkId: number,
   challengeContract: string,
   endTime: number
-): Promise<ApiEnvelope<{
-  listReceiversSuccess: unknown[];
-  listReceiversFailed: unknown[];
-  totalReward: string;
-  totalFeeSystem: string;
-  totalReceiver: string;
-  indexSplit: number;
-}>> {
+): Promise<
+  ApiEnvelope<{
+    listReceiversSuccess: unknown[];
+    listReceiversFailed: unknown[];
+    totalReward: string;
+    totalFeeSystem: string;
+    totalReceiver: string;
+    indexSplit: number;
+  }>
+> {
   const { data } = await api.get('/api/v2/staking/calReward', {
     params: { networkId, challengeContract, endTime },
   });
@@ -388,16 +445,21 @@ export async function fetchCalReward(
 ```
 
 ## Glossary
+
 - **PoolAddressesProvider**: Aave V3 registry contract exposing addresses for Pool and related components.
 - **APY perSecond**: Tốc độ lãi theo giây dùng cho tính toán liên tục.
 - **Operator fee**: Phần trăm phí hệ thống giữ lại trước khi phân phối.
 
 ## Node.js Examples (TypeScript)
+
 - Install deps with yarn:
+
 ```bash
 yarn add axios
 ```
+
 - Create a client:
+
 ```ts
 import axios from 'axios';
 
@@ -421,7 +483,11 @@ export async function isStaking(networkId: number, challengeContract: string) {
   return data;
 }
 
-export async function calReward(networkId: number, challengeContract: string, endTime: number) {
+export async function calReward(
+  networkId: number,
+  challengeContract: string,
+  endTime: number
+) {
   const { data } = await api.get(`/api/v2/staking/calReward`, {
     params: { networkId, challengeContract, endTime },
   });
@@ -430,4 +496,5 @@ export async function calReward(networkId: number, challengeContract: string, en
 ```
 
 ## Changelog
+
 - 2025-09-29: Added `address_provider` and `rpc` to response docs; expanded error model; added examples. Source: slide [`staking20250627` p5](https://docs.google.com/presentation/d/1P6fSZBXPllAH9RSwPtFjpv5l_FWDfaWK/edit?slide=id.p5#slide=id.p5).

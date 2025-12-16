@@ -1,18 +1,18 @@
-import { ethers } from "hardhat";
+import { ethers } from 'hardhat';
 
 // Aave v3 PoolAddressesProvider (Polygon)
-const ADDRESSES_PROVIDER = "0xa97684ead0e402dc232d5a977953df7ecbab3cdb";
+const ADDRESSES_PROVIDER = '0xa97684ead0e402dc232d5a977953df7ecbab3cdb';
 
 // Common Polygon assets
-const WMATIC_POLYGON = "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270";
+const WMATIC_POLYGON = '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
 
 const ADDR_PROVIDER_ABI = [
-  "function getPoolDataProvider() view returns (address)"
+  'function getPoolDataProvider() view returns (address)',
 ];
 
 // AaveProtocolDataProvider v3 minimal ABI (liquidityRate in ray at index 5)
 const DATAPROVIDER_ABI = [
-  "function getReserveData(address asset) view returns (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint40)"
+  'function getReserveData(address asset) view returns (uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint40)',
 ];
 
 const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
@@ -28,11 +28,21 @@ function toPercent(n: number): string {
 }
 
 export async function getAPyRate(asset: string, rpcUrl?: string) {
-  const usedProvider = rpcUrl ? new (ethers as any).JsonRpcProvider(rpcUrl) : ethers.provider;
+  const usedProvider = rpcUrl
+    ? new (ethers as any).JsonRpcProvider(rpcUrl)
+    : ethers.provider;
 
-  const ap = new (ethers as any).Contract(ADDRESSES_PROVIDER, ADDR_PROVIDER_ABI, usedProvider);
+  const ap = new (ethers as any).Contract(
+    ADDRESSES_PROVIDER,
+    ADDR_PROVIDER_ABI,
+    usedProvider
+  );
   const dataProviderAddr: string = await ap.getPoolDataProvider();
-  const dp = new (ethers as any).Contract(dataProviderAddr, DATAPROVIDER_ABI, usedProvider);
+  const dp = new (ethers as any).Contract(
+    dataProviderAddr,
+    DATAPROVIDER_ABI,
+    usedProvider
+  );
   const rd = await dp.getReserveData(asset);
   const liquidityRateRay: bigint = rd[5];
 
@@ -50,18 +60,21 @@ export async function getAPyRate(asset: string, rpcUrl?: string) {
     monthly, // decimal
     yearly, // decimal
     rNominal: r, // nominal APR from Aave (decimal)
-    dataProviderAddr
+    dataProviderAddr,
   };
 }
 
 async function main() {
   const assetArg = process.env.ASSET?.toLowerCase();
-  const asset = (ethers as any).isAddress(assetArg || "") ? (assetArg as string) : WMATIC_POLYGON;
-  const rpc = process.env.RPC || process.env.POLYGON_RPC || process.env.JSON_RPC;
+  const asset = (ethers as any).isAddress(assetArg || '')
+    ? (assetArg as string)
+    : WMATIC_POLYGON;
+  const rpc =
+    process.env.RPC || process.env.POLYGON_RPC || process.env.JSON_RPC;
 
   const apy = await getAPyRate(asset, rpc);
 
-  console.log(`RPC: ${rpc ?? "<hardhat provider>"}`);
+  console.log(`RPC: ${rpc ?? '<hardhat provider>'}`);
   console.log(`DataProvider: ${apy.dataProviderAddr}`);
   console.log(`Asset: ${asset}`);
   console.log(`Nominal APR (Aave rate): ${toPercent(apy.rNominal)} %`);
@@ -70,7 +83,7 @@ async function main() {
   console.log(`Effective Yearly APY: ${toPercent(apy.yearly)} %`);
 }
 
-main().catch((e) => {
+main().catch(e => {
   console.error(e);
   process.exit(1);
 });

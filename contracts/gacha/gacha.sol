@@ -1,23 +1,23 @@
 /**
  *Submitted for verification at polygonscan.com on 2025-08-31
-*/
+ */
 
 // SPDX-License-Identifier: MIT
 
 /**
  * @title MIT License
  * @copyright 2024 Hiroshi Tanimoto / Sense It Smart Corporation
- * 
+ *
  * @notice Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * @notice The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * @notice THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -25,12 +25,12 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
- * 
+ *
  * @notice This project uses OpenZeppelin Contracts (https://github.com/OpenZeppelin/openzeppelin-contracts)
  * which is licensed under the MIT License.
- * 
- * @notice IMPORTANT: This software may be subject to patent rights. Your use of this software may be subject 
- * to additional terms and conditions as outlined in our Patent Policy. Please refer to our Patent 
+ *
+ * @notice IMPORTANT: This software may be subject to patent rights. Your use of this software may be subject
+ * to additional terms and conditions as outlined in our Patent Policy. Please refer to our Patent
  * Policy for more information:
  * Patent Policy: https://espl.jp/patentpolicy/
  */
@@ -262,15 +262,10 @@ library MathUpgradeable {
     /**
      * @notice Calculates sqrt(a), following the selected rounding direction.
      */
-    function sqrt(
-        uint256 a,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function sqrt(uint256 a, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = sqrt(a);
-            return
-                result +
-                (rounding == Rounding.Up && result * result < a ? 1 : 0);
+            return result + (rounding == Rounding.Up && result * result < a ? 1 : 0);
         }
     }
 
@@ -320,15 +315,10 @@ library MathUpgradeable {
      * @dev Return the log in base 2, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log2(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log2(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log2(value);
-            return
-                result +
-                (rounding == Rounding.Up && 1 << result < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 1 << result < value ? 1 : 0);
         }
     }
 
@@ -374,15 +364,10 @@ library MathUpgradeable {
      * @dev Return the log in base 10, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log10(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log10(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log10(value);
-            return
-                result +
-                (rounding == Rounding.Up && 10 ** result < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 10 ** result < value ? 1 : 0);
         }
     }
 
@@ -422,15 +407,10 @@ library MathUpgradeable {
      * @dev Return the log in base 10, following the selected rounding direction, of a positive value.
      * Returns 0 if given 0.
      */
-    function log256(
-        uint256 value,
-        Rounding rounding
-    ) internal pure returns (uint256) {
+    function log256(uint256 value, Rounding rounding) internal pure returns (uint256) {
         unchecked {
             uint256 result = log256(value);
-            return
-                result +
-                (rounding == Rounding.Up && 1 << (result * 8) < value ? 1 : 0);
+            return result + (rounding == Rounding.Up && 1 << (result * 8) < value ? 1 : 0);
         }
     }
 }
@@ -485,10 +465,7 @@ library StringsUpgradeable {
     /**
      * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.
      */
-    function toHexString(
-        uint256 value,
-        uint256 length
-    ) internal pure returns (string memory) {
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
         bytes memory buffer = new bytes(2 * length + 2);
         buffer[0] = "0";
         buffer[1] = "x";
@@ -538,11 +515,7 @@ interface IAccessControlUpgradeable {
      * `sender` is the account that originated the contract call, an admin role
      * bearer except when using {AccessControl-_setupRole}.
      */
-    event RoleGranted(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
 
     /**
      * @dev Emitted when `account` is revoked `role`.
@@ -551,19 +524,12 @@ interface IAccessControlUpgradeable {
      *   - if using `revokeRole`, it is the admin role bearer
      *   - if using `renounceRole`, it is the role bearer (i.e. `account`)
      */
-    event RoleRevoked(
-        bytes32 indexed role,
-        address indexed account,
-        address indexed sender
-    );
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
 
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(
-        bytes32 role,
-        address account
-    ) external view returns (bool);
+    function hasRole(bytes32 role, address account) external view returns (bool);
 
     /**
      * @dev Returns the admin role that controls `role`. See {grantRole} and
@@ -681,9 +647,7 @@ library StorageSlotUpgradeable {
     /**
      * @dev Returns an `AddressSlot` with member `value` located at `slot`.
      */
-    function getAddressSlot(
-        bytes32 slot
-    ) internal pure returns (AddressSlot storage r) {
+    function getAddressSlot(bytes32 slot) internal pure returns (AddressSlot storage r) {
         /// @solidity memory-safe-assembly
         assembly {
             r.slot := slot
@@ -693,9 +657,7 @@ library StorageSlotUpgradeable {
     /**
      * @dev Returns an `BooleanSlot` with member `value` located at `slot`.
      */
-    function getBooleanSlot(
-        bytes32 slot
-    ) internal pure returns (BooleanSlot storage r) {
+    function getBooleanSlot(bytes32 slot) internal pure returns (BooleanSlot storage r) {
         /// @solidity memory-safe-assembly
         assembly {
             r.slot := slot
@@ -705,9 +667,7 @@ library StorageSlotUpgradeable {
     /**
      * @dev Returns an `Bytes32Slot` with member `value` located at `slot`.
      */
-    function getBytes32Slot(
-        bytes32 slot
-    ) internal pure returns (Bytes32Slot storage r) {
+    function getBytes32Slot(bytes32 slot) internal pure returns (Bytes32Slot storage r) {
         /// @solidity memory-safe-assembly
         assembly {
             r.slot := slot
@@ -717,9 +677,7 @@ library StorageSlotUpgradeable {
     /**
      * @dev Returns an `Uint256Slot` with member `value` located at `slot`.
      */
-    function getUint256Slot(
-        bytes32 slot
-    ) internal pure returns (Uint256Slot storage r) {
+    function getUint256Slot(bytes32 slot) internal pure returns (Uint256Slot storage r) {
         /// @solidity memory-safe-assembly
         assembly {
             r.slot := slot
@@ -828,16 +786,10 @@ library AddressUpgradeable {
      * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
      */
     function sendValue(address payable recipient, uint256 amount) internal {
-        require(
-            address(this).balance >= amount,
-            "Address: insufficient balance"
-        );
+        require(address(this).balance >= amount, "Address: insufficient balance");
 
-        (bool success, ) = recipient.call{value: amount}("");
-        require(
-            success,
-            "Address: unable to send value, recipient may have reverted"
-        );
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
     }
 
     /**
@@ -858,17 +810,8 @@ library AddressUpgradeable {
      *
      * _Available since v3.1._
      */
-    function functionCall(
-        address target,
-        bytes memory data
-    ) internal returns (bytes memory) {
-        return
-            functionCallWithValue(
-                target,
-                data,
-                0,
-                "Address: low-level call failed"
-            );
+    function functionCall(address target, bytes memory data) internal returns (bytes memory) {
+        return functionCallWithValue(target, data, 0, "Address: low-level call failed");
     }
 
     /**
@@ -902,12 +845,7 @@ library AddressUpgradeable {
         uint256 value
     ) internal returns (bytes memory) {
         return
-            functionCallWithValue(
-                target,
-                data,
-                value,
-                "Address: low-level call with value failed"
-            );
+            functionCallWithValue(target, data, value, "Address: low-level call with value failed");
     }
 
     /**
@@ -922,20 +860,9 @@ library AddressUpgradeable {
         uint256 value,
         string memory errorMessage
     ) internal returns (bytes memory) {
-        require(
-            address(this).balance >= value,
-            "Address: insufficient balance for call"
-        );
-        (bool success, bytes memory returndata) = target.call{value: value}(
-            data
-        );
-        return
-            verifyCallResultFromTarget(
-                target,
-                success,
-                returndata,
-                errorMessage
-            );
+        require(address(this).balance >= value, "Address: insufficient balance for call");
+        (bool success, bytes memory returndata) = target.call{ value: value }(data);
+        return verifyCallResultFromTarget(target, success, returndata, errorMessage);
     }
 
     /**
@@ -948,12 +875,7 @@ library AddressUpgradeable {
         address target,
         bytes memory data
     ) internal view returns (bytes memory) {
-        return
-            functionStaticCall(
-                target,
-                data,
-                "Address: low-level static call failed"
-            );
+        return functionStaticCall(target, data, "Address: low-level static call failed");
     }
 
     /**
@@ -968,13 +890,7 @@ library AddressUpgradeable {
         string memory errorMessage
     ) internal view returns (bytes memory) {
         (bool success, bytes memory returndata) = target.staticcall(data);
-        return
-            verifyCallResultFromTarget(
-                target,
-                success,
-                returndata,
-                errorMessage
-            );
+        return verifyCallResultFromTarget(target, success, returndata, errorMessage);
     }
 
     /**
@@ -1019,10 +935,7 @@ library AddressUpgradeable {
         }
     }
 
-    function _revert(
-        bytes memory returndata,
-        string memory errorMessage
-    ) private pure {
+    function _revert(bytes memory returndata, string memory errorMessage) private pure {
         // Look for revert reason and bubble it up if present
         if (returndata.length > 0) {
             // The easiest way to bubble the revert reason is using memory via assembly
@@ -1122,8 +1035,7 @@ abstract contract Initializable {
         bool isTopLevelCall = !_initializing;
         require(
             (isTopLevelCall && _initialized < 1) ||
-                (!AddressUpgradeable.isContract(address(this)) &&
-                    _initialized == 1),
+                (!AddressUpgradeable.isContract(address(this)) && _initialized == 1),
             "Initializable: contract is already initialized"
         );
         _initialized = 1;
@@ -1235,9 +1147,7 @@ abstract contract ERC165Upgradeable is Initializable, IERC165Upgradeable {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return interfaceId == type(IERC165Upgradeable).interfaceId;
     }
 
@@ -1367,9 +1277,7 @@ abstract contract AccessControlUpgradeable is
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
         return
             interfaceId == type(IAccessControlUpgradeable).interfaceId ||
             super.supportsInterface(interfaceId);
@@ -1378,10 +1286,7 @@ abstract contract AccessControlUpgradeable is
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(
-        bytes32 role,
-        address account
-    ) public view virtual override returns (bool) {
+    function hasRole(bytes32 role, address account) public view virtual override returns (bool) {
         return _roles[role].members[account];
     }
 
@@ -1425,9 +1330,7 @@ abstract contract AccessControlUpgradeable is
      *
      * To change a role's admin, use {_setRoleAdmin}.
      */
-    function getRoleAdmin(
-        bytes32 role
-    ) public view virtual override returns (bytes32) {
+    function getRoleAdmin(bytes32 role) public view virtual override returns (bytes32) {
         return _roles[role].adminRole;
     }
 
@@ -1484,14 +1387,8 @@ abstract contract AccessControlUpgradeable is
      *
      * May emit a {RoleRevoked} event.
      */
-    function renounceRole(
-        bytes32 role,
-        address account
-    ) public virtual override {
-        require(
-            account == _msgSender(),
-            "AccessControl: can only renounce roles for self"
-        );
+    function renounceRole(bytes32 role, address account) public virtual override {
+        require(account == _msgSender(), "AccessControl: can only renounce roles for self");
 
         _revokeRole(role, account);
     }
@@ -1606,8 +1503,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
      * @dev Returns the current implementation address.
      */
     function _getImplementation() internal view returns (address) {
-        return
-            StorageSlotUpgradeable.getAddressSlot(_IMPLEMENTATION_SLOT).value;
+        return StorageSlotUpgradeable.getAddressSlot(_IMPLEMENTATION_SLOT).value;
     }
 
     /**
@@ -1618,9 +1514,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
             AddressUpgradeable.isContract(newImplementation),
             "ERC1967: new implementation is not a contract"
         );
-        StorageSlotUpgradeable
-            .getAddressSlot(_IMPLEMENTATION_SLOT)
-            .value = newImplementation;
+        StorageSlotUpgradeable.getAddressSlot(_IMPLEMENTATION_SLOT).value = newImplementation;
     }
 
     /**
@@ -1665,13 +1559,10 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
         if (StorageSlotUpgradeable.getBooleanSlot(_ROLLBACK_SLOT).value) {
             _setImplementation(newImplementation);
         } else {
-            try
-                IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID()
-            returns (bytes32 slot) {
-                require(
-                    slot == _IMPLEMENTATION_SLOT,
-                    "ERC1967Upgrade: unsupported proxiableUUID"
-                );
+            try IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID() returns (
+                bytes32 slot
+            ) {
+                require(slot == _IMPLEMENTATION_SLOT, "ERC1967Upgrade: unsupported proxiableUUID");
             } catch {
                 revert("ERC1967Upgrade: new implementation is not UUPS");
             }
@@ -1703,10 +1594,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
      * @dev Stores a new address in the EIP1967 admin slot.
      */
     function _setAdmin(address newAdmin) private {
-        require(
-            newAdmin != address(0),
-            "ERC1967: new admin is the zero address"
-        );
+        require(newAdmin != address(0), "ERC1967: new admin is the zero address");
         StorageSlotUpgradeable.getAddressSlot(_ADMIN_SLOT).value = newAdmin;
     }
 
@@ -1743,14 +1631,9 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
      * @dev Stores a new beacon in the EIP1967 beacon slot.
      */
     function _setBeacon(address newBeacon) private {
+        require(AddressUpgradeable.isContract(newBeacon), "ERC1967: new beacon is not a contract");
         require(
-            AddressUpgradeable.isContract(newBeacon),
-            "ERC1967: new beacon is not a contract"
-        );
-        require(
-            AddressUpgradeable.isContract(
-                IBeaconUpgradeable(newBeacon).implementation()
-            ),
+            AddressUpgradeable.isContract(IBeaconUpgradeable(newBeacon).implementation()),
             "ERC1967: beacon implementation is not a contract"
         );
         StorageSlotUpgradeable.getAddressSlot(_BEACON_SLOT).value = newBeacon;
@@ -1770,10 +1653,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
         _setBeacon(newBeacon);
         emit BeaconUpgraded(newBeacon);
         if (data.length > 0 || forceCall) {
-            _functionDelegateCall(
-                IBeaconUpgradeable(newBeacon).implementation(),
-                data
-            );
+            _functionDelegateCall(IBeaconUpgradeable(newBeacon).implementation(), data);
         }
     }
 
@@ -1787,10 +1667,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
         address target,
         bytes memory data
     ) private returns (bytes memory) {
-        require(
-            AddressUpgradeable.isContract(target),
-            "Address: delegate call to non-contract"
-        );
+        require(AddressUpgradeable.isContract(target), "Address: delegate call to non-contract");
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = target.delegatecall(data);
@@ -1848,14 +1725,8 @@ abstract contract UUPSUpgradeable is
      * fail.
      */
     modifier onlyProxy() {
-        require(
-            address(this) != __self,
-            "Function must be called through delegatecall"
-        );
-        require(
-            _getImplementation() == __self,
-            "Function must be called through active proxy"
-        );
+        require(address(this) != __self, "Function must be called through delegatecall");
+        require(_getImplementation() == __self, "Function must be called through active proxy");
         _;
     }
 
@@ -1879,14 +1750,7 @@ abstract contract UUPSUpgradeable is
      * bricking a proxy that upgrades to it, by delegating to itself until out of gas. Thus it is critical that this
      * function revert if invoked through a proxy. This is guaranteed by the `notDelegated` modifier.
      */
-    function proxiableUUID()
-        external
-        view
-        virtual
-        override
-        notDelegated
-        returns (bytes32)
-    {
+    function proxiableUUID() external view virtual override notDelegated returns (bytes32) {
         return _IMPLEMENTATION_SLOT;
     }
 
@@ -1995,10 +1859,7 @@ interface IChallenge {
     /**
      * @dev Returns the array of award receivers' percentages.
      */
-    function getAwardReceiversPercent()
-        external
-        view
-        returns (uint256[] memory);
+    function getAwardReceiversPercent() external view returns (uint256[] memory);
 
     /**
      * @dev Returns the challenger's address.
@@ -2052,10 +1913,7 @@ interface IChallenge {
      * @param _tokenAddress The address of the token contract.
      * @param _challengerAddress The address of the challenger.
      */
-    function safeMintNFT721Heper(
-        address _tokenAddress,
-        address _challengerAddress
-    ) external;
+    function safeMintNFT721Heper(address _tokenAddress, address _challengerAddress) external;
 
     /**
      * @dev Returns the name of the challenge.
@@ -2139,11 +1997,7 @@ library SafeMath {
      *
      * - Subtraction cannot overflow.
      */
-    function sub(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b <= a, errorMessage);
         uint256 c = a - b;
 
@@ -2202,11 +2056,7 @@ library SafeMath {
      *
      * - The divisor cannot be zero.
      */
-    function div(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b > 0, errorMessage);
         uint256 c = a / b;
         // assert(a == b * c + a % b); // There is no case in which this doesn't hold
@@ -2242,11 +2092,7 @@ library SafeMath {
      *
      * - The divisor cannot be zero.
      */
-    function mod(
-        uint256 a,
-        uint256 b,
-        string memory errorMessage
-    ) internal pure returns (uint256) {
+    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
         require(b != 0, errorMessage);
         return a % b;
     }
@@ -2270,19 +2116,10 @@ library TransferHelper {
         );
     }
 
-    function saveTransferEth(
-        address payable recipient,
-        uint256 amount
-    ) internal {
-        require(
-            address(this).balance >= amount,
-            "Address: insufficient balance"
-        );
-        (bool success, ) = recipient.call{value: amount}("");
-        require(
-            success,
-            "Address: unable to send value, recipient may have reverted"
-        );
+    function saveTransferEth(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, "Address: insufficient balance");
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
     }
 
     function safeTransfer(address token, address to, uint256 value) internal {
@@ -2295,11 +2132,7 @@ library TransferHelper {
         );
     }
 
-    function safeApproveForAllNFT1155(
-        address token,
-        address operator,
-        bool approved
-    ) internal {
+    function safeApproveForAllNFT1155(address token, address operator, bool approved) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa22cb465, operator, approved)
         );
@@ -2343,9 +2176,7 @@ library TransferHelper {
     }
 
     function safeMintNFT(address token, address to) internal {
-        (bool success, bytes memory data) = token.call(
-            abi.encodeWithSelector(0x40d097c3, to)
-        );
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x40d097c3, to));
         require(
             success && (data.length == 0 || abi.decode(data, (bool))),
             "TransferHelper: MINT_NFT_FAILED"
@@ -2362,12 +2193,7 @@ library TransferHelper {
         );
     }
 
-    function safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
+    function safeTransferFrom(address token, address from, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x23b872dd, from, to, value)
         );
@@ -2467,29 +2293,17 @@ interface IERC721 is IERC165 {
     /**
      * @dev Emitted when `tokenId` token is transferred from `from` to `to`.
      */
-    event Transfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed tokenId
-    );
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
     /**
      * @dev Emitted when `owner` enables `approved` to manage the `tokenId` token.
      */
-    event Approval(
-        address indexed owner,
-        address indexed approved,
-        uint256 indexed tokenId
-    );
+    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
 
     /**
      * @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.
      */
-    event ApprovalForAll(
-        address indexed owner,
-        address indexed operator,
-        bool approved
-    );
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
 
     /**
      * @dev Returns the number of tokens in ``owner``'s account.
@@ -2539,11 +2353,7 @@ interface IERC721 is IERC165 {
      *
      * Emits a {Transfer} event.
      */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
 
     /**
      * @dev Transfers `tokenId` token from `from` to `to`.
@@ -2595,19 +2405,14 @@ interface IERC721 is IERC165 {
      *
      * - `tokenId` must exist.
      */
-    function getApproved(
-        uint256 tokenId
-    ) external view returns (address operator);
+    function getApproved(uint256 tokenId) external view returns (address operator);
 
     /**
      * @dev Returns if the `operator` is allowed to manage all of the assets of `owner`.
      *
      * See {setApprovalForAll}
      */
-    function isApprovedForAll(
-        address owner,
-        address operator
-    ) external view returns (bool);
+    function isApprovedForAll(address owner, address operator) external view returns (bool);
 }
 
 // File: Gacha/IERC1155.sol
@@ -2623,10 +2428,7 @@ pragma solidity ^0.8.0;
  * _Available since v3.1._
  */
 interface IERC1155 is IERC165 {
-    function balanceOf(
-        address account,
-        uint256 id
-    ) external view returns (uint256);
+    function balanceOf(address account, uint256 id) external view returns (uint256);
 
     function nextTokenIdToMint() external view returns (uint256);
 
@@ -2772,10 +2574,7 @@ library EnumerableSet {
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
-    function _contains(
-        Set storage set,
-        bytes32 value
-    ) private view returns (bool) {
+    function _contains(Set storage set, bytes32 value) private view returns (bool) {
         return set._indexes[value] != 0;
     }
 
@@ -2796,10 +2595,7 @@ library EnumerableSet {
      *
      * - `index` must be strictly less than {length}.
      */
-    function _at(
-        Set storage set,
-        uint256 index
-    ) private view returns (bytes32) {
+    function _at(Set storage set, uint256 index) private view returns (bytes32) {
         return set._values[index];
     }
 
@@ -2827,10 +2623,7 @@ library EnumerableSet {
      * Returns true if the value was added to the set, that is if it was not
      * already present.
      */
-    function add(
-        Bytes32Set storage set,
-        bytes32 value
-    ) internal returns (bool) {
+    function add(Bytes32Set storage set, bytes32 value) internal returns (bool) {
         return _add(set._inner, value);
     }
 
@@ -2840,20 +2633,14 @@ library EnumerableSet {
      * Returns true if the value was removed from the set, that is if it was
      * present.
      */
-    function remove(
-        Bytes32Set storage set,
-        bytes32 value
-    ) internal returns (bool) {
+    function remove(Bytes32Set storage set, bytes32 value) internal returns (bool) {
         return _remove(set._inner, value);
     }
 
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
-    function contains(
-        Bytes32Set storage set,
-        bytes32 value
-    ) internal view returns (bool) {
+    function contains(Bytes32Set storage set, bytes32 value) internal view returns (bool) {
         return _contains(set._inner, value);
     }
 
@@ -2874,10 +2661,7 @@ library EnumerableSet {
      *
      * - `index` must be strictly less than {length}.
      */
-    function at(
-        Bytes32Set storage set,
-        uint256 index
-    ) internal view returns (bytes32) {
+    function at(Bytes32Set storage set, uint256 index) internal view returns (bytes32) {
         return _at(set._inner, index);
     }
 
@@ -2889,9 +2673,7 @@ library EnumerableSet {
      * this function has an unbounded cost, and using it as part of a state-changing function may render the function
      * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
      */
-    function values(
-        Bytes32Set storage set
-    ) internal view returns (bytes32[] memory) {
+    function values(Bytes32Set storage set) internal view returns (bytes32[] memory) {
         bytes32[] memory store = _values(set._inner);
         bytes32[] memory result;
 
@@ -2915,10 +2697,7 @@ library EnumerableSet {
      * Returns true if the value was added to the set, that is if it was not
      * already present.
      */
-    function add(
-        AddressSet storage set,
-        address value
-    ) internal returns (bool) {
+    function add(AddressSet storage set, address value) internal returns (bool) {
         return _add(set._inner, bytes32(uint256(uint160(value))));
     }
 
@@ -2928,20 +2707,14 @@ library EnumerableSet {
      * Returns true if the value was removed from the set, that is if it was
      * present.
      */
-    function remove(
-        AddressSet storage set,
-        address value
-    ) internal returns (bool) {
+    function remove(AddressSet storage set, address value) internal returns (bool) {
         return _remove(set._inner, bytes32(uint256(uint160(value))));
     }
 
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
-    function contains(
-        AddressSet storage set,
-        address value
-    ) internal view returns (bool) {
+    function contains(AddressSet storage set, address value) internal view returns (bool) {
         return _contains(set._inner, bytes32(uint256(uint160(value))));
     }
 
@@ -2962,10 +2735,7 @@ library EnumerableSet {
      *
      * - `index` must be strictly less than {length}.
      */
-    function at(
-        AddressSet storage set,
-        uint256 index
-    ) internal view returns (address) {
+    function at(AddressSet storage set, uint256 index) internal view returns (address) {
         return address(uint160(uint256(_at(set._inner, index))));
     }
 
@@ -2977,9 +2747,7 @@ library EnumerableSet {
      * this function has an unbounded cost, and using it as part of a state-changing function may render the function
      * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
      */
-    function values(
-        AddressSet storage set
-    ) internal view returns (address[] memory) {
+    function values(AddressSet storage set) internal view returns (address[] memory) {
         bytes32[] memory store = _values(set._inner);
         address[] memory result;
 
@@ -3013,20 +2781,14 @@ library EnumerableSet {
      * Returns true if the value was removed from the set, that is if it was
      * present.
      */
-    function remove(
-        UintSet storage set,
-        uint256 value
-    ) internal returns (bool) {
+    function remove(UintSet storage set, uint256 value) internal returns (bool) {
         return _remove(set._inner, bytes32(value));
     }
 
     /**
      * @dev Returns true if the value is in the set. O(1).
      */
-    function contains(
-        UintSet storage set,
-        uint256 value
-    ) internal view returns (bool) {
+    function contains(UintSet storage set, uint256 value) internal view returns (bool) {
         return _contains(set._inner, bytes32(value));
     }
 
@@ -3047,10 +2809,7 @@ library EnumerableSet {
      *
      * - `index` must be strictly less than {length}.
      */
-    function at(
-        UintSet storage set,
-        uint256 index
-    ) internal view returns (uint256) {
+    function at(UintSet storage set, uint256 index) internal view returns (uint256) {
         return uint256(_at(set._inner, index));
     }
 
@@ -3062,9 +2821,7 @@ library EnumerableSet {
      * this function has an unbounded cost, and using it as part of a state-changing function may render the function
      * uncallable if the set grows to a point where copying to memory consumes too much gas to fit in a block.
      */
-    function values(
-        UintSet storage set
-    ) internal view returns (uint256[] memory) {
+    function values(UintSet storage set) internal view returns (uint256[] memory) {
         bytes32[] memory store = _values(set._inner);
         uint256[] memory result;
 
@@ -3080,12 +2837,7 @@ library EnumerableSet {
 
 pragma solidity ^0.8.16;
 
-contract Gacha is
-    Initializable,
-    IERC721Receiver,
-    AccessControlUpgradeable,
-    UUPSUpgradeable
-{
+contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPSUpgradeable {
     // Import necessary libraries
     // EnumerableSet for managing sets of addresses and uints
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -3220,11 +2972,7 @@ contract Gacha is
      * @param _indexOfTokenReward The index of the reward being deleted.
      * @param _gachaAddress The address of the gacha the reward is being deleted from.
      */
-    event DeleteReward(
-        address indexed _caller,
-        uint256 _indexOfTokenReward,
-        address _gachaAddress
-    );
+    event DeleteReward(address indexed _caller, uint256 _indexOfTokenReward, address _gachaAddress);
 
     /**
      * @dev Event emitted when a daily result is sent for a gacha.
@@ -3237,8 +2985,7 @@ contract Gacha is
     mapping(uint256 => RewardToken) public rewardTokens;
 
     // Mapping to keep track if the daily result has been sent with a specific gacha contract
-    mapping(address => mapping(address => bool))
-        public isSendDailyResultWithGacha;
+    mapping(address => mapping(address => bool)) public isSendDailyResultWithGacha;
 
     // Array to store IDs of all tokens
     uint256[] private listIdToken;
@@ -3293,12 +3040,10 @@ contract Gacha is
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
     // Define the role that can update gacha reward
-    bytes32 public constant UPDATER_REWARDS_ROLE =
-        keccak256("UPDATER_REWARDS_ROLE");
+    bytes32 public constant UPDATER_REWARDS_ROLE = keccak256("UPDATER_REWARDS_ROLE");
 
     // Define the role that can update contract activities
-    bytes32 public constant UPDATER_ACTIVITIES_ROLE =
-        keccak256("UPDATER_ACTIVITIES_ROLE");
+    bytes32 public constant UPDATER_ACTIVITIES_ROLE = keccak256("UPDATER_ACTIVITIES_ROLE");
 
     // Define the role that can close gạcha
     bytes32 public constant CLOSE_GACHA_ROLE = keccak256("CLOSE_GACHA_ROLE");
@@ -3405,8 +3150,10 @@ contract Gacha is
 
         // Get the address of the challenger from the challenge contract
         address erc721Address = IChallenge(_challengeAddress).erc721Address(0);
-        address challengerAddress = IExerciseSupplementNFT(erc721Address)
-            .getDestinationAddress(_challengeAddress, address(this));
+        address challengerAddress = IExerciseSupplementNFT(erc721Address).getDestinationAddress(
+            _challengeAddress,
+            address(this)
+        );
 
         // Get the address of the challenger from the challenge contract
         uint256 currentDate = block.timestamp.div(86400);
@@ -3436,9 +3183,9 @@ contract Gacha is
             uint256 randomIndexReward = checkAbilityReward();
 
             // Increase the count of active gacha times for the current date of the challenger
-            countTimeActiveGacha[_challengeAddress][
-                currentDate
-            ] = countTimeActiveGacha[_challengeAddress][currentDate].add(1);
+            countTimeActiveGacha[_challengeAddress][currentDate] = countTimeActiveGacha[
+                _challengeAddress
+            ][currentDate].add(1);
 
             /**
              * If the random index reward is not equal to 0 (which means the user has the ability to win a reward),
@@ -3449,18 +3196,15 @@ contract Gacha is
                 uint256 indexTokenReward;
 
                 // Get the selected reward token's information from the rewardTokens mapping
-                RewardToken storage currentRewardToken = rewardTokens[
-                    randomIndexReward
-                ];
+                RewardToken storage currentRewardToken = rewardTokens[randomIndexReward];
 
                 if (
                     rewardTokens[randomIndexReward].rewardActivationCount <
-                    rewardTokens[randomIndexReward].maxNumberAllowed &&
+                        rewardTokens[randomIndexReward].maxNumberAllowed &&
                     checkBalanceOfReward(currentRewardToken)
                 ) {
                     // Get the address of the selected reward token
-                    address currentTokenAddress = currentRewardToken
-                        .addressToken;
+                    address currentTokenAddress = currentRewardToken.addressToken;
 
                     // Check if the current reward token is an ERC20 token
                     if (currentRewardToken.typeToken == TypeToken.ERC20) {
@@ -3478,20 +3222,15 @@ contract Gacha is
 
                         // If the reward is to mint a new NFT
                         if (currentRewardToken.isMintNft) {
-                            for (
-                                uint256 i = 0;
-                                i < currentRewardToken.rewardValue;
-                                i++
-                            ) {
+                            for (uint256 i = 0; i < currentRewardToken.rewardValue; i++) {
                                 IChallenge(erc721Address).safeMintNFT721Heper(
                                     currentTokenAddress,
                                     challengerAddress
                                 );
                             }
                             // Mint a new NFT
-                            uint256 currentIndexNFT = IChallenge(
-                                currentTokenAddress
-                            ).nextTokenIdToMint();
+                            uint256 currentIndexNFT = IChallenge(currentTokenAddress)
+                                .nextTokenIdToMint();
                             // Set the reward index to the newly minted token ID
                             indexTokenReward = currentIndexNFT;
                         } else {
@@ -3499,9 +3238,7 @@ contract Gacha is
                              * If the reward is to transfer an existing NFT
                              * Loop through all available token IDs
                              */
-                            uint256 currentLength = currentRewardToken
-                                .listNft
-                                .length;
+                            uint256 currentLength = currentRewardToken.listNft.length;
                             for (uint256 j = 0; j < currentLength; j++) {
                                 // If the token is owned by the Gacha contract
                                 if (
@@ -3516,12 +3253,9 @@ contract Gacha is
                                         currentRewardToken.listNft[j]
                                     );
                                     // Set the reward index to the transferred token ID
-                                    indexTokenReward = currentRewardToken
-                                        .listNft[j];
+                                    indexTokenReward = currentRewardToken.listNft[j];
 
-                                    currentRewardToken.listNft[
-                                            j
-                                        ] = currentRewardToken.listNft[
+                                    currentRewardToken.listNft[j] = currentRewardToken.listNft[
                                         currentLength - 1
                                     ];
                                     currentRewardToken.listNft.pop();
@@ -3559,9 +3293,7 @@ contract Gacha is
 
                     // Check if the reward token is of type native token (ETH)
                     // Transfer the reward value in ETH to the challenger address
-                    if (
-                        currentRewardToken.typeToken == TypeToken.NATIVE_TOKEN
-                    ) {
+                    if (currentRewardToken.typeToken == TypeToken.NATIVE_TOKEN) {
                         TransferHelper.saveTransferEth(
                             payable(challengerAddress),
                             currentRewardToken.rewardValue
@@ -3573,9 +3305,7 @@ contract Gacha is
 
                     // Determine the name of the token, depending on whether it's a native token or an ERC20/ERC721/ERC1155 token
                     string memory tokenName;
-                    if (
-                        currentRewardToken.typeToken == TypeToken.NATIVE_TOKEN
-                    ) {
+                    if (currentRewardToken.typeToken == TypeToken.NATIVE_TOKEN) {
                         tokenName = "Native Token";
                     } else {
                         tokenName = IChallenge(currentTokenAddress).name();
@@ -3592,18 +3322,17 @@ contract Gacha is
                     );
 
                     // Increment the max number allowed for the selected reward token
-                    rewardTokens[randomIndexReward]
-                        .rewardActivationCount = rewardTokens[randomIndexReward]
-                        .rewardActivationCount
-                        .add(1);
+                    rewardTokens[randomIndexReward].rewardActivationCount = rewardTokens[
+                        randomIndexReward
+                    ].rewardActivationCount.add(1);
 
                     if (
                         rewardTokens[randomIndexReward].rewardActivationCount ==
                         rewardTokens[randomIndexReward].maxNumberAllowed
                     ) {
-                        rewardTokens[0].unlockRate = rewardTokens[0]
-                            .unlockRate
-                            .add(rewardTokens[randomIndexReward].unlockRate);
+                        rewardTokens[0].unlockRate = rewardTokens[0].unlockRate.add(
+                            rewardTokens[randomIndexReward].unlockRate
+                        );
                         rewardTokens[randomIndexReward].unlockRate = 0;
                     }
                 }
@@ -3637,26 +3366,17 @@ contract Gacha is
         if (_typeToken != TypeToken.ERC1155) {
             // Handle the case for native token
             if (_typeToken == TypeToken.NATIVE_TOKEN) {
-                TransferHelper.saveTransferEth(
-                    payable(returnedNFTWallet),
-                    address(this).balance
-                );
+                TransferHelper.saveTransferEth(payable(returnedNFTWallet), address(this).balance);
             } else {
                 // For ERC20 and other token types
 
                 // Get the balance of the specified token in this contract
-                uint256 balanceToken = IERC20(_tokenAddress).balanceOf(
-                    address(this)
-                );
+                uint256 balanceToken = IERC20(_tokenAddress).balanceOf(address(this));
 
                 // Check if the contract has a positive balance of the token
                 if (balanceToken > 0) {
                     if (_typeToken == TypeToken.ERC20) {
-                        TransferHelper.safeTransfer(
-                            _tokenAddress,
-                            returnedNFTWallet,
-                            balanceToken
-                        );
+                        TransferHelper.safeTransfer(_tokenAddress, returnedNFTWallet, balanceToken);
                     } else {
                         // Transfer other token types from this contract to the returnedNFTWallet
                         TransferHelper.safeTransferFrom(
@@ -3715,10 +3435,8 @@ contract Gacha is
          * or if the token address is not zero and the token type is a native token.
          */
         if (
-            (_addressToken == address(0) &&
-                _typeToken != TypeToken.NATIVE_TOKEN) ||
-            (_addressToken != address(0) &&
-                _typeToken == TypeToken.NATIVE_TOKEN)
+            (_addressToken == address(0) && _typeToken != TypeToken.NATIVE_TOKEN) ||
+            (_addressToken != address(0) && _typeToken == TypeToken.NATIVE_TOKEN)
         ) {
             revert("ZERO ADDRESS.");
         }
@@ -3763,21 +3481,14 @@ contract Gacha is
         listIdToken.push(indexOfTokenReward);
 
         // Emit an event to notify listeners that a new reward has been added.
-        emit AddNewReward(
-            _addressToken,
-            _unlockRate,
-            _typeToken,
-            address(this)
-        );
+        emit AddNewReward(_addressToken, _unlockRate, _typeToken, address(this));
     }
 
     /**
      * @dev Function to delete a token reward by its index.
      * @param _indexOfTokenReward Index of the token reward to be deleted.
      */
-    function deleteReward(
-        uint256 _indexOfTokenReward
-    ) external onlyRole(UPDATER_REWARDS_ROLE) {
+    function deleteReward(uint256 _indexOfTokenReward) external onlyRole(UPDATER_REWARDS_ROLE) {
         checkIndexOfTokenReward(_indexOfTokenReward);
 
         // Delete the reward token from the rewardTokens mapping
@@ -3814,10 +3525,7 @@ contract Gacha is
         if (_indexOfReward != 0) {
             checkIndexOfTokenReward(_indexOfReward);
         } else {
-            require(
-                _maxNumberAllowed == 0,
-                "MAX NUMBER ALLOWED SHOULD BE EQUAL ZERO."
-            );
+            require(_maxNumberAllowed == 0, "MAX NUMBER ALLOWED SHOULD BE EQUAL ZERO.");
         }
         // Update the unlock rate and maximum number allowed for the reward token
         rewardTokens[_indexOfReward].unlockRate = _rateOfLost;
@@ -3921,10 +3629,7 @@ contract Gacha is
         ChallengeInfo memory currentChallengeInfo = challengeInfo;
 
         // Check if the target steps per day for the current challenge is less than or equal to the goal of the new challenge
-        if (
-            currentChallengeInfo.targetStepPerDay <=
-            IChallenge(_challengeAddress).goal()
-        ) {
+        if (currentChallengeInfo.targetStepPerDay <= IChallenge(_challengeAddress).goal()) {
             /**
             @dev Checks if the current challenge's duration is less than or equal to the challenge's duration of the given challenge address.
             @param _challengeAddress The address of the challenge contract to compare the duration with.
@@ -3950,9 +3655,7 @@ contract Gacha is
                     if (
                         IChallenge(_challengeAddress).dayRequired() >=
                         challengeDuration.sub(
-                            challengeDuration.div(
-                                currentChallengeInfo.toleranceAmount
-                            )
+                            challengeDuration.div(currentChallengeInfo.toleranceAmount)
                         )
                     ) {
                         // This condition checks if the current challenge meets the criteria for paying dividends to the investors
@@ -3975,9 +3678,8 @@ contract Gacha is
                             }
 
                             // Get the percentage of award receivers
-                            uint256[] memory awardReceiversPercent = IChallenge(
-                                _challengeAddress
-                            ).getAwardReceiversPercent();
+                            uint256[] memory awardReceiversPercent = IChallenge(_challengeAddress)
+                                .getAwardReceiversPercent();
 
                             if (
                                 currentChallengeInfo.dividendStatus ==
@@ -3985,9 +3687,7 @@ contract Gacha is
                             ) {
                                 // Get the donation address from the challenge's ERC721 contract
                                 address donationAddress = IChallenge(
-                                    IChallenge(_challengeAddress).erc721Address(
-                                        0
-                                    )
+                                    IChallenge(_challengeAddress).erc721Address(0)
                                 ).donationWalletAddress();
                                 require(
                                     donationAddress != address(0),
@@ -3997,11 +3697,10 @@ contract Gacha is
                                 // Check if the first award receiver is the donation address with 98% of the reward
                                 if (awardReceiversPercent[0] == 98) {
                                     if (
-                                        IChallenge(_challengeAddress)
-                                            .getAwardReceiversAtIndex(
-                                                0,
-                                                true
-                                            ) == donationAddress
+                                        IChallenge(_challengeAddress).getAwardReceiversAtIndex(
+                                            0,
+                                            true
+                                        ) == donationAddress
                                     ) {
                                         return true;
                                     }
@@ -4010,25 +3709,19 @@ contract Gacha is
 
                             // Check if the dividend distribution has failed
                             if (
-                                currentChallengeInfo.dividendStatus ==
-                                DividendStatus.DIVIDEND_FAIL
+                                currentChallengeInfo.dividendStatus == DividendStatus.DIVIDEND_FAIL
                             ) {
                                 /**
                                  * Loop through the list of receivers and check if the receiver gets 98% of the reward and the receiver is an admin
                                  * Check if any of the award receivers are admins with 98% of the reward
                                  */
-                                for (
-                                    uint256 i = 1;
-                                    i < awardReceiversPercent.length;
-                                    i++
-                                ) {
+                                for (uint256 i = 1; i < awardReceiversPercent.length; i++) {
                                     if (awardReceiversPercent[i] == 98) {
                                         if (
-                                            IChallenge(_challengeAddress)
-                                                .getAwardReceiversAtIndex(
-                                                    0,
-                                                    false
-                                                ) == receiveAdminWallet
+                                            IChallenge(_challengeAddress).getAwardReceiversAtIndex(
+                                                0,
+                                                false
+                                            ) == receiveAdminWallet
                                         ) {
                                             return true;
                                         }
@@ -4107,10 +3800,8 @@ contract Gacha is
             return IERC721(tokenAddress).balanceOf(address(this)) >= 1;
         } else if (typeToken == TypeToken.ERC1155) {
             return
-                IERC1155(tokenAddress).balanceOf(
-                    address(this),
-                    currentRewardToken.indexToken
-                ) >= rewardValue;
+                IERC1155(tokenAddress).balanceOf(address(this), currentRewardToken.indexToken) >=
+                rewardValue;
         }
 
         // If the token type is unknown, return false
@@ -4142,15 +3833,10 @@ contract Gacha is
 
         // Loop through the list of token IDs and sum up their corresponding unlock rates
         for (uint256 i = 0; i < listIdToken.length; i++) {
-            totalUnlockReward = totalUnlockReward.add(
-                rewardTokens[listIdToken[i]].unlockRate
-            );
+            totalUnlockReward = totalUnlockReward.add(rewardTokens[listIdToken[i]].unlockRate);
         }
 
-        if (
-            listIdToken.length == 0 ||
-            rewardTokens[0].unlockRate >= totalUnlockReward
-        ) {
+        if (listIdToken.length == 0 || rewardTokens[0].unlockRate >= totalUnlockReward) {
             return 0;
         }
 
@@ -4167,8 +3853,7 @@ contract Gacha is
             } else {
                 // If not, generate a random number using VRFConsumerBase and the total unlock reward
                 randomNumber =
-                    IVRFConsumerBase(VRFConsumerBaseMultipleTime)
-                        .randomResult() %
+                    IVRFConsumerBase(VRFConsumerBaseMultipleTime).randomResult() %
                     totalUnlockReward;
 
                 // Call the getRandomNumber function on the VRFConsumerBase contract
@@ -4177,17 +3862,16 @@ contract Gacha is
         } else {
             if (typeRandomReward == TypeRandomReward.NORMAL_RANDOM_NUMBER) {
                 // Call the getRandomNumber function on the VRFConsumerBase contract
-                IVRFConsumerBase(randomClassicAddress)
-                    .createRandomNumberOnlyTime(totalUnlockReward);
+                IVRFConsumerBase(randomClassicAddress).createRandomNumberOnlyTime(
+                    totalUnlockReward
+                );
 
                 // If so, generate a random number based on the total unlock reward
-                randomNumber = IVRFConsumerBase(randomClassicAddress)
-                    .randomResult();
+                randomNumber = IVRFConsumerBase(randomClassicAddress).randomResult();
             } else {
                 // If not, generate a random number using VRFConsumerBase and the total unlock reward
                 randomNumber =
-                    IVRFConsumerBase(VRFConsumerBaseOnlyTime).randomResult() %
-                    totalUnlockReward;
+                    IVRFConsumerBase(VRFConsumerBaseOnlyTime).randomResult() % totalUnlockReward;
 
                 // Call the getRandomNumber function on the VRFConsumerBase contract
                 IVRFConsumerBase(VRFConsumerBaseOnlyTime).getRandomNumber();
@@ -4206,16 +3890,11 @@ contract Gacha is
 
         // Loop through the list of token IDs and check if the random number falls within their unlock rates
         for (uint256 i = 0; i < listIdToken.length; i++) {
-            if (
-                randomNumber <=
-                rewardTokens[listIdToken[i]].unlockRate + totalUnlock
-            ) {
+            if (randomNumber <= rewardTokens[listIdToken[i]].unlockRate + totalUnlock) {
                 idReward = listIdToken[i];
                 break;
             }
-            totalUnlock = totalUnlock.add(
-                rewardTokens[listIdToken[i]].unlockRate
-            );
+            totalUnlock = totalUnlock.add(rewardTokens[listIdToken[i]].unlockRate);
         }
         // Return the ID of the reward token to be given.
         return idReward;
@@ -4232,25 +3911,20 @@ contract Gacha is
             // If the NFT is an ERC-721 token
             if (typeNfts[requireBalanceNftAddress.values()[i]]) {
                 // If the address has a balance of this token
-                if (
-                    IERC721(requireBalanceNftAddress.values()[i]).balanceOf(
-                        _fromAddress
-                    ) > 0
-                ) {
+                if (IERC721(requireBalanceNftAddress.values()[i]).balanceOf(_fromAddress) > 0) {
                     return true;
                 }
             } else {
                 // If the NFT is an ERC-1155 token
                 // Get the current index token for this NFT
-                uint256 currentIndexToken = IERC1155(
-                    requireBalanceNftAddress.values()[i]
-                ).nextTokenIdToMint();
+                uint256 currentIndexToken = IERC1155(requireBalanceNftAddress.values()[i])
+                    .nextTokenIdToMint();
 
                 // Loop through all the tokens for this NFT that the address has a balance of
                 for (uint256 j = 0; j < currentIndexToken; j++) {
                     if (
-                        IERC1155(requireBalanceNftAddress.values()[i])
-                            .balanceOf(_fromAddress, j) > 0
+                        IERC1155(requireBalanceNftAddress.values()[i]).balanceOf(_fromAddress, j) >
+                        0
                     ) {
                         return true;
                     }
@@ -4278,13 +3952,13 @@ contract Gacha is
             return false;
         }
 
-        if(!checkExist()) {
+        if (!checkExist()) {
             return false;
         }
 
         // Get the address of the challenger from the challenge contract
         address challengerAddress = IChallenge(_challengeAddress).challenger();
-    
+
         if (
             countTimeActiveGacha[_challengeAddress][_currentDate] >=
             challengeInfo.timeLimitActiveGacha
@@ -4298,30 +3972,19 @@ contract Gacha is
         }
 
         // Check the balance of NFTs for the specific type of require balance
-        if (
-            challengeInfo.typeRequireBalanceNft ==
-            TypeRequireBalanceNft.REQUIRE_BALANCE_WALLET
-        ) {
+        if (challengeInfo.typeRequireBalanceNft == TypeRequireBalanceNft.REQUIRE_BALANCE_WALLET) {
             // Check the balance of NFTs in the challenger's wallet
             return checkBalanceNft(challengerAddress);
         }
 
         // Check the balance of NFTs in the challenge contract
-        if (
-            challengeInfo.typeRequireBalanceNft ==
-            TypeRequireBalanceNft.REQUIRE_BALANCE_CONTRACT
-        ) {
+        if (challengeInfo.typeRequireBalanceNft == TypeRequireBalanceNft.REQUIRE_BALANCE_CONTRACT) {
             return checkBalanceNft(_challengeAddress);
         }
 
         // Check the balance of NFTs in both the challenger's wallet and the challenge contract
-        if (
-            challengeInfo.typeRequireBalanceNft ==
-            TypeRequireBalanceNft.REQUIRE_BALANCE_ALL
-        ) {
-            return
-                checkBalanceNft(challengerAddress) &&
-                checkBalanceNft(_challengeAddress);
+        if (challengeInfo.typeRequireBalanceNft == TypeRequireBalanceNft.REQUIRE_BALANCE_ALL) {
+            return checkBalanceNft(challengerAddress) && checkBalanceNft(_challengeAddress);
         }
 
         // Return false if none of the above conditions are met
@@ -4331,11 +3994,7 @@ contract Gacha is
     /**
      * @dev Returns an array of all the addresses in the `requireBalanceNftAddress` mapping.
      */
-    function getRequireBalanceNftAddress()
-        external
-        view
-        returns (address[] memory)
-    {
+    function getRequireBalanceNftAddress() external view returns (address[] memory) {
         return requireBalanceNftAddress.values();
     }
 
@@ -4351,9 +4010,7 @@ contract Gacha is
      * @dev Returns an array of all token IDs that have been minted in the current contract.
      * @return An array of token IDs.
      */
-    function getListNftInReward(
-        uint256 indexReward
-    ) external view returns (uint256[] memory) {
+    function getListNftInReward(uint256 indexReward) external view returns (uint256[] memory) {
         return rewardTokens[indexReward].listNft;
     }
 
@@ -4452,7 +4109,7 @@ contract Gacha is
     function checkExist() public view returns (bool) {
         if (value[0] <= block.timestamp && value[1] >= block.timestamp) {
             return true;
-        } 
+        }
 
         return false;
     }

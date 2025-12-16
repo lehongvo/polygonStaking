@@ -1,14 +1,21 @@
-import { ethers } from "hardhat";
+import { ethers } from 'hardhat';
 
 // Minimal ABI: read-only getter for public variable stakingStakeId
-const CHALLENGE_ABI = [
-  "function stakingStakeId() view returns (uint256)"
-];
+const CHALLENGE_ABI = ['function stakingStakeId() view returns (uint256)'];
 
-export async function isStakingChallange(contractAddress: string, rpcUrl?: string): Promise<boolean> {
+export async function isStakingChallange(
+  contractAddress: string,
+  rpcUrl?: string
+): Promise<boolean> {
   try {
-    const provider = rpcUrl ? new (ethers as any).JsonRpcProvider(rpcUrl) : ethers.provider;
-    const contract = new (ethers as any).Contract(contractAddress, CHALLENGE_ABI, provider);
+    const provider = rpcUrl
+      ? new (ethers as any).JsonRpcProvider(rpcUrl)
+      : ethers.provider;
+    const contract = new (ethers as any).Contract(
+      contractAddress,
+      CHALLENGE_ABI,
+      provider
+    );
     await contract.stakingStakeId();
     return true; // call succeeded => contract exposes stakingStakeId
   } catch {
@@ -18,10 +25,11 @@ export async function isStakingChallange(contractAddress: string, rpcUrl?: strin
 
 // CLI usage: ADDR=0x... [RPC=https://...] npx hardhat run scripts/challenge/isStaking.ts --network polygon
 async function main() {
-  const addr = process.env.ADDR || "";
-  const rpc = process.env.RPC || process.env.POLYGON_RPC || process.env.JSON_RPC;
+  const addr = process.env.ADDR || '';
+  const rpc =
+    process.env.RPC || process.env.POLYGON_RPC || process.env.JSON_RPC;
   if (!addr) {
-    console.log("Missing ADDR env");
+    console.log('Missing ADDR env');
     return;
   }
   const ok = await isStakingChallange(addr, rpc);
@@ -29,7 +37,7 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch((e) => {
+  main().catch(e => {
     console.error(e);
     process.exit(1);
   });
