@@ -1,4 +1,4 @@
-const contractAddress1 = '0xB8dF4ff3ca5Eb533b27E8B1653130cAEf449acFF'; // true
+const contractAddress1 = '0xEDbA0F87f3Cd04F01e1BA2Dc6801bb797b865534'; // true
 const contractAddress2 = '0x9a9f18ab74eda104dfa8cc2d1a6e83888c2060ef'; // false
 const abiChallengeWalkingSpeed = [
   {
@@ -784,6 +784,47 @@ const isChallengeWalkingSpeed = async (contractAddress, rpc) => {
   }
 };
 
+/**
+ * Get historyMinutesAtTargetSpeed from a ChallengeWalkingSpeed contract
+ * @param {string} contractAddress - The contract address to query
+ * @param {string} rpc - The RPC URL to connect to the blockchain
+ * @returns {Promise<number[]>} - Array of minutes at target speed for each day, or empty array on error
+ */
+const getHistoryMinutesAtTargetSpeed = async (contractAddress, rpc) => {
+  try {
+    // Create provider with provided RPC URL
+    const provider = new ethers.JsonRpcProvider(rpc);
+
+    // Create contract instance
+    const contract = new ethers.Contract(
+      contractAddress,
+      abiChallengeWalkingSpeed,
+      provider
+    );
+
+    // Get history by calling historyMinutesAtTargetSpeed(index) for each index
+    // We'll try indices starting from 0 until we get an error (index out of bounds)
+    const history = [];
+    let index = 0;
+    
+    while (true) {
+      try {
+        const minutes = await contract.historyMinutesAtTargetSpeed(index);
+        history.push(Number(minutes));
+        index++;
+      } catch (error) {
+        // If we get an error, we've reached the end of the array
+        break;
+      }
+    }
+
+    return history;
+  } catch (error) {
+    // If any error occurs, return empty array
+    return [];
+  }
+};
+
 const main = async () => {
   console.log('Testing contract addresses...\n');
   
@@ -795,11 +836,21 @@ const main = async () => {
   
   const result2 = await isChallengeWalkingSpeed(contractAddress2, rpcUrl);
   console.log(`Contract ${contractAddress2}: ${result2.isChallengeWalkingSpeed ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`);
+  
+  // Test getHistoryMinutesAtTargetSpeed function
+  console.log('\nTesting getHistoryMinutesAtTargetSpeed function...\n');
+  
+  const history1 = await getHistoryMinutesAtTargetSpeed(contractAddress1, rpcUrl);
+  console.log(`History for ${contractAddress1}:`, history1.length > 0 ? history1 : '[] (empty or error)');
+  
+  const history2 = await getHistoryMinutesAtTargetSpeed(contractAddress2, rpcUrl);
+  console.log(`History for ${contractAddress2}:`, history2.length > 0 ? history2 : '[] (empty or error)');
 };
 
 // Export for use in other modules
 module.exports = {
   isChallengeWalkingSpeed,
+  getHistoryMinutesAtTargetSpeed,
   abiChallengeWalkingSpeed,
 };
 
