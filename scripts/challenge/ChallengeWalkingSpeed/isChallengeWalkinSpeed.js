@@ -762,14 +762,16 @@ const isChallengeWalkingSpeed = async (contractAddress, rpc) => {
 
     // Check if walkingSpeedData has data by calling walkingSpeedData(0)
     // If it's a ChallengeWalkingSpeed contract, this should return a value
-    const walkingSpeedData0 = await contract.walkingSpeedData(0);
+    const targetSpeed = await contract.walkingSpeedData(0);
+    const requiredMinutesPerDay = await contract.walkingSpeedData(1);
+    const minAchievementDays = await contract.walkingSpeedData(2);
     
     // If we get here without error and have a value, it's likely a ChallengeWalkingSpeed contract
     // Check if the value is not zero (or just check that it exists)
-    return walkingSpeedData0 !== undefined && walkingSpeedData0 !== null;
+    return {isChallengeWalkingSpeed: true, data: {targetSpeed, requiredMinutesPerDay, minAchievementDays}};
   } catch (error) {
     // If any error occurs (function doesn't exist, contract doesn't exist, etc.), return false
-    return false;
+    return {isChallengeWalkingSpeed: false, data: {targetSpeed: 0, requiredMinutesPerDay: 0, minAchievementDays: 0}};
   }
 };
 
@@ -780,10 +782,10 @@ const main = async () => {
   const rpcUrl = process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com';
   
   const result1 = await isChallengeWalkingSpeed(contractAddress1, rpcUrl);
-  console.log(`Contract ${contractAddress1}: ${result1 ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`);
+  console.log(`Contract ${contractAddress1}: ${result1.isChallengeWalkingSpeed ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`);
   
   const result2 = await isChallengeWalkingSpeed(contractAddress2, rpcUrl);
-  console.log(`Contract ${contractAddress2}: ${result2 ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`);
+  console.log(`Contract ${contractAddress2}: ${result2.isChallengeWalkingSpeed ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`);
 };
 
 // Export for use in other modules
