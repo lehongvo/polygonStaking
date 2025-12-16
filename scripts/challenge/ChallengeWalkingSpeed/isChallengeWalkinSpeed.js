@@ -760,15 +760,24 @@ const isChallengeWalkingSpeed = async (contractAddress, rpc) => {
       provider
     );
 
-    // Check if walkingSpeedData has data by calling walkingSpeedData(0)
-    // If it's a ChallengeWalkingSpeed contract, this should return a value
-    const targetSpeed = await contract.walkingSpeedData(0);
-    const requiredMinutesPerDay = await contract.walkingSpeedData(1);
-    const minAchievementDays = await contract.walkingSpeedData(2);
+    // Check if walkingSpeedData has data by calling walkingSpeedData(0, 1, 2) in parallel
+    // If it's a ChallengeWalkingSpeed contract, this should return values
+    const [targetSpeed, requiredMinutesPerDay, minAchievementDays] = await Promise.all([
+      contract.walkingSpeedData(0),
+      contract.walkingSpeedData(1),
+      contract.walkingSpeedData(2),
+    ]);
     
-    // If we get here without error and have a value, it's likely a ChallengeWalkingSpeed contract
-    // Check if the value is not zero (or just check that it exists)
-    return {isChallengeWalkingSpeed: true, data: {targetSpeed, requiredMinutesPerDay, minAchievementDays}};
+    // If we get here without error and have values, it's likely a ChallengeWalkingSpeed contract
+    // Convert BigInt to Number and return
+    return {
+      isChallengeWalkingSpeed: true,
+      data: {
+        targetSpeed: Number(targetSpeed),
+        requiredMinutesPerDay: Number(requiredMinutesPerDay),
+        minAchievementDays: Number(minAchievementDays),
+      },
+    };
   } catch (error) {
     // If any error occurs (function doesn't exist, contract doesn't exist, etc.), return false
     return {isChallengeWalkingSpeed: false, data: {targetSpeed: 0, requiredMinutesPerDay: 0, minAchievementDays: 0}};
