@@ -157,6 +157,7 @@ async function main() {
     console.log('===============================');
     try {
       await contract.deploymentTransaction()?.wait(5);
+      await new Promise(resolve => setTimeout(resolve, 10000));
       await run('verify:verify', {
         address: contractAddress,
         constructorArguments: constructorArgs,
@@ -165,18 +166,6 @@ async function main() {
     } catch (error) {
       console.warn('⚠️  Contract verification failed:', error);
     }
-  }
-
-  // Grant challenge role
-  console.log('\n🔐 GRANTING CHALLENGE ROLE');
-  console.log('===========================');
-
-  let roleGrantTxHash: string | null = null;
-  try {
-    roleGrantTxHash = await batchGrantRole(contractAddress);
-    console.log('✅ Challenge role granted');
-  } catch (error) {
-    console.warn('⚠️  Failed to grant challenge role:', error);
   }
 
   // Save deployment information
@@ -203,11 +192,6 @@ async function main() {
       awardReceiversPercent: config.awardReceiversPercent,
       totalAmount: config.totalAmount,
       walkingSpeedData: config.walkingSpeedData,
-    },
-    roleGranted: {
-      challengeRole: roleGrantTxHash ? true : false,
-      transactionHash: roleGrantTxHash,
-      timestamp: new Date().toISOString(),
     },
   };
 
