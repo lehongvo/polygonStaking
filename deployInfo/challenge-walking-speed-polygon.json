@@ -1,0 +1,57 @@
+{
+  "network": "polygon",
+  "contractName": "ChallengeWalkingSpeed",
+  "contractAddress": "0xEDbA0F87f3Cd04F01e1BA2Dc6801bb797b865534",
+  "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+  "deploymentTime": "2025-12-16T14:57:01.466Z",
+  "blockNumber": 80393785,
+  "constructorArgs": {
+    "stakeHolders": [
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+    ],
+    "createByToken": "0x0000000000000000000000000000000000000000",
+    "erc721Addresses": [
+      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
+    ],
+    "primaryRequired": [
+      2,
+      1752742657,
+      1797107364,
+      10,
+      2
+    ],
+    "awardReceivers": [
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
+    ],
+    "index": 1,
+    "allowGiveUp": [
+      true,
+      true,
+      true
+    ],
+    "gasData": [
+      "200000000000000000",
+      "200000000000000000",
+      "0"
+    ],
+    "allAwardToSponsorWhenGiveUp": true,
+    "awardReceiversPercent": [
+      100,
+      100
+    ],
+    "totalAmount": "1000000000000",
+    "walkingSpeedData": [
+      50,
+      120,
+      2
+    ]
+  },
+  "roleGranted": {
+    "challengeRole": true,
+    "transactionHash": "0xdcd19237320d17012e5b4e6cde1e808779223fcb49e1dd4128fa1414324e17ac",
+    "timestamp": "2025-12-16T14:57:01.733Z"
+  }
+}
