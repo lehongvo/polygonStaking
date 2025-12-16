@@ -80,15 +80,15 @@ async function main() {
   console.log('==========================');
   console.log({
     days,
-      steps,
-      emptyAddresses1: emptyAddresses,
-      emptyAddresses2:emptyAddresses,
-      emptyIndex,
-      emptySender,
-      emptyStatus,
-      timeRange,
-      minutes
-  })
+    steps,
+    emptyAddresses1: emptyAddresses,
+    emptyAddresses2: emptyAddresses,
+    emptyIndex,
+    emptySender,
+    emptyStatus,
+    timeRange,
+    minutes,
+  });
 
   try {
     const estimatedGas = await contract.sendDailyResult.estimateGas(
@@ -104,14 +104,11 @@ async function main() {
     );
 
     const feeData = await hre.ethers.provider.getFeeData();
-    const gasPrice =
-      feeData.gasPrice ?? hre.ethers.parseUnits('40', 'gwei');
+    const gasPrice = feeData.gasPrice ?? hre.ethers.parseUnits('40', 'gwei');
     const gasLimit = Math.ceil(Number(estimatedGas) * 1.2);
 
     console.log(`Estimated gas: ${estimatedGas.toString()}`);
-    console.log(
-      `Gas price: ${hre.ethers.formatUnits(gasPrice, 'gwei')} gwei`
-    );
+    console.log(`Gas price: ${hre.ethers.formatUnits(gasPrice, 'gwei')} gwei`);
     console.log(`Gas limit: ${gasLimit}`);
 
     const tx = await contract.sendDailyResult(
@@ -147,5 +144,3 @@ main()
     console.error('💥 SCRIPT FAILED:', error);
     process.exit(1);
   });
-
-
