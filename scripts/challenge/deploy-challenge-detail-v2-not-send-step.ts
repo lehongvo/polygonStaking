@@ -44,7 +44,9 @@ async function main() {
       config = normalizeConfig(parsed);
       console.log('✅ Configuration loaded from ENV (CONFIG_DEPLOY_CHALLENGE)');
     } else {
-      console.error('❌ CONFIG_DEPLOY_CHALLENGE not found in environment variables');
+      console.error(
+        '❌ CONFIG_DEPLOY_CHALLENGE not found in environment variables'
+      );
       process.exit(1);
     }
   } catch (error) {
@@ -72,42 +74,57 @@ async function main() {
     config.gasData,
     config.allAwardToSponsorWhenGiveUp,
     config.awardReceiversPercent,
-    config.totalAmount
+    config.totalAmount,
   ];
 
   console.log('\n🏗️  DEPLOYING CONTRACT');
   console.log('======================');
 
-  const ContractFactory = await hre.ethers.getContractFactory('ChallengeDetailV2');
+  const ContractFactory =
+    await hre.ethers.getContractFactory('ChallengeDetailV2');
 
   console.log('⏳ Deploying ChallengeDetailV2...', constructorArgs);
   let contract: any;
   try {
-    const baseOverrides = (config.allowGiveUp && config.allowGiveUp[1]) ? { value: config.totalAmount } : {};
+    const baseOverrides =
+      config.allowGiveUp && config.allowGiveUp[1]
+        ? { value: config.totalAmount }
+        : {};
     console.log('baseOverrides', baseOverrides);
 
     // Estimate gas and fees
-    const unsignedTx = await ContractFactory.getDeployTransaction(...constructorArgs, baseOverrides);
+    const unsignedTx = await ContractFactory.getDeployTransaction(
+      ...constructorArgs,
+      baseOverrides
+    );
     const [signer] = await hre.ethers.getSigners();
     const estimatedGas = await signer.estimateGas(unsignedTx);
-    
+
     // Get current gas price and calculate cost
     const feeData = await hre.ethers.provider.getFeeData();
     const defaultGasPrice = hre.ethers.parseUnits('40', 'gwei');
     const gasPrice = feeData.gasPrice ?? defaultGasPrice;
     const estCostWei = estimatedGas * gasPrice;
-    
+
     console.log(`Estimated gas: ${estimatedGas.toString()}`);
     console.log(`Gas price: ${hre.ethers.formatUnits(gasPrice, 'gwei')} gwei`);
     console.log(`Estimated cost: ${hre.ethers.formatEther(estCostWei)} ETH`);
 
     // Add 1% buffer to gas limit for safety
     const gasLimit = Math.ceil(Number(estimatedGas) * 1.01);
-    const overrides = feeData.maxFeePerGas && feeData.maxPriorityFeePerGas
-      ? { ...baseOverrides, gasLimit, maxFeePerGas: feeData.maxFeePerGas, maxPriorityFeePerGas: feeData.maxPriorityFeePerGas }
-      : { ...baseOverrides, gasLimit, gasPrice };
-    
-    console.log(`Using gas limit: ${gasLimit} (${Math.round((gasLimit / Number(estimatedGas) - 1) * 100)}% buffer)`);
+    const overrides =
+      feeData.maxFeePerGas && feeData.maxPriorityFeePerGas
+        ? {
+            ...baseOverrides,
+            gasLimit,
+            maxFeePerGas: feeData.maxFeePerGas,
+            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+          }
+        : { ...baseOverrides, gasLimit, gasPrice };
+
+    console.log(
+      `Using gas limit: ${gasLimit} (${Math.round((gasLimit / Number(estimatedGas) - 1) * 100)}% buffer)`
+    );
 
     contract = await ContractFactory.deploy(...constructorArgs, overrides);
     await contract.waitForDeployment();
@@ -146,14 +163,20 @@ async function main() {
 
     console.log(`✅ Sponsor: ${sponsor}`);
     console.log(`✅ Challenger: ${challenger}`);
-    console.log(`✅ Start Time: ${new Date(Number(startTime) * 1000).toISOString()}`);
-    console.log(`✅ End Time: ${new Date(Number(endTime) * 1000).toISOString()}`);
+    console.log(
+      `✅ Start Time: ${new Date(Number(startTime) * 1000).toISOString()}`
+    );
+    console.log(
+      `✅ End Time: ${new Date(Number(endTime) * 1000).toISOString()}`
+    );
     console.log(`✅ Goal: ${goal} steps`);
     console.log(`✅ Day Required: ${dayRequired} days`);
     console.log(`✅ Create By Token: ${createByToken}`);
     console.log(`✅ Staking Stake ID: ${stakingStakeId}`);
-    console.log(`✅ Auto-staking: ${stakingStakeId > 0 ? 'Enabled' : 'Disabled'}`);
-    
+    console.log(
+      `✅ Auto-staking: ${stakingStakeId > 0 ? 'Enabled' : 'Disabled'}`
+    );
+
     console.log('✅ All basic functionality tests passed');
   } catch (error) {
     console.error('❌ Basic functionality test failed:', error);
@@ -222,9 +245,11 @@ async function main() {
     stakingInfo: {
       enabled: (await contract.stakingStakeId()) > 0,
       stakeId: Number(await contract.stakingStakeId()),
-      tokenType: config.createByToken === hre.ethers.ZeroAddress ? 'MATIC' : 'ERC20',
+      tokenType:
+        config.createByToken === hre.ethers.ZeroAddress ? 'MATIC' : 'ERC20',
       protocol: 'aave_lending',
-      duration: Number(await contract.endTime()) - Number(await contract.startTime()),
+      duration:
+        Number(await contract.endTime()) - Number(await contract.startTime()),
     },
     verification: {
       verified: network.name !== 'hardhat' && network.name !== 'localhost',
@@ -242,8 +267,8 @@ async function main() {
       testData: {
         days: [10],
         stepIndex: [1000],
-        timeRange: [1, 100]
-      }
+        timeRange: [1, 100],
+      },
     },
   };
 
@@ -264,17 +289,27 @@ async function main() {
   console.log(`Deployer: ${deployer.address}`);
   console.log(`Block: ${deploymentInfo.blockNumber}`);
   console.log(`Time: ${deploymentInfo.deploymentTime}`);
-  console.log(`Auto-staking: ${deploymentInfo.stakingInfo.enabled ? 'Enabled' : 'Disabled'}`);
+  console.log(
+    `Auto-staking: ${deploymentInfo.stakingInfo.enabled ? 'Enabled' : 'Disabled'}`
+  );
   console.log(`Token Type: ${deploymentInfo.stakingInfo.tokenType}`);
-  console.log(`Duration: ${Math.floor(+(Number(await contract.endTime()) - Number(await contract.startTime())) / 86400)} days`);
+  console.log(
+    `Duration: ${Math.floor(+(Number(await contract.endTime()) - Number(await contract.startTime())) / 86400)} days`
+  );
   console.log(`Explorer: ${deploymentInfo.verification.explorerUrl}`);
-  console.log(`Challenge Role: ${deploymentInfo.roleGranted.challengeRole ? 'Granted' : 'Not Granted'}`);
+  console.log(
+    `Challenge Role: ${deploymentInfo.roleGranted.challengeRole ? 'Granted' : 'Not Granted'}`
+  );
   if (deploymentInfo.roleGranted.transactionHash) {
     console.log(`Role Grant TX: ${deploymentInfo.roleGranted.transactionHash}`);
   }
-  console.log(`Send Daily Result: ${deploymentInfo.transactionSendStep.sent ? 'Sent' : 'Not Sent'}`);
+  console.log(
+    `Send Daily Result: ${deploymentInfo.transactionSendStep.sent ? 'Sent' : 'Not Sent'}`
+  );
   if (deploymentInfo.transactionSendStep.transactionHash) {
-    console.log(`Send Step TX: ${deploymentInfo.transactionSendStep.transactionHash}`);
+    console.log(
+      `Send Step TX: ${deploymentInfo.transactionSendStep.transactionHash}`
+    );
   }
 
   console.log('\n🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!');
@@ -310,7 +345,9 @@ function getExplorerUrl(networkName: string, address: string): string {
 function parseEnvConfig(raw: string): any {
   try {
     // Accept JSON or JS-like object from .env
-    const normalized = raw.trim().startsWith('{') ? raw : raw.replace(/^CONFIG_DEPLOY_CHALLENGE\s*=\s*/,'');
+    const normalized = raw.trim().startsWith('{')
+      ? raw
+      : raw.replace(/^CONFIG_DEPLOY_CHALLENGE\s*=\s*/, '');
     return JSON.parse(normalized);
   } catch (e) {
     throw new Error('Invalid CONFIG_DEPLOY_CHALLENGE JSON in .env');
@@ -331,7 +368,8 @@ function toWei(value: string): bigint {
 }
 
 function normalizeConfig(input: any): ChallengeDeploymentConfig {
-  const toBool = (v: any) => (typeof v === 'boolean' ? v : String(v).toLowerCase() === 'true');
+  const toBool = (v: any) =>
+    typeof v === 'boolean' ? v : String(v).toLowerCase() === 'true';
   const toNum = (v: any) => (typeof v === 'number' ? v : Number(v));
   return {
     stakeHolders: input.stakeHolders,
@@ -343,7 +381,9 @@ function normalizeConfig(input: any): ChallengeDeploymentConfig {
     allowGiveUp: input.allowGiveUp.map((b: any) => toBool(b)),
     gasData: input.gasData.map((g: any) => String(g)),
     allAwardToSponsorWhenGiveUp: toBool(input.allAwardToSponsorWhenGiveUp),
-    awardReceiversPercent: input.awardReceiversPercent.map((n: any) => toNum(n)),
+    awardReceiversPercent: input.awardReceiversPercent.map((n: any) =>
+      toNum(n)
+    ),
     totalAmount: String(input.totalAmount),
   };
 }

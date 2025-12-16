@@ -52,7 +52,13 @@ interface IWMATIC {
  * @dev DeFi staking aggregator contract for Polygon PoS
  * Enhanced with time-locking features and multi-token support
  */
-contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, UUPSUpgradeable {
+contract PolygonDeFiAggregator is
+    Initializable,
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable,
+    UUPSUpgradeable
+{
     using SafeERC20 for IERC20;
 
     struct TimeLockedStake {
@@ -143,7 +149,7 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
         _disableInitializers();
     }
 
-    function initialize(address initialOwner, address _wmaticAddress) initializer public {
+    function initialize(address initialOwner, address _wmaticAddress) public initializer {
         __Ownable_init(initialOwner);
         __ReentrancyGuard_init();
         __Pausable_init();
@@ -320,7 +326,10 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
      * @dev Withdraw time-locked stake
      * @param _stakeId ID of the stake to withdraw
      */
-    function withdrawTimeLockedStake(uint256 _stakeId, address systemFeeAddress) external nonReentrant {
+    function withdrawTimeLockedStake(
+        uint256 _stakeId,
+        address systemFeeAddress
+    ) external nonReentrant {
         UserPosition storage position = userPositions[msg.sender];
         require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
 
@@ -337,7 +346,7 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
 
         // Calculate rewards and ensure we don't lose principal
         uint256 rewards = actualWithdrawn > stake.amount ? actualWithdrawn - stake.amount : 0;
-        
+
         // Calculate system fee from rewards only (not from principal)
         uint256 systemFeeAmount = 0;
         uint256 remaining = rewards;
@@ -359,34 +368,37 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
         // Handle withdrawal - transfer principal and rewards separately for visibility
         if (stake.stakingToken == WMATIC_ADDRESS) {
             IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
-            
+
             // Transfer principal amount
             wmatic.withdraw(stake.amount);
-            (bool success1, ) = msg.sender.call{value: stake.amount}("");
+            (bool success1, ) = msg.sender.call{ value: stake.amount }("");
             require(success1, "Principal MATIC transfer failed");
-            
+
             // Transfer rewards if any
             if (rewards > 0) {
                 wmatic.withdraw(remaining);
-                (bool success2, ) = msg.sender.call{value: remaining}("");
+                (bool success2, ) = msg.sender.call{ value: remaining }("");
                 require(success2, "Rewards MATIC transfer failed");
             }
-            
+
             // Transfer system fee to specified address if any
             if (systemFeeAmount > 0) {
                 wmatic.withdraw(systemFeeAmount);
-                (bool success3, ) = systemFeeAddress.call{value: systemFeeAmount}("");
+                (bool success3, ) = systemFeeAddress.call{ value: systemFeeAmount }("");
                 require(success3, "System fee MATIC transfer failed");
             }
         } else {
             // Transfer principal
-            IERC20(stake.stakingToken).safeTransfer(msg.sender, actualWithdrawn <= stake.amount ? actualWithdrawn : stake.amount);
-            
+            IERC20(stake.stakingToken).safeTransfer(
+                msg.sender,
+                actualWithdrawn <= stake.amount ? actualWithdrawn : stake.amount
+            );
+
             // Transfer rewards if any
             if (rewards > 0) {
                 IERC20(stake.stakingToken).safeTransfer(msg.sender, remaining);
             }
-            
+
             // Transfer system fee to specified address if any
             if (systemFeeAmount > 0) {
                 IERC20(stake.stakingToken).safeTransfer(systemFeeAddress, systemFeeAmount);
@@ -573,7 +585,11 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
     /**
      * @dev Get system fee information
      */
-    function getSystemFeeInfo() external view returns (uint256 feePercent, uint256 feeInBasisPoints) {
+    function getSystemFeeInfo()
+        external
+        view
+        returns (uint256 feePercent, uint256 feeInBasisPoints)
+    {
         return (percentFeeForSystem, percentFeeForSystem);
     }
 
@@ -616,7 +632,7 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
         if (_token == 0xD6DF932A45C0f255f85145f286eA0b292B21C90B) {
             return 0xf329e36C7bF6E5E86ce2150875a84Ce77f477375; // aPolAAVE
         }
-        
+
         revert("aToken address not found for this token");
     }
 
@@ -662,11 +678,14 @@ contract PolygonDeFiAggregator is Initializable, OwnableUpgradeable, ReentrancyG
      * @param _percentFee New fee percentage (0-100 basis points)
      */
     function setPercentFeeForSystem(uint256 _percentFee) external onlyOwner {
-        require(_percentFee >= 0 && _percentFee <= 100, "Fee must be between 0 and 100 basis points");
-        
+        require(
+            _percentFee >= 0 && _percentFee <= 100,
+            "Fee must be between 0 and 100 basis points"
+        );
+
         uint256 oldFee = percentFeeForSystem;
         percentFeeForSystem = _percentFee;
-        
+
         emit FeeUpdated(oldFee, _percentFee);
     }
 

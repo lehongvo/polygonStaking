@@ -20,17 +20,14 @@ contract ConstructorStakeExample {
     uint256 public immutable stakedAmount;
     address public immutable owner;
 
-    constructor(
-        uint256 _amount,
-        string memory _protocol
-    ) payable {
+    constructor(uint256 _amount, string memory _protocol) payable {
         require(msg.value == _amount, "value != amount");
         owner = msg.sender; // Set owner
         stakedAmount = _amount;
-        
+
         IPolygonDeFiAggregatorExample agg = IPolygonDeFiAggregatorExample(aggregator);
         address wmatic = agg.WMATIC_ADDRESS();
-        uint256 id = agg.createTimeLockedStake{value: _amount}(
+        uint256 id = agg.createTimeLockedStake{ value: _amount }(
             wmatic,
             _amount,
             _protocol,
@@ -45,18 +42,18 @@ contract ConstructorStakeExample {
      */
     function withdrawStake() external {
         require(msg.sender == owner, "Only owner can withdraw");
-        
+
         // Get balance before withdrawal
         uint256 balanceBefore = address(this).balance;
-        
+
         // Withdraw from staking protocol
         IPolygonDeFiAggregatorExample agg = IPolygonDeFiAggregatorExample(aggregator);
         agg.withdrawTimeLockedStake(stakeId);
-        
+
         // Get balance after withdrawal
         uint256 balanceAfter = address(this).balance;
         uint256 withdrawnAmount = balanceAfter - balanceBefore;
-        
+
         // Transfer all withdrawn amount to owner
         if (withdrawnAmount > 0) {
             payable(owner).transfer(withdrawnAmount);
@@ -93,5 +90,3 @@ contract ConstructorStakeExample {
      */
     fallback() external payable {}
 }
-
-

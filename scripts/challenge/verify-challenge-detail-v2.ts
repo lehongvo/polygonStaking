@@ -63,7 +63,7 @@ async function main() {
 
   try {
     console.log('⏳ Verifying contract source code...');
-    
+
     await run('verify:verify', {
       address: deploymentInfo.contractAddress,
       constructorArguments: [
@@ -74,10 +74,12 @@ async function main() {
         deploymentInfo.constructorArgs.awardReceivers,
         deploymentInfo.constructorArgs.index,
         deploymentInfo.constructorArgs.allowGiveUp,
-        deploymentInfo.constructorArgs.gasData.map((g: string) => ethers.parseEther(g)),
+        deploymentInfo.constructorArgs.gasData.map((g: string) =>
+          ethers.parseEther(g)
+        ),
         deploymentInfo.constructorArgs.allAwardToSponsorWhenGiveUp,
         deploymentInfo.constructorArgs.awardReceiversPercent,
-        ethers.parseEther(deploymentInfo.constructorArgs.totalAmount)
+        ethers.parseEther(deploymentInfo.constructorArgs.totalAmount),
       ],
     });
 
@@ -86,29 +88,30 @@ async function main() {
     // Update deployment info
     deploymentInfo.verification.verified = true;
     deploymentInfo.verification.explorerUrl = getExplorerUrl(
-      network.name, 
+      network.name,
       deploymentInfo.contractAddress
     );
 
     fs.writeFileSync(deploymentPath, JSON.stringify(deploymentInfo, null, 2));
     console.log('✅ Deployment info updated');
-
   } catch (error: any) {
     if (error.message.includes('Already Verified')) {
       console.log('✅ Contract was already verified!');
-      
+
       // Update deployment info
       deploymentInfo.verification.verified = true;
       deploymentInfo.verification.explorerUrl = getExplorerUrl(
-        network.name, 
+        network.name,
         deploymentInfo.contractAddress
       );
-      
+
       fs.writeFileSync(deploymentPath, JSON.stringify(deploymentInfo, null, 2));
     } else {
       console.error('❌ Verification failed:', error.message);
       console.log('\n🔧 Manual verification command:');
-      console.log(`npx hardhat verify --network ${network.name} ${deploymentInfo.contractAddress} \\`);
+      console.log(
+        `npx hardhat verify --network ${network.name} ${deploymentInfo.contractAddress} \\`
+      );
       console.log(`  "${deploymentInfo.constructorArgs.stakeHolders}" \\`);
       console.log(`  "${deploymentInfo.constructorArgs.createByToken}" \\`);
       console.log(`  "${deploymentInfo.constructorArgs.erc721Addresses}" \\`);
@@ -116,10 +119,18 @@ async function main() {
       console.log(`  "${deploymentInfo.constructorArgs.awardReceivers}" \\`);
       console.log(`  ${deploymentInfo.constructorArgs.index} \\`);
       console.log(`  "${deploymentInfo.constructorArgs.allowGiveUp}" \\`);
-      console.log(`  "${deploymentInfo.constructorArgs.gasData.map((g: string) => ethers.parseEther(g))}" \\`);
-      console.log(`  ${deploymentInfo.constructorArgs.allAwardToSponsorWhenGiveUp} \\`);
-      console.log(`  "${deploymentInfo.constructorArgs.awardReceiversPercent}" \\`);
-      console.log(`  ${ethers.parseEther(deploymentInfo.constructorArgs.totalAmount)}`);
+      console.log(
+        `  "${deploymentInfo.constructorArgs.gasData.map((g: string) => ethers.parseEther(g))}" \\`
+      );
+      console.log(
+        `  ${deploymentInfo.constructorArgs.allAwardToSponsorWhenGiveUp} \\`
+      );
+      console.log(
+        `  "${deploymentInfo.constructorArgs.awardReceiversPercent}" \\`
+      );
+      console.log(
+        `  ${ethers.parseEther(deploymentInfo.constructorArgs.totalAmount)}`
+      );
       process.exit(1);
     }
   }
@@ -133,8 +144,12 @@ async function main() {
   console.log(`Verified: ✅ Yes`);
   console.log(`Explorer: ${deploymentInfo.verification.explorerUrl}`);
   console.log(`Source Code: ${deploymentInfo.verification.explorerUrl}#code`);
-  console.log(`Read Contract: ${deploymentInfo.verification.explorerUrl}#readContract`);
-  console.log(`Write Contract: ${deploymentInfo.verification.explorerUrl}#writeContract`);
+  console.log(
+    `Read Contract: ${deploymentInfo.verification.explorerUrl}#readContract`
+  );
+  console.log(
+    `Write Contract: ${deploymentInfo.verification.explorerUrl}#writeContract`
+  );
 
   console.log('\n🎉 VERIFICATION COMPLETED SUCCESSFULLY!');
   console.log('=====================================');

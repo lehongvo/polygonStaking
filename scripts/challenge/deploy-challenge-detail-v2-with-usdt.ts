@@ -38,9 +38,13 @@ async function main() {
     if (envConfigRaw && envConfigRaw.trim().length > 0) {
       const parsed = parseEnvConfig(envConfigRaw);
       config = normalizeConfig(parsed);
-      console.log('✅ Configuration loaded from ENV (CONFIG_DEPLOY_CHALLENGE_USDT)');
+      console.log(
+        '✅ Configuration loaded from ENV (CONFIG_DEPLOY_CHALLENGE_USDT)'
+      );
     } else {
-      console.error('❌ CONFIG_DEPLOY_CHALLENGE_USDT not found in environment variables');
+      console.error(
+        '❌ CONFIG_DEPLOY_CHALLENGE_USDT not found in environment variables'
+      );
       process.exit(1);
     }
   } catch (error) {
@@ -50,51 +54,73 @@ async function main() {
   const balance = await hre.ethers.provider.getBalance(deployer.address);
   const minBalance = hre.ethers.parseEther('0.1');
   if (balance < minBalance) {
-    console.error(`❌ Insufficient balance. Need at least ${hre.ethers.formatEther(minBalance)} ETH`);
+    console.error(
+      `❌ Insufficient balance. Need at least ${hre.ethers.formatEther(minBalance)} ETH`
+    );
     process.exit(1);
   }
 
   // Check USDT balance for deployment
   if (config.createByToken !== hre.ethers.ZeroAddress) {
-    const usdtContract = await hre.ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", config.createByToken);
+    const usdtContract = await hre.ethers.getContractAt(
+      '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+      config.createByToken
+    );
     const deployerUsdtBalance = await usdtContract.balanceOf(deployer.address);
-    
+
     if (deployerUsdtBalance < config.totalAmount) {
-      console.error(`❌ Insufficient USDT balance. Need: ${hre.ethers.formatUnits(config.totalAmount, 6)} USDT`);
+      console.error(
+        `❌ Insufficient USDT balance. Need: ${hre.ethers.formatUnits(config.totalAmount, 6)} USDT`
+      );
       process.exit(1);
     }
   }
 
   // STEP 1: Pre-calculate contract address and approve USDT
   if (config.createByToken !== hre.ethers.ZeroAddress) {
-    console.log('\n💰 STEP 1: PRE-CALCULATING CONTRACT ADDRESS & APPROVING USDT');
-    
-    const usdtContract = await hre.ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", config.createByToken);
+    console.log(
+      '\n💰 STEP 1: PRE-CALCULATING CONTRACT ADDRESS & APPROVING USDT'
+    );
+
+    const usdtContract = await hre.ethers.getContractAt(
+      '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+      config.createByToken
+    );
     // get balance of deployer address
     const deployerBalance = await usdtContract.balanceOf(deployer.address);
 
     if (deployerBalance < config.totalAmount) {
-      console.error(`❌ Insufficient USDT balance. Need: ${hre.ethers.formatUnits(config.totalAmount, 6)} USDT`);
+      console.error(
+        `❌ Insufficient USDT balance. Need: ${hre.ethers.formatUnits(config.totalAmount, 6)} USDT`
+      );
       process.exit(1);
     } else {
-      console.log(`✅ Deployer balance sufficient: ${hre.ethers.formatUnits(deployerBalance, 6)} USDT`);
+      console.log(
+        `✅ Deployer balance sufficient: ${hre.ethers.formatUnits(deployerBalance, 6)} USDT`
+      );
     }
-    
+
     // Get pending nonce for accurate prediction
-    const pendingNonce = await hre.ethers.provider.getTransactionCount(deployer.address, "pending");
+    const pendingNonce = await hre.ethers.provider.getTransactionCount(
+      deployer.address,
+      'pending'
+    );
     console.log('pendingNonce', pendingNonce);
-    
+
     // Calculate contract address using ethers.getCreateAddress
     const contractAddress = hre.ethers.getCreateAddress({
       from: deployer.address,
-      nonce: pendingNonce + 1
+      nonce: pendingNonce + 1,
     });
-    
+
     console.log(`📍 Pre-calculated contract address: ${contractAddress}`);
-    
+
     // Approve USDT for the pre-calculated contract address
 
-    const approveTx = await usdtContract.approve(contractAddress, config.totalAmount);
+    const approveTx = await usdtContract.approve(
+      contractAddress,
+      config.totalAmount
+    );
     console.log('approveTx hash', approveTx.hash);
     await approveTx.wait();
     console.log('Waiting for 60 seconds...');
@@ -113,28 +139,35 @@ async function main() {
     config.gasData,
     config.allAwardToSponsorWhenGiveUp,
     config.awardReceiversPercent,
-    config.totalAmount
+    config.totalAmount,
   ];
 
   console.log('\n🏗️  STEP 2: DEPLOYING CHALLENGEDETAILV2');
   console.log('constructorArgs', constructorArgs);
 
-  const ContractFactory = await hre.ethers.getContractFactory('ChallengeDetailV2');
+  const ContractFactory =
+    await hre.ethers.getContractFactory('ChallengeDetailV2');
 
   let contract: any;
   try {
-    const baseOverrides = (config.allowGiveUp && config.allowGiveUp[1]) ? { value: config.totalAmount } : {};
+    const baseOverrides =
+      config.allowGiveUp && config.allowGiveUp[1]
+        ? { value: config.totalAmount }
+        : {};
     console.log('baseOverrides', baseOverrides);
     // Estimate gas for deployment
-    const unsignedTx = await ContractFactory.getDeployTransaction(...constructorArgs, baseOverrides);
+    const unsignedTx = await ContractFactory.getDeployTransaction(
+      ...constructorArgs,
+      baseOverrides
+    );
     const [signer] = await hre.ethers.getSigners();
     const estimatedGas = await signer.estimateGas(unsignedTx);
-    
+
     // Add 20% buffer to gas limit
     const gasLimit = Math.ceil(Number(estimatedGas) * 1.2);
     const overrides = {
       ...baseOverrides,
-      gasLimit
+      gasLimit,
     };
 
     contract = await ContractFactory.deploy(...constructorArgs, overrides);
@@ -149,9 +182,12 @@ async function main() {
 
   // STEP 3: Verify USDT staking was completed during deployment
   if (config.createByToken !== hre.ethers.ZeroAddress) {
-    const usdtContract = await hre.ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", config.createByToken);
+    const usdtContract = await hre.ethers.getContractAt(
+      '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+      config.createByToken
+    );
     const contractUsdtBalance = await usdtContract.balanceOf(contractAddress);
-    
+
     if (contractUsdtBalance >= config.totalAmount) {
       console.log('✅ USDT staking completed during deployment');
     } else {
@@ -183,7 +219,7 @@ async function main() {
   }
 
   // Grant role to deployed contract
-  
+
   let roleGrantTxHash: string | null = null;
   try {
     roleGrantTxHash = await batchGrantRole(contractAddress);
@@ -196,9 +232,12 @@ async function main() {
 
   // Verify USDT was transferred during deployment
   if (config.createByToken !== hre.ethers.ZeroAddress) {
-    const usdtContract = await hre.ethers.getContractAt("@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20", config.createByToken);
+    const usdtContract = await hre.ethers.getContractAt(
+      '@openzeppelin/contracts/token/ERC20/IERC20.sol:IERC20',
+      config.createByToken
+    );
     const contractUsdtBalance = await usdtContract.balanceOf(contractAddress);
-    
+
     if (contractUsdtBalance >= config.totalAmount) {
       console.log('✅ USDT transferred during deployment');
     } else {
@@ -209,7 +248,7 @@ async function main() {
   // Test sendDailyResult function
   console.log('\n📊 TESTING SEND DAILY RESULT');
   console.log('=============================');
-  
+
   let sendDailyResultTxHash: string | null = null;
   try {
     // Prepare test data for sendDailyResult
@@ -223,7 +262,7 @@ async function main() {
     const testTimeRange: [number, number] = [1, 100];
 
     console.log('⏳ Estimating gas for sendDailyResult...');
-    
+
     // await 20 minutes
     console.log('Waiting for 30 seconds...');
     await new Promise(resolve => setTimeout(resolve, 30000));
@@ -239,22 +278,26 @@ async function main() {
       testTimeRange
     );
 
-    console.log(`Estimated gas for sendDailyResult: ${estimatedGas.toString()}`);
+    console.log(
+      `Estimated gas for sendDailyResult: ${estimatedGas.toString()}`
+    );
 
     // Get current gas price
     const feeData = await hre.ethers.provider.getFeeData();
     const gasPrice = feeData.gasPrice ?? hre.ethers.parseUnits('40', 'gwei');
     const estCostWei = estimatedGas * gasPrice;
-    
+
     console.log(`Gas price: ${hre.ethers.formatUnits(gasPrice, 'gwei')} gwei`);
     console.log(`Estimated cost: ${hre.ethers.formatEther(estCostWei)} ETH`);
 
     // Add 20% buffer to gas limit
     const gasLimit = Math.ceil(Number(estimatedGas) * 1.2);
-    console.log(`Using gas limit: ${gasLimit} (${Math.round((gasLimit / Number(estimatedGas) - 1) * 100)}% buffer)`);
+    console.log(
+      `Using gas limit: ${gasLimit} (${Math.round((gasLimit / Number(estimatedGas) - 1) * 100)}% buffer)`
+    );
 
     console.log('⏳ Sending sendDailyResult transaction...');
-    
+
     // Send sendDailyResult transaction
     const sendDailyResultTx = await contract.sendDailyResult(
       testDay,
@@ -267,20 +310,21 @@ async function main() {
       testTimeRange,
       {
         gasLimit,
-        gasPrice
+        gasPrice,
       }
     );
 
     const receipt = await sendDailyResultTx.wait();
     sendDailyResultTxHash = sendDailyResultTx.hash;
-    
+
     console.log(`✅ sendDailyResult transaction sent successfully`);
     console.log(`Transaction hash: ${sendDailyResultTxHash}`);
     console.log(`Gas used: ${receipt?.gasUsed?.toString() || 'N/A'}`);
-    
   } catch (error) {
     console.warn('⚠️  Failed to send sendDailyResult transaction:', error);
-    console.log('This might be expected if the contract is not in the correct state for testing');
+    console.log(
+      'This might be expected if the contract is not in the correct state for testing'
+    );
   }
 
   // Save deployment information
@@ -321,9 +365,11 @@ async function main() {
     stakingInfo: {
       enabled: (await contract.stakingStakeId()) > 0,
       stakeId: Number(await contract.stakingStakeId()),
-      tokenType: config.createByToken === hre.ethers.ZeroAddress ? 'MATIC' : 'ERC20',
+      tokenType:
+        config.createByToken === hre.ethers.ZeroAddress ? 'MATIC' : 'ERC20',
       protocol: 'aave_lending',
-      duration: Number(await contract.endTime()) - Number(await contract.startTime()),
+      duration:
+        Number(await contract.endTime()) - Number(await contract.startTime()),
     },
     verification: {
       verified: network.name !== 'hardhat' && network.name !== 'localhost',
@@ -341,8 +387,8 @@ async function main() {
       testData: {
         days: [10],
         stepIndex: [1000],
-        timeRange: [1, 100]
-      }
+        timeRange: [1, 100],
+      },
     },
   };
 
@@ -363,17 +409,27 @@ async function main() {
   console.log(`Deployer: ${deployer.address}`);
   console.log(`Block: ${deploymentInfo.blockNumber}`);
   console.log(`Time: ${deploymentInfo.deploymentTime}`);
-  console.log(`Auto-staking: ${deploymentInfo.stakingInfo.enabled ? 'Enabled' : 'Disabled'}`);
+  console.log(
+    `Auto-staking: ${deploymentInfo.stakingInfo.enabled ? 'Enabled' : 'Disabled'}`
+  );
   console.log(`Token Type: ${deploymentInfo.stakingInfo.tokenType}`);
-  console.log(`Duration: ${Math.floor(+(Number(await contract.endTime()) - Number(await contract.startTime())) / 86400)} days`);
+  console.log(
+    `Duration: ${Math.floor(+(Number(await contract.endTime()) - Number(await contract.startTime())) / 86400)} days`
+  );
   console.log(`Explorer: ${deploymentInfo.verification.explorerUrl}`);
-  console.log(`Challenge Role: ${deploymentInfo.roleGranted.challengeRole ? 'Granted' : 'Not Granted'}`);
+  console.log(
+    `Challenge Role: ${deploymentInfo.roleGranted.challengeRole ? 'Granted' : 'Not Granted'}`
+  );
   if (deploymentInfo.roleGranted.transactionHash) {
     console.log(`Role Grant TX: ${deploymentInfo.roleGranted.transactionHash}`);
   }
-  console.log(`Send Daily Result: ${deploymentInfo.transactionSendStep.sent ? 'Sent' : 'Not Sent'}`);
+  console.log(
+    `Send Daily Result: ${deploymentInfo.transactionSendStep.sent ? 'Sent' : 'Not Sent'}`
+  );
   if (deploymentInfo.transactionSendStep.transactionHash) {
-    console.log(`Send Step TX: ${deploymentInfo.transactionSendStep.transactionHash}`);
+    console.log(
+      `Send Step TX: ${deploymentInfo.transactionSendStep.transactionHash}`
+    );
   }
 
   console.log('\n🎉 DEPLOYMENT COMPLETED SUCCESSFULLY!');
@@ -409,7 +465,9 @@ function getExplorerUrl(networkName: string, address: string): string {
 function parseEnvConfig(raw: string): any {
   try {
     // Accept JSON or JS-like object from .env
-    const normalized = raw.trim().startsWith('{') ? raw : raw.replace(/^CONFIG_DEPLOY_CHALLENGE_USDT\s*=\s*/,'');
+    const normalized = raw.trim().startsWith('{')
+      ? raw
+      : raw.replace(/^CONFIG_DEPLOY_CHALLENGE_USDT\s*=\s*/, '');
     return JSON.parse(normalized);
   } catch (e) {
     throw new Error('Invalid CONFIG_DEPLOY_CHALLENGE_USDT JSON in .env');
@@ -430,7 +488,8 @@ function toWei(value: string): bigint {
 }
 
 function normalizeConfig(input: any): ChallengeDeploymentConfig {
-  const toBool = (v: any) => (typeof v === 'boolean' ? v : String(v).toLowerCase() === 'true');
+  const toBool = (v: any) =>
+    typeof v === 'boolean' ? v : String(v).toLowerCase() === 'true';
   const toNum = (v: any) => (typeof v === 'number' ? v : Number(v));
   return {
     stakeHolders: input.stakeHolders,
@@ -442,7 +501,9 @@ function normalizeConfig(input: any): ChallengeDeploymentConfig {
     allowGiveUp: input.allowGiveUp.map((b: any) => toBool(b)),
     gasData: input.gasData.map((g: any) => String(g)),
     allAwardToSponsorWhenGiveUp: toBool(input.allAwardToSponsorWhenGiveUp),
-    awardReceiversPercent: input.awardReceiversPercent.map((n: any) => toNum(n)),
+    awardReceiversPercent: input.awardReceiversPercent.map((n: any) =>
+      toNum(n)
+    ),
     totalAmount: String(input.totalAmount),
   };
 }

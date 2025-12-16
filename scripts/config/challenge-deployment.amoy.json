@@ -1,17 +1,13 @@
 {
   "stakeHolders": [
     "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
-    "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50", 
+    "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
     "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
   ],
   "createByToken": "0x0000000000000000000000000000000000000000",
-  "erc721Addresses": [
-    "0x0000000000000000000000000000000000000000"
-  ],
+  "erc721Addresses": ["0x0000000000000000000000000000000000000000"],
   "primaryRequired": [1000, 0, 0, 1000, 7],
-  "awardReceivers": [
-    "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
-  ],
+  "awardReceivers": ["0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"],
   "index": 1,
   "allowGiveUp": [true, true, true],
   "gasData": ["0.01", "0.01", "0.01"],
