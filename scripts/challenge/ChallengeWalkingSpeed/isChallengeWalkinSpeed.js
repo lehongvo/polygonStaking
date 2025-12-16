@@ -746,7 +746,7 @@ require('dotenv/config');
  * Check if a contract address is a ChallengeWalkingSpeed contract
  * @param {string} contractAddress - The contract address to check
  * @param {string} rpc - The RPC URL to connect to the blockchain
- * @returns {Promise<boolean>} - True if the contract has walkingSpeedData, false otherwise
+ * @returns {Promise<{bool: boolean, data: {targetSpeed: number, requiredMinutesPerDay: number, minAchievementDays: number}}} - True if the contract has walkingSpeedData, false otherwise
  */
 const isChallengeWalkingSpeed = async (contractAddress, rpc) => {
   try {
