@@ -1,10 +1,10 @@
 {
   "network": "polygon",
   "contractName": "ChallengeWalkingSpeed",
-  "contractAddress": "0xB8dF4ff3ca5Eb533b27E8B1653130cAEf449acFF",
-  "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
-  "deploymentTime": "2025-12-16T15:04:00.380Z",
-  "blockNumber": 80393996,
+  "contractAddress": "0x25a35466e16c0092897691505854022d7c23F6F5",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2025-12-17T07:54:39.397Z",
+  "blockNumber": 80422648,
   "constructorArgs": {
     "stakeHolders": [
       "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
@@ -12,18 +12,41 @@
       "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
     ],
     "createByToken": "0x0000000000000000000000000000000000000000",
-    "erc721Addresses": ["0x55285EcCef5487E87C5980C880131aCadDE7767C"],
-    "primaryRequired": [2, 1752742657, 1797107364, 10, 2],
+    "erc721Addresses": [
+      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
+    ],
+    "primaryRequired": [
+      2,
+      1752742657,
+      1759742657,
+      10,
+      2
+    ],
     "awardReceivers": [
       "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
       "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
     ],
     "index": 1,
-    "allowGiveUp": [true, true, true],
-    "gasData": ["200000000000000000", "200000000000000000", "0"],
+    "allowGiveUp": [
+      true,
+      true,
+      true
+    ],
+    "gasData": [
+      "200000000000000000",
+      "200000000000000000",
+      "0"
+    ],
     "allAwardToSponsorWhenGiveUp": true,
-    "awardReceiversPercent": [100, 100],
+    "awardReceiversPercent": [
+      100,
+      100
+    ],
     "totalAmount": "1000000000000",
-    "walkingSpeedData": [50, 120, 2]
+    "walkingSpeedData": [
+      30,
+      30,
+      2
+    ]
   }
 }

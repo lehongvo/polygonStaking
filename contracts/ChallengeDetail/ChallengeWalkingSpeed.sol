@@ -602,6 +602,10 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
      */
     uint256[] public historyMinutesAtTargetSpeed;
 
+    /** @dev metsWalkingSpeed METs (Metabolic Equivalent of Task) values for walking speed in challenge.
+     */
+    uint256[] public metsWalkingSpeed;
+
     /** @dev index index to split array receivers.
      */
     uint256 private index;
@@ -957,6 +961,7 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
      *         It processes various input data related to Gacha and NFT contracts to update activities.
      *         The provided signature is validated to ensure the authenticity of the data.
      * @param _minutesAtTargetSpeed An array of uint256 values representing the minutes at target speed.
+     * @param _metsWalkingSpeed An array of uint256 values representing the METs walking speed.
      * @dev This function can only be called by authorized challengers within a specific time frame.
      */
     function sendDailyResult(
@@ -970,7 +975,8 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange,
-        uint256[] memory _minutesAtTargetSpeed
+        uint256[] memory _minutesAtTargetSpeed,
+        uint256[] memory _metsWalkingSpeed
     ) public available onTimeSendResult onlyChallenger {
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
@@ -986,6 +992,7 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
         uint256[] storage tempHistoryDate = historyDate;
         uint256[] storage tempHistoryData = historyData;
         uint256[] storage tempHistoryMinutes = historyMinutesAtTargetSpeed;
+        uint256[] storage tempMetsWalkingSpeed = metsWalkingSpeed;
 
         for (uint256 i = 0; i < dayLength; i++) {
             for (uint256 j = 0; j < tempHistoryDate.length; j++) {
@@ -995,11 +1002,13 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
                     tempHistoryData[j] = _stepIndex[dayLength - 1];
                     tempHistoryDate[j] = _day[dayLength - 1];
                     tempHistoryMinutes[j] = _minutesAtTargetSpeed[dayLength - 1];
+                    tempMetsWalkingSpeed[j] = _metsWalkingSpeed[dayLength - 1];
                 } else {
                     if (tempHistoryDate[j] == _day[i]) {
                         lastIndex = i;
                         tempHistoryData[j] = _stepIndex[i];
                         tempHistoryMinutes[j] = _minutesAtTargetSpeed[i];
+                        tempMetsWalkingSpeed[j] = _metsWalkingSpeed[i];
                     }
                 }
             }
@@ -1009,6 +1018,7 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
                     tempHistoryDate.push(_day[i]);
                     tempHistoryData.push(_stepIndex[i]);
                     tempHistoryMinutes.push(_minutesAtTargetSpeed[i]);
+                    tempMetsWalkingSpeed.push(_metsWalkingSpeed[i]);
                 }
                 stepOn[_day[i]] = _stepIndex[i];
             }
