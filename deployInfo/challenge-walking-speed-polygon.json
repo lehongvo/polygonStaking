@@ -12,41 +12,18 @@
       "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
     ],
     "createByToken": "0x0000000000000000000000000000000000000000",
-    "erc721Addresses": [
-      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
-    ],
-    "primaryRequired": [
-      2,
-      1752742657,
-      1759742657,
-      10,
-      2
-    ],
+    "erc721Addresses": ["0x55285EcCef5487E87C5980C880131aCadDE7767C"],
+    "primaryRequired": [2, 1752742657, 1759742657, 10, 2],
     "awardReceivers": [
       "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
       "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
     ],
     "index": 1,
-    "allowGiveUp": [
-      true,
-      true,
-      true
-    ],
-    "gasData": [
-      "200000000000000000",
-      "200000000000000000",
-      "0"
-    ],
+    "allowGiveUp": [true, true, true],
+    "gasData": ["200000000000000000", "200000000000000000", "0"],
     "allAwardToSponsorWhenGiveUp": true,
-    "awardReceiversPercent": [
-      100,
-      100
-    ],
+    "awardReceiversPercent": [100, 100],
     "totalAmount": "1000000000000",
-    "walkingSpeedData": [
-      30,
-      30,
-      2
-    ]
+    "walkingSpeedData": [30, 30, 2]
   }
 }
