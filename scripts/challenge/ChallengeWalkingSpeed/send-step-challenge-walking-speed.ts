@@ -58,13 +58,9 @@ async function main() {
   const steps = [1000000];
 
   // Ensure minutes > requiredMinutesPerDay so walking speed passes
-  const minutes = [
-    1
-  ];
+  const minutes = [1];
 
-  const metsWalkingSpeed = [
-    1
-  ];
+  const metsWalkingSpeed = [1];
 
   // timeRange should cover both days
   const timeRange: [number, number] = [110, 200];
