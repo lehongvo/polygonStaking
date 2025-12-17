@@ -1,4 +1,4 @@
-const contractAddress1 = '0xEDbA0F87f3Cd04F01e1BA2Dc6801bb797b865534'; // true
+const contractAddress1 = '0x25a35466e16c0092897691505854022d7c23F6F5'; // true
 const contractAddress2 = '0x9a9f18ab74eda104dfa8cc2d1a6e83888c2060ef'; // false
 const abiChallengeWalkingSpeed = [
   {
@@ -501,6 +501,25 @@ const abiChallengeWalkingSpeed = [
   {
     inputs: [
       {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    name: 'metsWalkingSpeed',
+    outputs: [
+      {
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      {
         internalType: 'address',
         name: '',
         type: 'address',
@@ -626,6 +645,11 @@ const abiChallengeWalkingSpeed = [
       {
         internalType: 'uint256[]',
         name: '_minutesAtTargetSpeed',
+        type: 'uint256[]',
+      },
+      {
+        internalType: 'uint256[]',
+        name: '_metsWalkingSpeed',
         type: 'uint256[]',
       },
     ],
@@ -813,8 +837,11 @@ const getHistoryMinutesAtTargetSpeed = async (contractAddress, rpc) => {
 
     while (true) {
       try {
-        const minutes = await contract.historyMinutesAtTargetSpeed(index);
-        history.push(Number(minutes));
+        const [minutes, mets] = await Promise.all([
+          contract.historyMinutesAtTargetSpeed(index),
+          contract.metsWalkingSpeed(index),
+        ]);
+        history.push({ minutes: Number(minutes), mets: Number(mets) });
         index++;
       } catch (error) {
         // If we get an error, we've reached the end of the array
