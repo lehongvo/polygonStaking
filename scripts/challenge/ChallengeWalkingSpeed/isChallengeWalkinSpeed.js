@@ -762,12 +762,13 @@ const isChallengeWalkingSpeed = async (contractAddress, rpc) => {
 
     // Check if walkingSpeedData has data by calling walkingSpeedData(0, 1, 2) in parallel
     // If it's a ChallengeWalkingSpeed contract, this should return values
-    const [targetSpeed, requiredMinutesPerDay, minAchievementDays] = await Promise.all([
-      contract.walkingSpeedData(0),
-      contract.walkingSpeedData(1),
-      contract.walkingSpeedData(2),
-    ]);
-    
+    const [targetSpeed, requiredMinutesPerDay, minAchievementDays] =
+      await Promise.all([
+        contract.walkingSpeedData(0),
+        contract.walkingSpeedData(1),
+        contract.walkingSpeedData(2),
+      ]);
+
     // If we get here without error and have values, it's likely a ChallengeWalkingSpeed contract
     // Convert BigInt to Number and return
     return {
@@ -780,7 +781,10 @@ const isChallengeWalkingSpeed = async (contractAddress, rpc) => {
     };
   } catch (error) {
     // If any error occurs (function doesn't exist, contract doesn't exist, etc.), return false
-    return {isChallengeWalkingSpeed: false, data: {targetSpeed: 0, requiredMinutesPerDay: 0, minAchievementDays: 0}};
+    return {
+      isChallengeWalkingSpeed: false,
+      data: { targetSpeed: 0, requiredMinutesPerDay: 0, minAchievementDays: 0 },
+    };
   }
 };
 
@@ -806,7 +810,7 @@ const getHistoryMinutesAtTargetSpeed = async (contractAddress, rpc) => {
     // We'll try indices starting from 0 until we get an error (index out of bounds)
     const history = [];
     let index = 0;
-    
+
     while (true) {
       try {
         const minutes = await contract.historyMinutesAtTargetSpeed(index);
@@ -827,24 +831,40 @@ const getHistoryMinutesAtTargetSpeed = async (contractAddress, rpc) => {
 
 const main = async () => {
   console.log('Testing contract addresses...\n');
-  
+
   // Use RPC from env or default to Polygon RPC
   const rpcUrl = process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com';
-  
+
   const result1 = await isChallengeWalkingSpeed(contractAddress1, rpcUrl);
-  console.log(`Contract ${contractAddress1}: ${result1.isChallengeWalkingSpeed ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`);
-  
+  console.log(
+    `Contract ${contractAddress1}: ${result1.isChallengeWalkingSpeed ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`
+  );
+
   const result2 = await isChallengeWalkingSpeed(contractAddress2, rpcUrl);
-  console.log(`Contract ${contractAddress2}: ${result2.isChallengeWalkingSpeed ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`);
-  
+  console.log(
+    `Contract ${contractAddress2}: ${result2.isChallengeWalkingSpeed ? '✅ IS ChallengeWalkingSpeed' : '❌ NOT ChallengeWalkingSpeed'}`
+  );
+
   // Test getHistoryMinutesAtTargetSpeed function
   console.log('\nTesting getHistoryMinutesAtTargetSpeed function...\n');
-  
-  const history1 = await getHistoryMinutesAtTargetSpeed(contractAddress1, rpcUrl);
-  console.log(`History for ${contractAddress1}:`, history1.length > 0 ? history1 : '[] (empty or error)');
-  
-  const history2 = await getHistoryMinutesAtTargetSpeed(contractAddress2, rpcUrl);
-  console.log(`History for ${contractAddress2}:`, history2.length > 0 ? history2 : '[] (empty or error)');
+
+  const history1 = await getHistoryMinutesAtTargetSpeed(
+    contractAddress1,
+    rpcUrl
+  );
+  console.log(
+    `History for ${contractAddress1}:`,
+    history1.length > 0 ? history1 : '[] (empty or error)'
+  );
+
+  const history2 = await getHistoryMinutesAtTargetSpeed(
+    contractAddress2,
+    rpcUrl
+  );
+  console.log(
+    `History for ${contractAddress2}:`,
+    history2.length > 0 ? history2 : '[] (empty or error)'
+  );
 };
 
 // Export for use in other modules
@@ -858,7 +878,7 @@ module.exports = {
 if (require.main === module) {
   main()
     .then(() => process.exit(0))
-    .catch((error) => {
+    .catch(error => {
       console.error('Error:', error);
       process.exit(1);
     });

@@ -59,8 +59,11 @@ async function main() {
 
   // Ensure minutes > requiredMinutesPerDay so walking speed passes
   const minutes = [
-    requiredMinutesPerDay > 0 ? requiredMinutesPerDay + 1 : 30,
-    requiredMinutesPerDay > 0 ? requiredMinutesPerDay + 2 : 30,
+    1
+  ];
+
+  const metsWalkingSpeed = [
+    1
   ];
 
   // timeRange should cover both days
@@ -88,6 +91,7 @@ async function main() {
     emptyStatus,
     timeRange,
     minutes,
+    metsWalkingSpeed,
   });
 
   try {
@@ -100,7 +104,8 @@ async function main() {
       emptySender,
       emptyStatus,
       timeRange,
-      minutes
+      minutes,
+      metsWalkingSpeed
     );
 
     const feeData = await hre.ethers.provider.getFeeData();
@@ -121,6 +126,7 @@ async function main() {
       emptyStatus,
       timeRange,
       minutes,
+      metsWalkingSpeed,
       {
         gasLimit,
         gasPrice,
