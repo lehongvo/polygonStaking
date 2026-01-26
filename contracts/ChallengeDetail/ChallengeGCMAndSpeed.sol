@@ -538,11 +538,11 @@ interface IERC20 {
      */
     function symbol() external view returns (string memory);
 }
-// File: Challenge/ChallengeDetail.sol
+// File: Challenge/ChallengeGCMAndSpeed.sol
 
 pragma solidity ^0.8.16;
 
-contract ChallengeDetail is IERC721Receiver {
+contract ChallengeGCMAndSpeed is IERC721Receiver {
     /** @param ChallengeState currentState of challenge:
          1 : in processs
          2 : success
@@ -597,6 +597,19 @@ contract ChallengeDetail is IERC721Receiver {
     /** @dev historyDate date in challenge.
      */
     uint256[] historyDate;
+
+    /** @dev historyMinutesAtTargetSpeed minutes at/above target speed each day in challenge.
+     */
+    uint256[] public historyMinutesAtTargetSpeed;
+
+    /** @dev metsWalkingSpeed METs (Metabolic Equivalent of Task) values for walking speed in challenge.
+     */
+    uint256[] public metsWalkingSpeed;
+
+    /** @dev historyGCM glucose levels (CGM data) for each day in challenge.
+     *  Stores average glucose value per day.
+     */
+    uint256[] public historyGCM;
 
     /** @dev index index to split array receivers.
      */
@@ -708,6 +721,12 @@ contract ChallengeDetail is IERC721Receiver {
 
     // Address of the creator of the token
     address public createByToken;
+
+    // Walking speed challenge config: [targetSpeed, requiredMinutesPerDay, minAchievementDays]
+    uint256[] public walkingSpeedData;
+
+    // CGM challenge config: [minGlucoseValue, maxGlucoseValue, minSuccessDays]
+    uint256[] public gcmData;
 
     // Represents the amount of success fee in percentage.
     uint8 private amountSuccessFee;
@@ -830,6 +849,14 @@ contract ChallengeDetail is IERC721Receiver {
      * @param _allAwardToSponsorWhenGiveUp A boolean value indicating whether all awards should be given to the sponsor when the challenge is given up.
      * @param _awardReceiversPercent Array of percentage values representing the percentage of awards that each award receiver will receive.
      * @param _totalAmount The total amount of tokens locked in the challenge.
+     * @param _walkingSpeedData Array of walking speed config:
+     *        [0] target speed (km/h),
+     *        [1] required minutes per day,
+     *        [2] minimum achievement days (walking speed).
+     * @param _gcmData Array of CGM config:
+     *        [0] minimum glucose value (mg/dL),
+     *        [1] maximum glucose value (mg/dL),
+     *        [2] minimum success days required (CGM).
      */
     constructor(
         address payable[] memory _stakeHolders,
@@ -842,9 +869,15 @@ contract ChallengeDetail is IERC721Receiver {
         uint256[] memory _gasData,
         bool _allAwardToSponsorWhenGiveUp,
         uint256[] memory _awardReceiversPercent,
-        uint256 _totalAmount
+        uint256 _totalAmount,
+        uint256[] memory _walkingSpeedData,
+        uint256[] memory _gcmData
     ) payable {
         require(_allowGiveUp.length == 3, "Invalid allow give up"); // Checking if _allowGiveUp array length is 3.
+        require(_walkingSpeedData.length == 3, "Invalid walking speed data"); // Expect exactly 3 values.
+        require(_gcmData.length == 3, "Invalid CGM data"); // Expect exactly 3 values.
+        require(_primaryRequired[4] >= _walkingSpeedData[2], "Invalid walking speed days"); // Checking if the required number of days for the challenge is greater than or equal to the minimum achievement days for walking speed condition.
+        require(_primaryRequired[4] >= _gcmData[2], "Invalid CGM success days"); // Checking if the required number of days for the challenge is greater than or equal to the minimum success days for CGM condition.
 
         if (_allowGiveUp[1]) {
             require(msg.value == _totalAmount, "Invalid award"); // Checking if msg.value is equal to _totalAmount when _allowGiveUp[1] is true.
@@ -895,6 +928,12 @@ contract ChallengeDetail is IERC721Receiver {
         gasFee = _gasData[2]; // Assigning the gas fee to the contract variable
         createByToken = _createByToken; // Assigning the create by token value to the contract variable
 
+        // Store walking speed configuration
+        walkingSpeedData = _walkingSpeedData;
+
+        // Store CGM configuration
+        gcmData = _gcmData;
+
         // get amoutn base fee
         (amountSuccessFee, amountFailFee) = IChallengeFee(
             IExerciseSupplementNFT(_erc721Address[0]).feeSettingAddress()
@@ -939,6 +978,9 @@ contract ChallengeDetail is IERC721Receiver {
      *         It requires specific roles (onlyChallenger) and enforces timing constraints (onTimeSendResult).
      *         It processes various input data related to Gacha and NFT contracts to update activities.
      *         The provided signature is validated to ensure the authenticity of the data.
+     * @param _minutesAtTargetSpeed An array of uint256 values representing the minutes at target speed.
+     * @param _metsWalkingSpeed An array of uint256 values representing the METs walking speed.
+     * @param _glucoseLevels An array of uint256 values representing the average glucose level (mg/dL) for each day.
      * @dev This function can only be called by authorized challengers within a specific time frame.
      */
     function sendDailyResult(
@@ -951,7 +993,10 @@ contract ChallengeDetail is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft,
-        uint64[2] memory _timeRange
+        uint64[2] memory _timeRange,
+        uint256[] memory _minutesAtTargetSpeed,
+        uint256[] memory _metsWalkingSpeed,
+        uint256[] memory _glucoseLevels
     ) public available onTimeSendResult onlyChallenger {
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
@@ -966,6 +1011,9 @@ contract ChallengeDetail is IERC721Receiver {
         uint256 lastIndex = totalReward;
         uint256[] storage tempHistoryDate = historyDate;
         uint256[] storage tempHistoryData = historyData;
+        uint256[] storage tempHistoryMinutes = historyMinutesAtTargetSpeed;
+        uint256[] storage tempMetsWalkingSpeed = metsWalkingSpeed;
+        uint256[] storage tempHistoryGCM = historyGCM;
 
         for (uint256 i = 0; i < dayLength; i++) {
             for (uint256 j = 0; j < tempHistoryDate.length; j++) {
@@ -974,10 +1022,16 @@ contract ChallengeDetail is IERC721Receiver {
                     isSendSameDay = true;
                     tempHistoryData[j] = _stepIndex[dayLength - 1];
                     tempHistoryDate[j] = _day[dayLength - 1];
+                    tempHistoryMinutes[j] = _minutesAtTargetSpeed[dayLength - 1];
+                    tempMetsWalkingSpeed[j] = _metsWalkingSpeed[dayLength - 1];
+                    tempHistoryGCM[j] = _glucoseLevels[dayLength - 1];
                 } else {
                     if (tempHistoryDate[j] == _day[i]) {
                         lastIndex = i;
                         tempHistoryData[j] = _stepIndex[i];
+                        tempHistoryMinutes[j] = _minutesAtTargetSpeed[i];
+                        tempMetsWalkingSpeed[j] = _metsWalkingSpeed[i];
+                        tempHistoryGCM[j] = _glucoseLevels[i];
                     }
                 }
             }
@@ -986,6 +1040,9 @@ contract ChallengeDetail is IERC721Receiver {
                 if (lastIndex != i) {
                     tempHistoryDate.push(_day[i]);
                     tempHistoryData.push(_stepIndex[i]);
+                    tempHistoryMinutes.push(_minutesAtTargetSpeed[i]);
+                    tempMetsWalkingSpeed.push(_metsWalkingSpeed[i]);
+                    tempHistoryGCM.push(_glucoseLevels[i]);
                 }
                 stepOn[_day[i]] = _stepIndex[i];
             }
@@ -1032,7 +1089,8 @@ contract ChallengeDetail is IERC721Receiver {
             );
         } else {
             // Check if the challenge has been completed successfully
-            if (currentStatus >= dayRequired) {
+            // Must pass ALL THREE conditions: Steps + Walking Speed + Glucose
+            if (currentStatus >= dayRequired && isPassWalkingSpeed() && isPassGCM()) {
                 stateInstance = ChallengeState.SUCCESS;
                 // Transfer funds to the receiver addresses for the successful challenge
                 transferToListReceiverSuccess(_listNFTAddress, _listIndexNFT, _statusTypeNft);
@@ -1526,6 +1584,80 @@ contract ChallengeDetail is IERC721Receiver {
             dayRequired, // The number of days required to complete the challenge
             dayRequired - (currentStatus) // The number of days remaining in the challenge
         );
+    }
+
+    /**
+     * @dev Check if walking speed condition is passed.
+     * Uses historyMinutesAtTargetSpeed and walkingSpeedData config.
+     *
+     * Logic:
+     * - A day is successful if minutes at target speed >= requiredMinutesPerDay
+     * - Challenge succeeds if number of successful days >= minAchievementDays
+     *
+     * @return True if the walking speed condition is passed, false otherwise.
+     */
+    function isPassWalkingSpeed() internal view returns (bool) {
+        uint256 requiredMinutesPerDay = walkingSpeedData[1];
+        uint256 minAchievementDays = walkingSpeedData[2];
+
+        // If no walking speed requirements set, always pass
+        if (requiredMinutesPerDay == 0 || minAchievementDays == 0) {
+            return true;
+        }
+
+        uint256 count = 0;
+        uint256 length = historyMinutesAtTargetSpeed.length;
+
+        for (uint256 i = 0; i < length; i++) {
+            if (historyMinutesAtTargetSpeed[i] >= requiredMinutesPerDay) {
+                count++;
+            }
+        }
+
+        return count >= minAchievementDays;
+    }
+
+    /**
+     * @dev Check if CGM (Continuous Glucose Monitoring) condition is passed.
+     * Uses historyGCM and gcmData config.
+     *
+     * Logic:
+     * - A day is successful if glucose level is within [minGlucoseValue, maxGlucoseValue]
+     * - Challenge succeeds if number of successful days >= minSuccessDays
+     *
+     * Example: 7 days challenge, need 5 success days
+     * - Mon: ○ (within range)
+     * - Tue: ○ (within range)
+     * - Wed: × (out of range)
+     * - Thu: ○ (within range)
+     * - Fri: ○ (within range)
+     * - Sat: ○ (within range)
+     * - Sun: × (out of range)
+     * → 5 success days → Challenge SUCCESS
+     *
+     * @return True if the CGM condition is passed, false otherwise.
+     */
+    function isPassGCM() internal view returns (bool) {
+        uint256 minGlucose = gcmData[0];
+        uint256 maxGlucose = gcmData[1];
+        uint256 minSuccessDays = gcmData[2];
+
+        // If no CGM requirements set, always pass
+        if (minSuccessDays == 0) {
+            return true;
+        }
+
+        uint256 successDaysCount = 0;
+        uint256 length = historyGCM.length;
+
+        for (uint256 i = 0; i < length; i++) {
+            // Check if glucose level is within acceptable range
+            if (historyGCM[i] >= minGlucose && historyGCM[i] <= maxGlucose) {
+                successDaysCount++;
+            }
+        }
+
+        return successDaysCount >= minSuccessDays;
     }
 
     // Return the array of award receiver percentages
