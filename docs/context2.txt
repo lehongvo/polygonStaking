@@ -1,0 +1,174 @@
+Number Zone 4-5 Time Requirement PerDay(Thời gian Zone 4-5 tối thiểu/ngày) => K cần nữa
+Number Rounds Requirement PerDay(Số rounds tối thiểu/ngày)
+Number Min Interval Duration PerDay (Thời gian tối thiểu mỗi round)
+NguyenND_Dev — 2/10/26, 11:13 PM
+api/v1/chatbot/setting/basic-info/812
+VincentVo — 2/10/26, 11:28 PM
+https://docs.google.com/spreadsheets/d/1K3y6FoEB2ahGmAN4zGdXU4a4yLzGQ1WJ5kk0Hm0uAJg/edit?gid=0#gid=0
+NguyenND_Dev — 2/10/26, 11:45 PM
+add mail a với @VincentVo  ơi, ducnguyen0109.it@gmail.com
+k open được file doc 
+VincentVo — 2/10/26, 11:48 PM
+Load lại thử a
+https://docs.google.com/spreadsheets/d/1ZXd5sXIxcUdyZkIkwrR60XJ4xjCq_-Qr/edit?gid=312156996#gid=312156996
+Google Docs
+HIIT Plan.xlsx
+Image
+NguyenND_Dev — 2/10/26, 11:48 PM
+vẫn chưa đc nơi
+NguyenND_Dev — 2/10/26, 11:49 PM
+ak doc ni đc rồi nha
+VincentVo — 2/10/26, 11:49 PM
+ok a
+Xong gửi lên nhé anh
+NguyenND_Dev — 2/10/26, 11:51 PM
+ok e
+NguyenND_Dev — 2/11/26, 12:47 AM
+https://docs.google.com/spreadsheets/d/1ZXd5sXIxcUdyZkIkwrR60XJ4xjCq_-Qr/edit?gid=1531224276#gid=1531224276
+check thử nha @VincentVo
+Google Docs
+HIIT Plan.xlsx
+Image
+a có set nghỉ ngày 29 với mùng 1 ớ
+VincentVo — 2/11/26, 12:47 AM
+ok a
+HungPM — 2/11/26, 6:49 AM
+Xin lỗi ae tối qua mệt ngủ giấc thành ngủ luôn
+NguyenND_Dev — 2/11/26, 8:50 AM
+xem thử est như ri ổn k @HungPM
+HungPM — 2/11/26, 9:11 AM
+Tí bạn review cho nha
+VincentVo — 2/11/26, 9:20 AM
+@HungPM Anh nhoé review sớm để gửi cho ông bác nhé
+HungPM — 2/11/26, 3:33 PM
+@VincentVo  @NguyenND_Dev  có ai vào lại được cái slide design của bác không?
+VincentVo — 2/11/26, 3:35 PM
+Công ty anh chặn rồi
+Bâth proxy lên
+Image
+HungPM — 2/11/26, 3:35 PM
+a đang ở nhà mà
+VincentVo — 2/11/26, 3:35 PM
+https://docs.google.com/presentation/d/1kbqGr-F6ixcGYRyZwgOTUfmCRrpY0BSU/edit?usp=sharing&ouid=105386261286461127243&rtpof=true&sd=true
+Google Docs
+UI20260209.pptx
+Speed : 5.2 km/h High-intensity intervals: 1 times Total high-intensity time: 30 seconds Recovery High-intensity intervals: 1 times Total high-intensity time: 30 seconds High intensity High-intensity intervals: 1 times Total high-intensity time: 30 seconds Less than HRmax X 70% More than HRmax X 80%
+Image
+Vào lại thử a 
+HungPM — 2/11/26, 3:36 PM
+đc rồi nà. chắc do tk gmail lúc nãy k phải cái đc invite
+HungPM — 2/11/26, 3:55 PM
+tối nay ai rãnh cho a qa xíu chỗ UI mới nha
+VincentVo — 2/11/26, 3:55 PM
+11h nhé anh 
+@NguyenND_Dev có gì anh join luôn nhé
+NguyenND_Dev — 2/11/26, 3:56 PM
+uk tối a join luôn, có chi làm cho đồng bộ
+HungPM — 2/11/26, 3:57 PM
+khi nào thì hiển thị cái này và thông tin của nó sẽ lấy từ đâu
+Image
+chỗ UI màn hình dashboard
+mà sao anh em k rán kéo deadline tới ngày 5/3/2026 luôn
+VincentVo — 2/11/26, 4:00 PM
+tối ta bàn nha a
+VincentVo — 2/11/26, 10:08 PM
+@HungPM @NguyenND_Dev lúc nào anh em start được hú em
+VincentVo — 2/11/26, 11:01 PM
+@NguyenND_Dev @HungPM Vo Le Hong has invited you to join a video meeting on Google Meet.
+
+Join the meeting: https://meet.google.com/atc-ouze-hdd
+Meet
+Real-time meetings by Google. Using your browser, share your video, desktop, and presentations with teammates and customers.
+Image
+NguyenND_Dev — 2/11/26, 11:41 PM
+ae join chưa? a chưa vô đc nha @VincentVo
+HungPM — 2/12/26, 3:28 AM
+Sorry ae. Tối có việc đột xuất xử lý chừ mới xong. Quên bên mtg
+HungPM — 2/19/26, 4:18 PM
+tối nay có time không anh em, mình làm cái khai xuân phát nhỉ ?
+@NguyenND_Dev  @VincentVo
+VincentVo — 2/19/26, 4:19 PM
+11h đi anh em hì
+tầm đấy đ k a
+HungPM — 2/19/26, 4:19 PM
+được nha
+VincentVo — 2/19/26, 4:19 PM
+ok a
+HungPM — 2/19/26, 4:19 PM
+A cũng muốn muộn xíu để tiếp cho xong hết khách
+VincentVo — 2/19/26, 6:45 PM
+a @HungPM ơi, để tối mùng 4 đi, tối nay em lạo dính tí rượi bia
+😂
+HungPM — 2/19/26, 6:45 PM
+Oki
+VincentVo — 2/19/26, 6:45 PM
+thank a
+HungPM — 2/20/26, 10:41 PM
+Sáng mai 9h được không anh em. Tối nay đuối quá.
+NguyenND_Dev — 2/20/26, 10:41 PM
+sáng mai t cũng ok nha, giờ đang bị con chiếm dụng máy tính
+VincentVo — 2/20/26, 10:42 PM
+dạ vâng
+thế 9 h mai ạ
+VincentVo — 2/21/26, 9:01 AM
+@NguyenND_Dev @HungPM vào luôn nhé các a ơi 
+https://meet.google.com/fhx-tyrk-dpc
+Meet
+Real-time meetings by Google. Using your browser, share your video, desktop, and presentations with teammates and customers.
+Image
+VincentVo — 2/21/26, 9:10 AM
+chết dở
+là 9h tối, sorry các a
+HungPM — 2/21/26, 9:12 AM
+dc nh @VincentVo
+@NguyenND_Dev
+day chua
+VincentVo — 2/21/26, 9:13 AM
+ok
+thế sang hay tối anh
+HungPM — 2/21/26, 9:13 AM
+a thì chừ mần luôn đc
+tranh thủ còn khoẻ mtg đi . Còn code khi nào cũng đc
+@NguyenND_Dev  chắc lại đi chúc tết rồi
+VincentVo — 2/21/26, 9:14 AM
+ok a
+vào đi a
+NguyenND_Dev — 2/21/26, 9:14 AM
+mô có
+đang canh nãy giờ
+mà k mang đt
+HungPM — 2/21/26, 9:14 AM
+😄
+VincentVo — 2/21/26, 9:15 AM
+Vào luôn các anh
+VincentVo — 2/21/26, 9:45 AM
+Update
+1: Tạo lại api tạo, thêm field hiitAge vào api create challenge info => hiitAge is optional
+2: Update lại api @GET("/api/v1/users/get-profile-by-wallet/{address}: Trả thêm age vào api này
+Nếu chưa có trả về 0
+
+Nhưng api mà cần sửa BE
+1: GetDeploy
+2: ETM(base step và onlyHIIT)
+3: Challenge Detail 
+
+Nhưng api mà cần sửa APP
+1: Deploy
+2: Send step (sẽ update api theo các option challenge)
+3: Update challenge detail
+4: Dashboard 
+HungPM — 2/21/26, 9:49 AM
+@GET("/api/v1/users/get-profile-by-wallet/{address}")
+VincentVo — 2/23/26, 2:57 PM
+@HungPM @NguyenND_Dev Các a ơi, vụ age nếu chalenger mà chưa có thì k cho tạo nhé
+Thằng sponsor sẽ yêu cầu thằng chalenger vào benavy inpur tuổi nhé
+Cho nên api mình list trên kia sẽ cần phải update đôinh cấcnh
+1: Tạo lại api tạo, thêm field hiitAge vào api create challenge info => hiitAge is optional
+2: Update lại api @GET("/api/v1/users/get-profile-by-wallet/{address}: Trả thêm age vào api này
+Nếu chưa có trả về 0
+
+==> 2 cái này sẽ k cần nhé các anh
+HungPM — 2/23/26, 9:50 PM
+cái thứ 2 là cần nha
+không làm cái thứ 2 sao app biết được thèn challenger nào có tuổi thèn nào không để mà hiển thị message lỗi
+vì ban đầu nó chọn basic step thì tuổi nó đâu có liên quan mô @VincentVo
