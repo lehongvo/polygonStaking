@@ -7,16 +7,16 @@ import batchGrantRole from '../grantChallengeRole';
 const hre = require('hardhat');
 
 /**
- * Deploy ChallengeBaseStep (or only Grant Role when NOT_DEPLOY=true).
+ * Deploy ChallengeBaseStep without sending step (deploy + verify + grant role only).
  * Config: CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP (multi-line JSON in .env supported).
- * - Default: deploy → verify → grant role → send step loop (test) → save deployInfo.
- * - NOT_DEPLOY=true: skip deploy, load contract from deployInfo/challenge-walking-speed-{network}.json, run grant role + send step loop only.
+ * - Default: deploy → verify → grant role → save deployInfo. No send step loop.
+ * - NOT_DEPLOY=true: skip deploy, load contract from deployInfo/challenge-walking-speed-{network}.json, run grant role only.
  *
- * Example (deploy):
- *   npx hardhat run scripts/challenge/ChallengeWalkingSpeed/deploy-challenge-walking-speed.ts --network polygon
+ * Example (deploy, no send step):
+ *   npx hardhat run scripts/challenge/ChallengeWalkingSpeed/deploy-challenge-walking-speed-not-send-step.ts --network polygon
  *
- * Example (grant role + send step only):
- *   NOT_DEPLOY=true npx hardhat run scripts/challenge/ChallengeWalkingSpeed/deploy-challenge-walking-speed.ts --network polygon
+ * Example (grant role only):
+ *   NOT_DEPLOY=true npx hardhat run scripts/challenge/ChallengeWalkingSpeed/deploy-challenge-walking-speed-not-send-step.ts --network polygon
  */
 
 interface ChallengeBaseStepDeploymentConfig {
@@ -122,12 +122,12 @@ async function main() {
   const skipDeploy = toBoolEnv(process.env.NOT_DEPLOY);
   if (skipDeploy) {
     console.log(
-      '📌 NOT_DEPLOY=true → Skip deploy, use existing contract from deployInfo and run Grant Role + send step loop only.'
+      '📌 NOT_DEPLOY=true → Skip deploy, use existing contract from deployInfo and run Grant Role only.'
     );
   }
 
-  console.log('🚀 CHALLENGE BASE STEP (Walking Speed) DEPLOYMENT');
-  console.log('=================================================');
+  console.log('🚀 CHALLENGE BASE STEP (Walking Speed) DEPLOYMENT — NO SEND STEP');
+  console.log('=================================================================');
 
   const [deployer] = await hre.ethers.getSigners();
   console.log(`📍 Network: ${network.name}`);
@@ -356,184 +356,8 @@ async function main() {
     console.warn('⚠️  Failed to grant challenge role:', error);
   }
 
-  // --- Step 6: Send step loop (test sendDailyResult) ---
-  // From CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP: when walkingSpeedData is set, send step must include _minutesAtTargetSpeed, _metsWalkingSpeed; when hiitData is set, send step must include _intervals, _totalSeconds.
-  console.log('\n📋 STEP 6: TEST SEND DAILY RESULT (LOOP)');
-  console.log('=========================================');
-  const dayRequiredCount = config.primaryRequired[4];
-  const startTimeC = config.primaryRequired[1];
-  const goal = config.primaryRequired[3];
-
-  const hasWalking =
-    config.walkingSpeedData && config.walkingSpeedData.length >= 3;
-  const hasHiit = config.hiitData && config.hiitData.length >= 2;
-  // hiitData: [highIntensityIntervals, totalHighIntensityTime]
-  const hiitIntervals = hasHiit ? config.hiitData![0] : 0;
-  const hiitTotalSeconds = hasHiit ? config.hiitData![1] : 0;
-  // walkingSpeedData: [targetSpeed, requiredMinutesPerDay, minAchievementDays]
-  const walkingRequiredMinutes = hasWalking ? config.walkingSpeedData[1] : 0;
-
-  if (hasWalking)
-    console.log(
-      '  • walkingSpeedData set → send step includes _minutesAtTargetSpeed, _metsWalkingSpeed'
-    );
-  if (hasHiit)
-    console.log(
-      '  • hiitData set → send step includes _intervals, _totalSeconds'
-    );
-  if (!hasWalking && !hasHiit)
-    console.log('  • Step only (no walking, no HIIT)');
-
-  let sendDailyResultTxHash: string | null = null;
-  const testListGachaAddress: string[] = [];
-  const testListNFTAddress: string[] = [];
-  const testListIndexNFT: bigint[][] = [];
-  const testListSenderAddress: string[][] = [];
-  const testStatusTypeNft: boolean[] = [];
-
-  try {
-    const feeDataSend = await hre.ethers.provider.getFeeData();
-    const gasPriceSend =
-      feeDataSend.gasPrice ?? hre.ethers.parseUnits('40', 'gwei');
-
-    for (let i = 0; i < dayRequiredCount; i++) {
-      const dayTs = startTimeC + (i + 1) * 86400 * 2;
-      const testDay = [BigInt(dayTs)];
-      const testStepIndex = [BigInt(goal)];
-      const testTimeRange: [bigint, bigint] = [
-        BigInt(dayTs - 100),
-        BigInt(dayTs + 100),
-      ];
-
-      // Only add HIIT data when hiitData is set
-      let testIntervals = hasHiit ? [BigInt(hiitIntervals)] : [];
-      let testTotalSeconds = hasHiit ? [BigInt(hiitTotalSeconds)] : [];
-
-      if (i == 1) {
-        testIntervals = [BigInt(1)];
-        testTotalSeconds = [BigInt(1)];
-      }
-
-      // Only add walking data when walkingSpeedData is set
-      const testMinutes = hasWalking ? [BigInt(walkingRequiredMinutes)] : [];
-      const testMets = hasWalking ? [BigInt(1)] : []; // Valid MET when target speed achieved
-
-      // _data (uint64[2]) and _signature (bytes) for checkValidSignature — placeholder for test; real flow needs backend signature
-      const testData: [bigint, bigint] = [0n, 0n];
-      const testSignature = '0x';
-
-      // Contract: _day, _stepIndex, _data, _signature, lists, _timeRange, _intervals, _totalSeconds, _minutesAtTargetSpeed, _metsWalkingSpeed
-      const sendArgs = [
-        testDay,
-        testStepIndex,
-        testData,
-        testSignature,
-        testListGachaAddress,
-        testListNFTAddress,
-        testListIndexNFT,
-        testListSenderAddress,
-        testStatusTypeNft,
-        testTimeRange,
-        testIntervals,
-        testTotalSeconds,
-        testMinutes,
-        testMets,
-      ];
-
-      console.log(
-        `\n⏳ [${i + 1}/${dayRequiredCount}] Estimating gas for sendDailyResult (day=${dayTs})...`
-      );
-      const estimatedGas = await contract.sendDailyResult.estimateGas(
-        ...sendArgs
-      );
-      const gasLimitSend = Math.ceil(Number(estimatedGas) * 1.2);
-
-      console.log(
-        `⏳ [${i + 1}/${dayRequiredCount}] Sending sendDailyResult...`
-      );
-      const sendTx = await contract.sendDailyResult(...sendArgs, {
-        gasLimit: gasLimitSend,
-        gasPrice: gasPriceSend,
-      });
-      await sendTx.wait();
-      sendDailyResultTxHash = sendTx.hash;
-      console.log(
-        `✅ [${i + 1}/${dayRequiredCount}] sendDailyResult tx: ${sendTx.hash}`
-      );
-
-      if (i < dayRequiredCount - 1) {
-        console.log('   Waiting 10s before next send...');
-        await new Promise(resolve => setTimeout(resolve, 10000));
-      }
-    }
-  } catch (error: any) {
-    const msg = error?.reason ?? error?.message ?? String(error);
-    console.warn('⚠️  sendDailyResult test failed:', msg);
-    if (error?.data) console.warn('   Revert data:', error.data);
-    console.log(
-      '   This may be expected (onlyChallenger, valid signature from NFT, or onTimeSendResult required).'
-    );
-  }
-
-  // --- Step 7: Verify stored data (after sendDailyResult) ---
-  if (sendDailyResultTxHash) {
-    console.log('\n📋 STEP 7: VERIFY STORED DATA (after sendDailyResult)');
-    console.log('=====================================================');
-    console.log('⏳ Waiting 20s for state to settle...');
-    await new Promise(resolve => setTimeout(resolve, 20000));
-
-    try {
-      const [
-        challengeType,
-        walkingSpeedDataConfig,
-        highIntensityIntervalsConfig,
-        totalHighIntensityTimeConfig,
-        historyDateStep,
-        historyDataStep,
-        historyWalkingMinutes,
-        historyWalkingMets,
-        historyHiitIntervals,
-        historyHiitTime,
-      ] = await contract.getChallengeTypeAndHistory();
-      const [challengeCleared, challengeDayRequired, daysRemained] =
-        await contract.getChallengeInfo();
-      const state = await contract.getState();
-
-      console.log('\n📊 Stored data (getChallengeTypeAndHistory):');
-      console.log('  • challengeType:', challengeType.toString());
-      console.log(
-        '  • historyDateStep:',
-        historyDateStep.map((d: bigint) => d.toString())
-      );
-      console.log(
-        '  • historyDataStep:',
-        historyDataStep.map((d: bigint) => d.toString())
-      );
-      console.log(
-        '  • currentStatus (days achieved):',
-        challengeCleared.toString()
-      );
-      console.log('  • dayRequired:', challengeDayRequired.toString());
-      console.log('  • daysRemained:', daysRemained.toString());
-      const stateNames: { [key: number]: string } = {
-        0: 'PROCESSING',
-        1: 'SUCCESS',
-        2: 'FAILED',
-        3: 'GAVE_UP',
-        4: 'CLOSED',
-      };
-      console.log(
-        '  • stateInstance:',
-        stateNames[Number(state)] ?? Number(state)
-      );
-      console.log('\n✅ Stored data read successfully.');
-    } catch (err) {
-      console.warn('⚠️  Failed to read stored data:', err);
-    }
-  }
-
-  // --- Step 8: Save deployment info ---
-  console.log('\n📋 STEP 8: SAVE DEPLOYMENT INFO');
+  // --- Step 6: Save deployment info ---
+  console.log('\n📋 STEP 6: SAVE DEPLOYMENT INFO');
   console.log('================================');
   const outputPath = path.join(
     process.cwd(),
@@ -550,8 +374,8 @@ async function main() {
         timestamp: new Date().toISOString(),
       },
       sendDailyResultTest: {
-        sent: !!sendDailyResultTxHash,
-        transactionHash: sendDailyResultTxHash,
+        sent: false,
+        skipped: true,
         timestamp: new Date().toISOString(),
       },
     };
@@ -588,8 +412,8 @@ async function main() {
         timestamp: new Date().toISOString(),
       },
       sendDailyResultTest: {
-        sent: !!sendDailyResultTxHash,
-        transactionHash: sendDailyResultTxHash,
+        sent: false,
+        skipped: true,
         timestamp: new Date().toISOString(),
       },
     };
@@ -599,8 +423,8 @@ async function main() {
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
   console.log(`✅ Deployment info saved to: ${outputPath}`);
 
-  // --- Step 9: Report ---
-  console.log('\n📋 STEP 9: DEPLOYMENT REPORT');
+  // --- Step 7: Report ---
+  console.log('\n📋 STEP 7: DEPLOYMENT REPORT');
   console.log('===========================');
   console.log(`Network: ${network.name}`);
   console.log(`Contract: ChallengeBaseStep`);
@@ -613,9 +437,7 @@ async function main() {
   console.log(
     `Challenge Role: ${deploymentInfo.roleGranted?.challengeRole ? 'Granted' : 'Not Granted'}`
   );
-  console.log(
-    `sendDailyResult test: ${deploymentInfo.sendDailyResultTest?.sent ? 'Sent' : 'Skipped/Failed'}`
-  );
+  console.log('sendDailyResult: Not run (not-send-step script)');
   console.log('\n🎉 CHALLENGE BASE STEP DEPLOYMENT COMPLETED!');
 }
 

@@ -1363,6 +1363,19 @@ const batchGrantRole = async (challengeAddress: string): Promise<string> => {
 
     const allowedContractChallengeRole =
       await exerciseSupplementNFT.ALLOWED_CONTRACTS_CHALLENGE();
+
+    const alreadyHasRole = await exerciseSupplementNFT.hasRole(
+      allowedContractChallengeRole,
+      challengeAddress
+    );
+    if (alreadyHasRole) {
+      console.log(
+        '✅ Challenge address already has ALLOWED_CONTRACTS_CHALLENGE role — skip grant'
+      );
+      console.log('================================================\n');
+      return 'already_granted';
+    }
+
     const gasPrice = await provider.getFeeData();
 
     const etmBatchGrantRole =

@@ -26,7 +26,10 @@ async function main() {
 
   console.log('✅ Bytecode saved to:', outputPath);
   console.log('📊 Bytecode length:', artifact.bytecode.length);
-  console.log('📋 ABI functions:', artifact.abi.filter((item: any) => item.type === 'function').length);
+  console.log(
+    '📋 ABI functions:',
+    artifact.abi.filter((item: any) => item.type === 'function').length
+  );
   console.log('\n🎉 COMPLETED SUCCESSFULLY!');
 }
 

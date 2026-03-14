@@ -84,6 +84,7 @@
     "deploy:challenge:amoy": "hardhat run scripts/challenge/deploy-challenge-detail-v2.ts --network amoy",
     "deploy:challenge:polygon": "hardhat run scripts/challenge/deploy-challenge-detail-v2.ts --network polygon",
     "verify:challenge:amoy": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network amoy",
-    "verify:challenge:polygon": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network polygon"
+    "verify:challenge:polygon": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network polygon",
+    "gen:bytecode": "hardhat compile && node scripts/challenge/gen-bytecode-abi.js"
   }
 }

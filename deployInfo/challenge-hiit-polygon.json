@@ -1,0 +1,72 @@
+{
+  "network": "polygon",
+  "contractName": "ChallengeHIIT",
+  "contractAddress": "0xddd93ad47907546eE5c774F225DB66f7D00519B5",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2026-03-07T10:38:33.750Z",
+  "blockNumber": 83879941,
+  "constructorArgs": {
+    "stakeHolders": [
+      "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9",
+      "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9",
+      "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9"
+    ],
+    "createByToken": "0x0000000000000000000000000000000000000000",
+    "erc721Addresses": [
+      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
+    ],
+    "primaryRequired": [
+      3,
+      1771368487,
+      1967062887,
+      2,
+      60,
+      3
+    ],
+    "awardReceivers": [
+      "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9",
+      "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9"
+    ],
+    "index": 1,
+    "allowGiveUp": [
+      true,
+      true,
+      true
+    ],
+    "gasData": [
+      "200000000000000000",
+      "200000000000000000",
+      "0"
+    ],
+    "allAwardToSponsorWhenGiveUp": true,
+    "awardReceiversPercent": [
+      100,
+      100
+    ],
+    "totalAmount": "1000000000000"
+  },
+  "contractDetails": {
+    "sponsor": "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9",
+    "challenger": "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9",
+    "startTime": 1771368487,
+    "endTime": 1967062887,
+    "highIntensityIntervals": 2,
+    "totalHighIntensityTime": 60,
+    "dayRequired": 3,
+    "createByToken": "0x0000000000000000000000000000000000000000"
+  },
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://polygonscan.com/address/0xddd93ad47907546eE5c774F225DB66f7D00519B5"
+  },
+  "roleGranted": {
+    "challengeRole": true,
+    "transactionHash": "0x41c8a335d8472dcf7ee18ca655a43ff38b3a98e0c32e8d7554741b54aae8a24a",
+    "timestamp": "2026-03-07T10:38:37.015Z"
+  },
+  "sendDailyResultTest": {
+    "sent": false,
+    "skipped": true,
+    "timestamp": "2026-03-07T10:38:37.015Z"
+  }
+}

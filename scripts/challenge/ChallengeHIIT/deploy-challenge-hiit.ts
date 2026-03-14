@@ -7,23 +7,23 @@ import batchGrantRole from '../grantChallengeRole';
 const hre = require('hardhat');
 
 /**
- * Deploy ChallengeBaseStep (or only Grant Role when NOT_DEPLOY=true).
- * Config: CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP (multi-line JSON in .env supported).
- * - Default: deploy → verify → grant role → send step loop (test) → save deployInfo.
- * - NOT_DEPLOY=true: skip deploy, load contract from deployInfo/challenge-walking-speed-{network}.json, run grant role + send step loop only.
+ * Deploy Challenge HIIT (or only Grant Role when NOT_DEPLOY=true).
+ * - Default: deploy → verify → grant role → save deployInfo.
+ * - NOT_DEPLOY=true: skip deploy, load contract from deployInfo/challenge-hiit-{network}.json, run grant role only.
  *
  * Example (deploy):
- *   npx hardhat run scripts/challenge/ChallengeWalkingSpeed/deploy-challenge-walking-speed.ts --network polygon
+ *   npx hardhat run scripts/challenge/ChallengeHIIT/deploy-challenge-hiit.ts --network polygon
  *
- * Example (grant role + send step only):
- *   NOT_DEPLOY=true npx hardhat run scripts/challenge/ChallengeWalkingSpeed/deploy-challenge-walking-speed.ts --network polygon
+ * Example (grant role only, use existing 0x79FC...):
+ *   NOT_DEPLOY=true npx hardhat run scripts/challenge/ChallengeHIIT/deploy-challenge-hiit.ts --network polygon
  */
 
-interface ChallengeBaseStepDeploymentConfig {
+interface ChallengeHIITDeploymentConfig {
   stakeHolders: string[];
   createByToken: string;
   erc721Addresses: string[];
-  primaryRequired: number[]; // [duration, startTime, endTime, goal, dayRequired]
+  /** [duration, startTime, endTime, highIntensityIntervals, totalHighIntensityTime, dayRequired] */
+  primaryRequired: number[];
   awardReceivers: string[];
   index: number;
   allowGiveUp: boolean[];
@@ -31,8 +31,6 @@ interface ChallengeBaseStepDeploymentConfig {
   allAwardToSponsorWhenGiveUp: boolean;
   awardReceiversPercent: number[];
   totalAmount: string;
-  walkingSpeedData: number[];
-  hiitData?: number[];
 }
 
 function getExplorerUrl(networkName: string, address: string): string {
@@ -47,29 +45,27 @@ function getExplorerUrl(networkName: string, address: string): string {
   return explorers[networkName] || `Unknown network: ${networkName}`;
 }
 
-function parseEnvConfigBaseOnlyStep(raw: string): any {
+function parseEnvConfigHIIT(raw: string): any {
   const trimmed = raw.trim();
   const jsonStr = trimmed.startsWith('{')
     ? trimmed
-    : trimmed
-        .replace(/^CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP\s*=\s*/, '')
-        .trim();
+    : trimmed.replace(/^CONFIG_DEPLOY_CHALLENGE_HIIT\s*=\s*/, '').trim();
   try {
     return JSON.parse(jsonStr);
   } catch {
+    // Multi-line JSON in .env: load from .env and extract balanced {...}.
+    // Note: does not handle strings containing '{' or '}' in values.
     const envPath = path.join(process.cwd(), '.env');
     if (!fs.existsSync(envPath))
-      throw new Error('Invalid CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP JSON');
+      throw new Error('Invalid CONFIG_DEPLOY_CHALLENGE_HIIT JSON');
     const content = fs.readFileSync(envPath, 'utf-8');
-    const key = 'CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP=';
+    const key = 'CONFIG_DEPLOY_CHALLENGE_HIIT=';
     const idx = content.indexOf(key);
     if (idx === -1)
-      throw new Error(
-        'CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP not found in .env'
-      );
+      throw new Error('CONFIG_DEPLOY_CHALLENGE_HIIT not found in .env');
     let start = content.indexOf('{', idx);
     if (start === -1)
-      throw new Error('CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP: missing {');
+      throw new Error('CONFIG_DEPLOY_CHALLENGE_HIIT: missing {');
     let depth = 0;
     let end = start;
     for (let i = start; i < content.length; i++) {
@@ -86,12 +82,10 @@ function parseEnvConfigBaseOnlyStep(raw: string): any {
   }
 }
 
-function normalizeConfig(input: any): ChallengeBaseStepDeploymentConfig {
+function normalizeConfig(input: any): ChallengeHIITDeploymentConfig {
   const toBool = (v: any) =>
     typeof v === 'boolean' ? v : String(v).toLowerCase() === 'true';
   const toNum = (v: any) => (typeof v === 'number' ? v : Number(v));
-  const toNumArray = (v: any) =>
-    Array.isArray(v) ? v.map((n: any) => toNum(n)) : [];
   if (!input || typeof input !== 'object')
     throw new Error('Invalid config: expected object');
   return {
@@ -108,8 +102,6 @@ function normalizeConfig(input: any): ChallengeBaseStepDeploymentConfig {
       toNum(n)
     ),
     totalAmount: String(input.totalAmount),
-    walkingSpeedData: toNumArray(input.walkingSpeedData ?? []),
-    hiitData: toNumArray(input.hiitData ?? []),
   };
 }
 
@@ -122,40 +114,38 @@ async function main() {
   const skipDeploy = toBoolEnv(process.env.NOT_DEPLOY);
   if (skipDeploy) {
     console.log(
-      '📌 NOT_DEPLOY=true → Skip deploy, use existing contract from deployInfo and run Grant Role + send step loop only.'
+      '📌 NOT_DEPLOY=true → Skip deploy, use existing contract from deployInfo and run Grant Role only.'
     );
   }
 
-  console.log('🚀 CHALLENGE BASE STEP (Walking Speed) DEPLOYMENT');
-  console.log('=================================================');
+  console.log('🚀 CHALLENGE HIIT DEPLOYMENT');
+  console.log('============================');
 
   const [deployer] = await hre.ethers.getSigners();
   console.log(`📍 Network: ${network.name}`);
   console.log(`👤 Deployer: ${deployer.address}`);
   console.log(
-    `💰 Balance: ${hre.ethers.formatEther(
-      await hre.ethers.provider.getBalance(deployer.address)
-    )} ETH`
+    `💰 Balance: ${hre.ethers.formatEther(await hre.ethers.provider.getBalance(deployer.address))} ETH`
   );
 
   // --- Step 1: Load config ---
   console.log('\n📋 STEP 1: LOAD CONFIG');
   console.log('========================');
-  let config: ChallengeBaseStepDeploymentConfig;
+  let config: ChallengeHIITDeploymentConfig;
 
   try {
-    const envConfigRaw = process.env.CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP;
+    const envConfigRaw = process.env.CONFIG_DEPLOY_CHALLENGE_HIIT;
     if (!envConfigRaw || envConfigRaw.trim().length === 0) {
       console.error(
-        '❌ CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP not found in environment variables'
+        '❌ CONFIG_DEPLOY_CHALLENGE_HIIT not found in environment variables'
       );
       process.exit(1);
     }
-    const parsed = parseEnvConfigBaseOnlyStep(envConfigRaw);
+    const parsed = parseEnvConfigHIIT(envConfigRaw);
     config = normalizeConfig(parsed);
-    if (!config.primaryRequired || config.primaryRequired.length < 5) {
+    if (!config.primaryRequired || config.primaryRequired.length < 6) {
       console.error(
-        '❌ primaryRequired must have at least 5 elements: [duration, startTime, endTime, goal, dayRequired]'
+        '❌ primaryRequired must have 6 elements: [duration, startTime, endTime, highIntensityIntervals, totalHighIntensityTime, dayRequired]'
       );
       process.exit(1);
     }
@@ -163,36 +153,8 @@ async function main() {
       console.error('❌ allowGiveUp must have exactly 3 elements');
       process.exit(1);
     }
-    if (
-      config.walkingSpeedData.length > 0 &&
-      config.walkingSpeedData.length !== 3
-    ) {
-      console.error(
-        '❌ walkingSpeedData must be [] or [targetSpeed, requiredMinutesPerDay, minAchievementDays] (length 3)'
-      );
-      process.exit(1);
-    }
-    if (
-      (config.hiitData?.length ?? 0) > 0 &&
-      (config.hiitData?.length ?? 0) !== 2
-    ) {
-      console.error(
-        '❌ hiitData must be [] or [highIntensityIntervals, totalHighIntensityTime] (length 2)'
-      );
-      process.exit(1);
-    }
     console.log(
-      '✅ Configuration loaded from ENV (CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP)'
-    );
-    console.log(
-      '  • walkingSpeedData:',
-      config.walkingSpeedData.length
-        ? config.walkingSpeedData
-        : '[] (step only)'
-    );
-    console.log(
-      '  • hiitData:',
-      (config.hiitData?.length ?? 0) ? config.hiitData : '[] (no HIIT)'
+      '✅ Configuration loaded from ENV (CONFIG_DEPLOY_CHALLENGE_HIIT)'
     );
   } catch (error) {
     console.error('❌ Failed to load configuration:', error);
@@ -211,8 +173,6 @@ async function main() {
     config.allAwardToSponsorWhenGiveUp,
     config.awardReceiversPercent,
     config.totalAmount,
-    config.walkingSpeedData ?? [],
-    config.hiitData ?? [],
   ];
 
   let contract: any;
@@ -224,7 +184,7 @@ async function main() {
   if (skipDeploy) {
     const deployInfoPath = path.join(
       process.cwd(),
-      `deployInfo/challenge-walking-speed-${network.name}.json`
+      `deployInfo/challenge-hiit-${network.name}.json`
     );
     if (!fs.existsSync(deployInfoPath)) {
       console.error(
@@ -244,16 +204,14 @@ async function main() {
     console.log('==========================');
     console.log('Contract address:', contractAddress);
     const ContractFactory =
-      await hre.ethers.getContractFactory('ChallengeBaseStep');
+      await hre.ethers.getContractFactory('ChallengeHIIT');
     contract = ContractFactory.attach(contractAddress);
   } else {
     const balance = await hre.ethers.provider.getBalance(deployer.address);
-    const minBalance = hre.ethers.parseEther('0.05');
+    const minBalance = hre.ethers.parseEther('0.1');
     if (balance < minBalance) {
       console.error(
-        `❌ Insufficient balance. Need at least ${hre.ethers.formatEther(
-          minBalance
-        )} ETH`
+        `❌ Insufficient balance. Need at least ${hre.ethers.formatEther(minBalance)} ETH`
       );
       process.exit(1);
     }
@@ -267,12 +225,11 @@ async function main() {
     console.log('======================');
 
     const ContractFactory =
-      await hre.ethers.getContractFactory('ChallengeBaseStep');
+      await hre.ethers.getContractFactory('ChallengeHIIT');
     try {
-      const baseOverrides =
-        config.allowGiveUp && config.allowGiveUp[1]
-          ? { value: BigInt(config.totalAmount) }
-          : {};
+      const baseOverrides = config.allowGiveUp[1]
+        ? { value: BigInt(config.totalAmount) }
+        : {};
       const unsignedTx = await ContractFactory.getDeployTransaction(
         ...constructorArgs,
         baseOverrides
@@ -316,6 +273,9 @@ async function main() {
   // --- Step 3: Verify deployment (on-chain) ---
   console.log('\n📋 STEP 3: VERIFY DEPLOYMENT (ON-CHAIN)');
   console.log('======================================');
+  console.log('\n🔍 VERIFYING DEPLOYMENT');
+  console.log('=======================');
+
   const deployedCode = await hre.ethers.provider.getCode(contractAddress);
   if (deployedCode === '0x') {
     console.error('❌ Contract deployment failed - no code at address');
@@ -323,15 +283,53 @@ async function main() {
   }
   console.log('✅ Contract code verified');
 
-  // --- Step 4: Verify on block explorer ---
+  // --- Step 4: Test basic functionality ---
+  console.log('\n📋 STEP 4: TEST BASIC FUNCTIONALITY');
+  console.log('===================================');
+  console.log('\n🧪 TESTING BASIC FUNCTIONALITY');
+  console.log('===============================');
+
+  try {
+    const sponsor = await contract.sponsor();
+    const challenger = await contract.challenger();
+    const startTime = await contract.startTime();
+    const endTime = await contract.endTime();
+    const highIntensityIntervals = await contract.highIntensityIntervals();
+    const totalHighIntensityTime = await contract.totalHighIntensityTime();
+    const dayRequired = await contract.dayRequired();
+    const createByToken = await contract.createByToken();
+
+    console.log(`✅ Sponsor: ${sponsor}`);
+    console.log(`✅ Challenger: ${challenger}`);
+    console.log(
+      `✅ Start Time: ${new Date(Number(startTime) * 1000).toISOString()}`
+    );
+    console.log(
+      `✅ End Time: ${new Date(Number(endTime) * 1000).toISOString()}`
+    );
+    console.log(`✅ High-intensity intervals/day: ${highIntensityIntervals}`);
+    console.log(
+      `✅ Total high-intensity time (s)/day: ${totalHighIntensityTime}`
+    );
+    console.log(`✅ Day required: ${dayRequired}`);
+    console.log(`✅ Create By Token: ${createByToken}`);
+    console.log('✅ All basic functionality tests passed');
+  } catch (error) {
+    console.error('❌ Basic functionality test failed:', error);
+    process.exit(1);
+  }
+
+  // --- Step 5: Verify on block explorer ---
   if (
     network.name !== 'hardhat' &&
     network.name !== 'localhost' &&
     !skipDeploy
   ) {
-    console.log('\n📋 STEP 4: VERIFY ON BLOCK EXPLORER');
+    console.log('\n📋 STEP 5: VERIFY ON BLOCK EXPLORER');
     console.log('===================================');
     await new Promise(resolve => setTimeout(resolve, 15000));
+    console.log('\n🔍 VERIFYING ON BLOCK EXPLORER');
+    console.log('===============================');
     try {
       await contract.deploymentTransaction()?.wait(5);
       await run('verify:verify', {
@@ -344,9 +342,11 @@ async function main() {
     }
   }
 
-  // --- Step 5: Grant challenge role ---
-  console.log('\n📋 STEP 5: GRANT CHALLENGE ROLE');
+  // --- Step 6: Grant challenge role ---
+  console.log('\n📋 STEP 6: GRANT CHALLENGE ROLE');
   console.log('=================================');
+  console.log('\n🔐 GRANTING CHALLENGE ROLE');
+  console.log('===========================');
   let roleGrantTxHash: string | null = null;
   try {
     roleGrantTxHash = await batchGrantRole(contractAddress);
@@ -356,42 +356,27 @@ async function main() {
     console.warn('⚠️  Failed to grant challenge role:', error);
   }
 
-  // --- Step 6: Send step loop (test sendDailyResult) ---
-  // From CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP: when walkingSpeedData is set, send step must include _minutesAtTargetSpeed, _metsWalkingSpeed; when hiitData is set, send step must include _intervals, _totalSeconds.
-  console.log('\n📋 STEP 6: TEST SEND DAILY RESULT (LOOP)');
-  console.log('=========================================');
-  const dayRequiredCount = config.primaryRequired[4];
-  const startTimeC = config.primaryRequired[1];
-  const goal = config.primaryRequired[3];
-
-  const hasWalking =
-    config.walkingSpeedData && config.walkingSpeedData.length >= 3;
-  const hasHiit = config.hiitData && config.hiitData.length >= 2;
-  // hiitData: [highIntensityIntervals, totalHighIntensityTime]
-  const hiitIntervals = hasHiit ? config.hiitData![0] : 0;
-  const hiitTotalSeconds = hasHiit ? config.hiitData![1] : 0;
-  // walkingSpeedData: [targetSpeed, requiredMinutesPerDay, minAchievementDays]
-  const walkingRequiredMinutes = hasWalking ? config.walkingSpeedData[1] : 0;
-
-  if (hasWalking)
-    console.log(
-      '  • walkingSpeedData set → send step includes _minutesAtTargetSpeed, _metsWalkingSpeed'
-    );
-  if (hasHiit)
-    console.log(
-      '  • hiitData set → send step includes _intervals, _totalSeconds'
-    );
-  if (!hasWalking && !hasHiit)
-    console.log('  • Step only (no walking, no HIIT)');
+  // --- Step 5b: Test sendDailyResult ---
+  console.log('\n📋 STEP 5b: TEST SEND DAILY RESULT');
+  console.log('===================================');
+  console.log('\n📊 TESTING sendDailyResult');
+  console.log('============================');
 
   let sendDailyResultTxHash: string | null = null;
-  const testListGachaAddress: string[] = [];
-  const testListNFTAddress: string[] = [];
-  const testListIndexNFT: bigint[][] = [];
-  const testListSenderAddress: string[][] = [];
-  const testStatusTypeNft: boolean[] = [];
-
+  const dayRequiredCount = config.primaryRequired[5];
   try {
+    const [startTimeC, endTimeC] = [
+      config.primaryRequired[1],
+      config.primaryRequired[2],
+    ];
+    const minIntervals = config.primaryRequired[3];
+    const minTotalSeconds = config.primaryRequired[4];
+    const testListGachaAddress: string[] = [];
+    const testListNFTAddress: string[] = [];
+    const testListIndexNFT: bigint[][] = [];
+    const testListSenderAddress: string[][] = [];
+    const testStatusTypeNft: boolean[] = [];
+
     const feeDataSend = await hre.ethers.provider.getFeeData();
     const gasPriceSend =
       feeDataSend.gasPrice ?? hre.ethers.parseUnits('40', 'gwei');
@@ -399,33 +384,27 @@ async function main() {
     for (let i = 0; i < dayRequiredCount; i++) {
       const dayTs = startTimeC + (i + 1) * 86400 * 2;
       const testDay = [BigInt(dayTs)];
-      const testStepIndex = [BigInt(goal)];
-      const testTimeRange: [bigint, bigint] = [
-        BigInt(dayTs - 100),
-        BigInt(dayTs + 100),
-      ];
-
-      // Only add HIIT data when hiitData is set
-      let testIntervals = hasHiit ? [BigInt(hiitIntervals)] : [];
-      let testTotalSeconds = hasHiit ? [BigInt(hiitTotalSeconds)] : [];
+      let testIntervals = [BigInt(minIntervals)];
+      let testTotalSeconds = [BigInt(minTotalSeconds)];
 
       if (i == 1) {
         testIntervals = [BigInt(1)];
         testTotalSeconds = [BigInt(1)];
       }
 
-      // Only add walking data when walkingSpeedData is set
-      const testMinutes = hasWalking ? [BigInt(walkingRequiredMinutes)] : [];
-      const testMets = hasWalking ? [BigInt(1)] : []; // Valid MET when target speed achieved
+      const testTimeRange: [bigint, bigint] = [
+        BigInt(dayTs - 100),
+        BigInt(dayTs + 100),
+      ];
 
       // _data (uint64[2]) and _signature (bytes) for checkValidSignature — placeholder for test; real flow needs backend signature
       const testData: [bigint, bigint] = [0n, 0n];
       const testSignature = '0x';
 
-      // Contract: _day, _stepIndex, _data, _signature, lists, _timeRange, _intervals, _totalSeconds, _minutesAtTargetSpeed, _metsWalkingSpeed
       const sendArgs = [
         testDay,
-        testStepIndex,
+        testIntervals,
+        testTotalSeconds,
         testData,
         testSignature,
         testListGachaAddress,
@@ -434,10 +413,6 @@ async function main() {
         testListSenderAddress,
         testStatusTypeNft,
         testTimeRange,
-        testIntervals,
-        testTotalSeconds,
-        testMinutes,
-        testMets,
       ];
 
       console.log(
@@ -475,39 +450,44 @@ async function main() {
     );
   }
 
-  // --- Step 7: Verify stored data (after sendDailyResult) ---
+  // --- Step 5c: After sendDailyResult — wait 20s then verify stored data ---
   if (sendDailyResultTxHash) {
-    console.log('\n📋 STEP 7: VERIFY STORED DATA (after sendDailyResult)');
+    console.log('\n📋 STEP 5c: VERIFY STORED DATA (after sendDailyResult)');
     console.log('=====================================================');
     console.log('⏳ Waiting 20s for state to settle...');
     await new Promise(resolve => setTimeout(resolve, 20000));
 
     try {
-      const [
-        challengeType,
-        walkingSpeedDataConfig,
-        highIntensityIntervalsConfig,
-        totalHighIntensityTimeConfig,
-        historyDateStep,
-        historyDataStep,
-        historyWalkingMinutes,
-        historyWalkingMets,
-        historyHiitIntervals,
-        historyHiitTime,
-      ] = await contract.getChallengeTypeAndHistory();
+      const [historyDate, historyData, historyIntervals, historyTime] =
+        await contract.getHIITHistory();
       const [challengeCleared, challengeDayRequired, daysRemained] =
         await contract.getChallengeInfo();
       const state = await contract.getState();
+      const [highIntensityIntervalsReq, totalHighIntensityTimeReq] =
+        await contract.getHIITConfig();
+      const [startTimeC, endTimeC] = [
+        config.primaryRequired[1],
+        config.primaryRequired[2],
+      ];
+      const testDay = [startTimeC];
+      const achievedOnDay = await contract.getHIITAchievedOn(testDay[0]);
 
-      console.log('\n📊 Stored data (getChallengeTypeAndHistory):');
-      console.log('  • challengeType:', challengeType.toString());
+      console.log('\n📊 Stored data (should match sendDailyResult logic):');
       console.log(
-        '  • historyDateStep:',
-        historyDateStep.map((d: bigint) => d.toString())
+        '  • historyDate:',
+        historyDate.map((d: bigint) => d.toString())
       );
       console.log(
-        '  • historyDataStep:',
-        historyDataStep.map((d: bigint) => d.toString())
+        '  • historyData (0=not achieved, 1=achieved):',
+        historyData.map((d: bigint) => d.toString())
+      );
+      console.log(
+        '  • historyIntervals:',
+        historyIntervals.map((i: bigint) => i.toString())
+      );
+      console.log(
+        '  • historyTime (seconds):',
+        historyTime.map((t: bigint) => t.toString())
       );
       console.log(
         '  • currentStatus (days achieved):',
@@ -515,6 +495,10 @@ async function main() {
       );
       console.log('  • dayRequired:', challengeDayRequired.toString());
       console.log('  • daysRemained:', daysRemained.toString());
+      console.log(
+        `  • getHIITAchievedOn(${testDay[0]}):`,
+        achievedOnDay.toString()
+      );
       const stateNames: { [key: number]: string } = {
         0: 'PROCESSING',
         1: 'SUCCESS',
@@ -526,18 +510,41 @@ async function main() {
         '  • stateInstance:',
         stateNames[Number(state)] ?? Number(state)
       );
-      console.log('\n✅ Stored data read successfully.');
+
+      const idx = historyDate.findIndex(
+        (d: bigint) => Number(d) === testDay[0]
+      );
+      const expectedAchieved =
+        idx >= 0 &&
+        Number(historyIntervals[idx]) >= Number(highIntensityIntervalsReq) &&
+        Number(historyTime[idx]) >= Number(totalHighIntensityTimeReq)
+          ? 1
+          : 0;
+      const ok =
+        idx >= 0 &&
+        Number(historyData[idx]) === expectedAchieved &&
+        Number(achievedOnDay) === expectedAchieved;
+      if (ok) {
+        console.log('\n✅ Stored data consistent with sendDailyResult logic.');
+      } else {
+        console.warn(
+          '\n⚠️  Stored data check: some values may not match expected (review above).'
+        );
+      }
     } catch (err) {
       console.warn('⚠️  Failed to read stored data:', err);
     }
   }
 
-  // --- Step 8: Save deployment info ---
-  console.log('\n📋 STEP 8: SAVE DEPLOYMENT INFO');
+  // --- Step 7: Save deployment info ---
+  console.log('\n📋 STEP 7: SAVE DEPLOYMENT INFO');
   console.log('================================');
+  console.log('\n💾 SAVING DEPLOYMENT INFO');
+  console.log('==========================');
+
   const outputPath = path.join(
     process.cwd(),
-    `deployInfo/challenge-walking-speed-${network.name}.json`
+    `deployInfo/challenge-hiit-${network.name}.json`
   );
   let deploymentInfo: any;
   if (skipDeploy && fs.existsSync(outputPath)) {
@@ -549,6 +556,20 @@ async function main() {
         transactionHash: roleGrantTxHash,
         timestamp: new Date().toISOString(),
       },
+      contractDetails: {
+        sponsor: await contract.sponsor(),
+        challenger: await contract.challenger(),
+        startTime: Number(await contract.startTime()),
+        endTime: Number(await contract.endTime()),
+        highIntensityIntervals: Number(await contract.highIntensityIntervals()),
+        totalHighIntensityTime: Number(await contract.totalHighIntensityTime()),
+        dayRequired: Number(await contract.dayRequired()),
+        createByToken: await contract.createByToken(),
+      },
+      verification: existing.verification ?? {
+        verified: network.name !== 'hardhat' && network.name !== 'localhost',
+        explorerUrl: getExplorerUrl(network.name, contractAddress),
+      },
       sendDailyResultTest: {
         sent: !!sendDailyResultTxHash,
         transactionHash: sendDailyResultTxHash,
@@ -558,7 +579,7 @@ async function main() {
   } else {
     deploymentInfo = {
       network: network.name,
-      contractName: 'ChallengeBaseStep',
+      contractName: 'ChallengeHIIT',
       contractAddress,
       deployer: deployer.address,
       deploymentTime: new Date().toISOString(),
@@ -575,8 +596,16 @@ async function main() {
         allAwardToSponsorWhenGiveUp: config.allAwardToSponsorWhenGiveUp,
         awardReceiversPercent: config.awardReceiversPercent,
         totalAmount: config.totalAmount,
-        walkingSpeedData: config.walkingSpeedData,
-        hiitData: config.hiitData ?? [],
+      },
+      contractDetails: {
+        sponsor: await contract.sponsor(),
+        challenger: await contract.challenger(),
+        startTime: Number(await contract.startTime()),
+        endTime: Number(await contract.endTime()),
+        highIntensityIntervals: Number(await contract.highIntensityIntervals()),
+        totalHighIntensityTime: Number(await contract.totalHighIntensityTime()),
+        dayRequired: Number(await contract.dayRequired()),
+        createByToken: await contract.createByToken(),
       },
       verification: {
         verified: network.name !== 'hardhat' && network.name !== 'localhost',
@@ -599,11 +628,13 @@ async function main() {
   fs.writeFileSync(outputPath, JSON.stringify(deploymentInfo, null, 2));
   console.log(`✅ Deployment info saved to: ${outputPath}`);
 
-  // --- Step 9: Report ---
-  console.log('\n📋 STEP 9: DEPLOYMENT REPORT');
+  // --- Step 8: Report ---
+  console.log('\n📋 STEP 8: DEPLOYMENT REPORT');
   console.log('===========================');
+  console.log('\n📊 DEPLOYMENT REPORT');
+  console.log('====================');
   console.log(`Network: ${network.name}`);
-  console.log(`Contract: ChallengeBaseStep`);
+  console.log(`Contract: ChallengeHIIT`);
   console.log(`Address: ${contractAddress}`);
   console.log(`Deployer: ${deploymentInfo.deployer ?? deployer.address}`);
   console.log(`Block: ${deploymentInfo.blockNumber ?? 'N/A'}`);
@@ -616,12 +647,12 @@ async function main() {
   console.log(
     `sendDailyResult test: ${deploymentInfo.sendDailyResultTest?.sent ? 'Sent' : 'Skipped/Failed'}`
   );
-  console.log('\n🎉 CHALLENGE BASE STEP DEPLOYMENT COMPLETED!');
+  console.log('\n🎉 CHALLENGE HIIT DEPLOYMENT COMPLETED!');
 }
 
 main()
   .then(() => process.exit(0))
-  .catch((error: any) => {
+  .catch(error => {
     console.error('💥 DEPLOYMENT FAILED:', error);
     process.exit(1);
   });
