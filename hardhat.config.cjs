@@ -18,7 +18,7 @@ const config = {
       chainId: 1337,
     },
     polygon: {
-      url: 'https://polygon-rpc.com' || 'https://polygon-rpc.com',
+      url: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 137,
     },
@@ -33,17 +33,34 @@ const config = {
     },
   },
   etherscan: {
-    apiKey: process.env.POLYGONSCAN_API_KEY || '',
+    // Single string = Etherscan API V2 (one key for all chains, chainid from network)
+    apiKey: process.env.ETHERSCAN_API_KEY || process.env.POLYGONSCAN_API_KEY || '',
     customChains: [
       {
-        network: "polygon",
+        network: 'polygon',
         chainId: 137,
         urls: {
-          apiURL: "https://api.polygonscan.com/api",
-          browserURL: "https://polygonscan.com"
-        }
-      }
-    ]
+          apiURL: 'https://api.etherscan.io/v2/api',
+          browserURL: 'https://polygonscan.com',
+        },
+      },
+      {
+        network: 'polygonAmoy',
+        chainId: 80002,
+        urls: {
+          apiURL: 'https://api.etherscan.io/v2/api',
+          browserURL: 'https://amoy.polygonscan.com',
+        },
+      },
+      {
+        network: 'amoy',
+        chainId: 80002,
+        urls: {
+          apiURL: 'https://api.etherscan.io/v2/api',
+          browserURL: 'https://amoy.polygonscan.com',
+        },
+      },
+    ],
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,

@@ -71,7 +71,7 @@ async function main() {
   const emptyStatus: boolean[] = [];
 
   const contract = await hre.ethers.getContractAt(
-    'ChallengeWalkingSpeed',
+    'ChallengeBaseStep',
     contractAddress
   );
 
@@ -100,6 +100,8 @@ async function main() {
       emptySender,
       emptyStatus,
       timeRange,
+      [], // _intervals (empty when HIIT disabled)
+      [], // _totalSeconds (empty when HIIT disabled)
       minutes,
       metsWalkingSpeed
     );
@@ -121,6 +123,8 @@ async function main() {
       emptySender,
       emptyStatus,
       timeRange,
+      [], // _intervals (empty when HIIT disabled)
+      [], // _totalSeconds (empty when HIIT disabled)
       minutes,
       metsWalkingSpeed,
       {

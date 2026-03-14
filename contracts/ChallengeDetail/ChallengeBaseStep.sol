@@ -538,11 +538,17 @@ interface IERC20 {
      */
     function symbol() external view returns (string memory);
 }
-// File: Challenge/ChallengeWalkingSpeed.sol
+// File: Challenge/ChallengeBaseStep.sol
 
 pragma solidity ^0.8.16;
 
-contract ChallengeWalkingSpeed is IERC721Receiver {
+/**
+ * @title ChallengeBaseStep
+ * @dev Base step challenge with optional walking speed and optional HIIT.
+ *      Step (goal steps per day) is always required.
+ *      Optional: walking speed (minutes at target speed, METs); HIIT (intervals + total high-intensity seconds per day).
+ */
+contract ChallengeBaseStep is IERC721Receiver {
     /** @param ChallengeState currentState of challenge:
          1 : in processs
          2 : success
@@ -605,6 +611,30 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
     /** @dev metsWalkingSpeed METs (Metabolic Equivalent of Task) values for walking speed in challenge.
      */
     uint256[] public metsWalkingSpeed;
+
+    /** @dev HIIT optional: high-intensity intervals required per day (when HIIT enabled).
+     */
+    uint256 public highIntensityIntervals;
+
+    /** @dev HIIT optional: total high-intensity time in seconds required per day (when HIIT enabled).
+     */
+    uint256 public totalHighIntensityTime;
+
+    /** @dev historyIntervals HIIT intervals per day (when HIIT enabled).
+     */
+    uint256[] public historyIntervals;
+
+    /** @dev historyTime HIIT total high-intensity seconds per day (when HIIT enabled).
+     */
+    uint256[] public historyTime;
+
+    /** @dev hiitAchievedOn HIIT achieved status on a day (0 or 1) when HIIT enabled.
+     */
+    mapping(uint256 => uint256) public hiitAchievedOn;
+
+    /** @dev True when HIIT option was enabled at deployment.
+     */
+    bool public isHiitEnabled;
 
     /** @dev index index to split array receivers.
      */
@@ -833,7 +863,7 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
      * @param _stakeHolders Array of addresses of the stakeholders participating in the challenge.
      * @param _createByToken The address of the token used to create this challenge.
      * @param _erc721Address Array of addresses of the ERC721 tokens used in the challenge.
-     * @param _primaryRequired Array of values representing the primary requirements for each ERC721 token in the challenge.
+     * @param _primaryRequired Array of values: [duration, startTime, endTime, goal (steps), dayRequired].
      * @param _awardReceivers Array of addresses of the receivers who will receive awards if the challenge succeeds.
      * @param _index The index of the current award receiver.
      * @param _allowGiveUp Array of boolean values indicating whether each stakeholder can give up the challenge or not.
@@ -841,10 +871,11 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
      * @param _allAwardToSponsorWhenGiveUp A boolean value indicating whether all awards should be given to the sponsor when the challenge is given up.
      * @param _awardReceiversPercent Array of percentage values representing the percentage of awards that each award receiver will receive.
      * @param _totalAmount The total amount of tokens locked in the challenge.
-     * @param _walkingSpeedData Array of walking speed config:
+     * @param _walkingSpeedData Optional array of walking speed config (length 0 = step only, length 3 = step + walking speed):
      *        [0] target speed (km/h),
      *        [1] required minutes per day,
      *        [2] minimum achievement days (walking speed).
+     * @param _hiitData Optional HIIT config (length 0 = no HIIT, length 2 = step + HIIT): [highIntensityIntervals, totalHighIntensityTime].
      */
     constructor(
         address payable[] memory _stakeHolders,
@@ -858,11 +889,19 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
         bool _allAwardToSponsorWhenGiveUp,
         uint256[] memory _awardReceiversPercent,
         uint256 _totalAmount,
-        uint256[] memory _walkingSpeedData
+        uint256[] memory _walkingSpeedData,
+        uint256[] memory _hiitData
     ) payable {
         require(_allowGiveUp.length == 3, "Invalid allow give up"); // Checking if _allowGiveUp array length is 3.
-        require(_walkingSpeedData.length == 3, "Invalid walking speed data"); // Expect exactly 3 values.
-        require(_primaryRequired[4] >= _walkingSpeedData[2], "Invalid walking speed days"); // Checking if the required number of days for the challenge is greater than or equal to the minimum achievement days for walking speed condition.
+        require(_primaryRequired.length >= 5, "Invalid primary required length"); // [duration, startTime, endTime, goal, dayRequired]
+        require(
+            _walkingSpeedData.length == 0 || _walkingSpeedData.length == 3,
+            "Invalid walking speed data"
+        ); // 0 = step only, 3 = step + walking speed.
+        if (_walkingSpeedData.length == 3) {
+            require(_primaryRequired[4] >= _walkingSpeedData[2], "Invalid walking speed days"); // Checking if the required number of days for the challenge is greater than or equal to the minimum achievement days for walking speed condition.
+        }
+        require(_hiitData.length == 0 || _hiitData.length == 2, "Invalid HIIT data"); // 0 = no HIIT, 2 = [highIntensityIntervals, totalHighIntensityTime]
 
         if (_allowGiveUp[1]) {
             require(msg.value == _totalAmount, "Invalid award"); // Checking if msg.value is equal to _totalAmount when _allowGiveUp[1] is true.
@@ -916,7 +955,12 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
         // Store walking speed configuration
         walkingSpeedData = _walkingSpeedData;
 
-        // get amoutn base fee
+        // Store HIIT configuration when enabled
+        if (_hiitData.length == 2) {
+            highIntensityIntervals = _hiitData[0];
+            totalHighIntensityTime = _hiitData[1];
+            isHiitEnabled = true;
+        }
         (amountSuccessFee, amountFailFee) = IChallengeFee(
             IExerciseSupplementNFT(_erc721Address[0]).feeSettingAddress()
         ).getAmountFee();
@@ -956,12 +1000,14 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
      * @param _listSenderAddress An array of arrays representing sender addresses.
      * @param _statusTypeNft An array of boolean values representing NFT status types.
      * @param _timeRange A tuple of two uint64 values representing the time range.
+     * @param _intervals HIIT high-intensity intervals per day (required when HIIT enabled; may be empty when disabled).
+     * @param _totalSeconds HIIT total high-intensity seconds per day (required when HIIT enabled; may be empty when disabled).
+     * @param _minutesAtTargetSpeed Minutes at target speed per day (required when walking speed enabled; may be empty when disabled).
+     * @param _metsWalkingSpeed METs walking speed per day (required when walking speed enabled; may be empty when disabled).
      * @notice This function is used to send daily results for updating contract activities.
      *         It requires specific roles (onlyChallenger) and enforces timing constraints (onTimeSendResult).
      *         It processes various input data related to Gacha and NFT contracts to update activities.
      *         The provided signature is validated to ensure the authenticity of the data.
-     * @param _minutesAtTargetSpeed An array of uint256 values representing the minutes at target speed.
-     * @param _metsWalkingSpeed An array of uint256 values representing the METs walking speed.
      * @dev This function can only be called by authorized challengers within a specific time frame.
      */
     function sendDailyResult(
@@ -975,6 +1021,8 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange,
+        uint256[] memory _intervals,
+        uint256[] memory _totalSeconds,
         uint256[] memory _minutesAtTargetSpeed,
         uint256[] memory _metsWalkingSpeed
     ) public available onTimeSendResult onlyChallenger {
@@ -986,6 +1034,34 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
         );
 
         uint dayLength = _day.length;
+        require(dayLength > 0, "Invalid day length");
+        require(_stepIndex.length == dayLength, "Invalid step index length");
+        bool isWalkingSpeedEnabled = walkingSpeedData.length >= 3;
+        if (isWalkingSpeedEnabled) {
+            require(
+                _minutesAtTargetSpeed.length == dayLength && _metsWalkingSpeed.length == dayLength,
+                "Invalid walking speed data length"
+            );
+        }
+        if (isHiitEnabled) {
+            require(
+                _intervals.length == dayLength && _totalSeconds.length == dayLength,
+                "Invalid HIIT data length"
+            );
+        }
+        // When HIIT enabled: 1 = achieved for that day, 0 = not achieved
+        uint256[] memory hiitAchieved;
+        if (isHiitEnabled) {
+            hiitAchieved = new uint256[](dayLength);
+            for (uint256 i = 0; i < dayLength; i++) {
+                if (
+                    _intervals[i] >= highIntensityIntervals &&
+                    _totalSeconds[i] >= totalHighIntensityTime
+                ) {
+                    hiitAchieved[i] = 1;
+                }
+            }
+        }
         bool isSendSameDay;
         bool isSendFailWithSameDay;
         uint256 lastIndex = totalReward;
@@ -993,22 +1069,42 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
         uint256[] storage tempHistoryData = historyData;
         uint256[] storage tempHistoryMinutes = historyMinutesAtTargetSpeed;
         uint256[] storage tempMetsWalkingSpeed = metsWalkingSpeed;
+        uint256[] storage tempHistoryIntervals = historyIntervals;
+        uint256[] storage tempHistoryTime = historyTime;
 
         for (uint256 i = 0; i < dayLength; i++) {
             for (uint256 j = 0; j < tempHistoryDate.length; j++) {
-                if (tempHistoryDate[j] >= _timeRange[0] && tempHistoryDate[j] <= _timeRange[1]) {
+                if (
+                    tempHistoryDate[j] >= _timeRange[0] &&
+                    tempHistoryDate[j] <= _timeRange[1] &&
+                    tempHistoryDate[j] == _day[dayLength - 1]
+                ) {
                     require(tempHistoryData[j] < goal, "Invalid step: exceeds goal or not greater");
                     isSendSameDay = true;
                     tempHistoryData[j] = _stepIndex[dayLength - 1];
                     tempHistoryDate[j] = _day[dayLength - 1];
-                    tempHistoryMinutes[j] = _minutesAtTargetSpeed[dayLength - 1];
-                    tempMetsWalkingSpeed[j] = _metsWalkingSpeed[dayLength - 1];
+                    if (isWalkingSpeedEnabled) {
+                        tempHistoryMinutes[j] = _minutesAtTargetSpeed[dayLength - 1];
+                        tempMetsWalkingSpeed[j] = _metsWalkingSpeed[dayLength - 1];
+                    }
+                    if (isHiitEnabled) {
+                        tempHistoryIntervals[j] = _intervals[dayLength - 1];
+                        tempHistoryTime[j] = _totalSeconds[dayLength - 1];
+                        hiitAchievedOn[_day[dayLength - 1]] = hiitAchieved[dayLength - 1];
+                    }
                 } else {
                     if (tempHistoryDate[j] == _day[i]) {
                         lastIndex = i;
                         tempHistoryData[j] = _stepIndex[i];
-                        tempHistoryMinutes[j] = _minutesAtTargetSpeed[i];
-                        tempMetsWalkingSpeed[j] = _metsWalkingSpeed[i];
+                        if (isWalkingSpeedEnabled) {
+                            tempHistoryMinutes[j] = _minutesAtTargetSpeed[i];
+                            tempMetsWalkingSpeed[j] = _metsWalkingSpeed[i];
+                        }
+                        if (isHiitEnabled) {
+                            tempHistoryIntervals[j] = _intervals[i];
+                            tempHistoryTime[j] = _totalSeconds[i];
+                            hiitAchievedOn[_day[i]] = hiitAchieved[i];
+                        }
                     }
                 }
             }
@@ -1017,13 +1113,22 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
                 if (lastIndex != i) {
                     tempHistoryDate.push(_day[i]);
                     tempHistoryData.push(_stepIndex[i]);
-                    tempHistoryMinutes.push(_minutesAtTargetSpeed[i]);
-                    tempMetsWalkingSpeed.push(_metsWalkingSpeed[i]);
+                    if (isWalkingSpeedEnabled) {
+                        tempHistoryMinutes.push(_minutesAtTargetSpeed[i]);
+                        tempMetsWalkingSpeed.push(_metsWalkingSpeed[i]);
+                    }
+                    if (isHiitEnabled) {
+                        tempHistoryIntervals.push(_intervals[i]);
+                        tempHistoryTime.push(_totalSeconds[i]);
+                    }
                 }
                 stepOn[_day[i]] = _stepIndex[i];
             }
 
-            if (_stepIndex[i] >= goal && currentStatus < dayRequired) {
+            // Count day only when step achieved AND (if HIIT enabled) HIIT achieved for that day
+            bool stepAchieved = _stepIndex[i] >= goal;
+            bool hiitOk = !isHiitEnabled || hiitAchieved[i] == 1;
+            if (stepAchieved && hiitOk && currentStatus < dayRequired) {
                 currentStatus = currentStatus + 1;
             }
         }
@@ -1064,7 +1169,7 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
                 _statusTypeNft
             );
         } else {
-            // Check if the challenge has been completed successfully
+            // Success: step (+ optional HIIT) days already enforced in currentStatus; walking speed has separate threshold
             if (currentStatus >= dayRequired && isPassWalkingSpeed()) {
                 stateInstance = ChallengeState.SUCCESS;
                 // Transfer funds to the receiver addresses for the successful challenge
@@ -1562,13 +1667,130 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
     }
 
     /**
+     * @dev Gộp: loại challenge (1–4), config (walking + HIIT), và toàn bộ history (step, walking nếu có, HIIT nếu có).
+     * - challengeType: 1 = only step, 2 = step + walking, 3 = step + HIIT, 4 = step + walking + HIIT.
+     * - walkingSpeedData: length 0 hoặc 3 [targetSpeed, requiredMinutesPerDay, minAchievementDays].
+     * - highIntensityIntervals, totalHighIntensityTime: config HIIT (0,0 khi không bật).
+     * - historyDateStep, historyDataStep: ngày và số bước mỗi ngày.
+     * - historyWalkingMinutes, historyWalkingMets: rỗng nếu không bật walking.
+     * - historyHiitIntervals, historyHiitTime: rỗng nếu không bật HIIT.
+     */
+    function getChallengeTypeAndHistory()
+        external
+        view
+        returns (
+            uint256 challengeType,
+            uint256[] memory walkingSpeedDataConfig,
+            uint256 highIntensityIntervalsConfig,
+            uint256 totalHighIntensityTimeConfig,
+            uint256[] memory historyDateStep,
+            uint256[] memory historyDataStep,
+            uint256[] memory historyWalkingMinutes,
+            uint256[] memory historyWalkingMets,
+            uint256[] memory historyHiitIntervals,
+            uint256[] memory historyHiitTime
+        )
+    {
+        bool hasWalking = walkingSpeedData.length >= 3;
+        if (!hasWalking && !isHiitEnabled) challengeType = 1;
+        else if (hasWalking && !isHiitEnabled) challengeType = 2;
+        else if (!hasWalking && isHiitEnabled) challengeType = 3;
+        else challengeType = 4;
+
+        walkingSpeedDataConfig = walkingSpeedData;
+        highIntensityIntervalsConfig = highIntensityIntervals;
+        totalHighIntensityTimeConfig = totalHighIntensityTime;
+
+        uint256 len = historyDate.length;
+        historyDateStep = new uint256[](len);
+        historyDataStep = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
+            historyDateStep[i] = historyDate[i];
+            historyDataStep[i] = historyData[i];
+        }
+
+        if (hasWalking) {
+            historyWalkingMinutes = new uint256[](len);
+            historyWalkingMets = new uint256[](len);
+            for (uint256 i = 0; i < len; i++) {
+                historyWalkingMinutes[i] = historyMinutesAtTargetSpeed[i];
+                historyWalkingMets[i] = metsWalkingSpeed[i];
+            }
+        } else {
+            historyWalkingMinutes = new uint256[](0);
+            historyWalkingMets = new uint256[](0);
+        }
+
+        if (isHiitEnabled) {
+            historyHiitIntervals = new uint256[](len);
+            historyHiitTime = new uint256[](len);
+            for (uint256 i = 0; i < len; i++) {
+                historyHiitIntervals[i] = historyIntervals[i];
+                historyHiitTime[i] = historyTime[i];
+            }
+        } else {
+            historyHiitIntervals = new uint256[](0);
+            historyHiitTime = new uint256[](0);
+        }
+    }
+
+    /** @dev Returns the HIIT configuration when HIIT is enabled (0,0 when disabled). */
+    function getHIITConfig()
+        external
+        view
+        returns (uint256 _highIntensityIntervals, uint256 _totalHighIntensityTime)
+    {
+        return (highIntensityIntervals, totalHighIntensityTime);
+    }
+
+    /** @dev Returns the HIIT achievement status for a specific day (0 or 1 when HIIT enabled). */
+    function getHIITAchievedOn(uint256 _day) external view returns (uint256) {
+        return hiitAchievedOn[_day];
+    }
+
+    /** @dev Returns HIIT history: date, achieved (0/1 derived from hiitAchievedOn), intervals, time. When HIIT disabled, returns empty arrays. */
+    function getHIITHistory()
+        external
+        view
+        returns (
+            uint256[] memory date,
+            uint256[] memory data,
+            uint256[] memory intervals,
+            uint256[] memory time
+        )
+    {
+        if (!isHiitEnabled) {
+            date = new uint256[](0);
+            data = new uint256[](0);
+            intervals = new uint256[](0);
+            time = new uint256[](0);
+            return (date, data, intervals, time);
+        }
+        uint256 len = historyIntervals.length;
+        date = new uint256[](len);
+        data = new uint256[](len);
+        intervals = new uint256[](len);
+        time = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
+            date[i] = historyDate[i];
+            data[i] = hiitAchievedOn[historyDate[i]];
+            intervals[i] = historyIntervals[i];
+            time[i] = historyTime[i];
+        }
+        return (date, data, intervals, time);
+    }
+
+    /**
      * @dev Check if walking speed condition is passed.
-     * Uses historyMinutesAtTargetSpeed and walkingSpeedData config:
-     * If the required minutes per day is 0 or the minimum achievement days is 0, return true.
-     * If the required minutes per day is not 0 and the minimum achievement days is not 0, return true if the number of days that the walking speed is greater than or equal to the required minutes per day is greater than or equal to the minimum achievement days.
-     * @return True if the walking speed condition is passed, false otherwise.
+     * When walking speed is disabled (walkingSpeedData.length < 3), returns true (step-only challenge).
+     * When enabled, uses historyMinutesAtTargetSpeed and walkingSpeedData config.
+     * @return True if the walking speed condition is passed or disabled, false otherwise.
      */
     function isPassWalkingSpeed() internal view returns (bool) {
+        if (walkingSpeedData.length < 3) {
+            return true; // Step only: no walking speed requirement
+        }
+
         uint256 requiredMinutesPerDay = walkingSpeedData[1];
         uint256 minAchievementDays = walkingSpeedData[2];
 
@@ -1586,6 +1808,27 @@ contract ChallengeWalkingSpeed is IERC721Receiver {
         }
 
         return count >= minAchievementDays;
+    }
+
+    /**
+     * @dev Check if HIIT condition is passed (for view/query; success path uses currentStatus which already only counts step+HIIT days when HIIT enabled).
+     * When HIIT is disabled, returns true. When enabled, returns true if the number of days with HIIT achieved is at least dayRequired.
+     */
+    function isPassHiit() internal view returns (bool) {
+        if (!isHiitEnabled) {
+            return true; // HIIT not enabled: no HIIT requirement
+        }
+
+        uint256 count = 0;
+        uint256 len = historyIntervals.length;
+
+        for (uint256 i = 0; i < len; i++) {
+            if (hiitAchievedOn[historyDate[i]] == 1) {
+                count++;
+            }
+        }
+
+        return count >= dayRequired;
     }
 
     // Return the array of award receiver percentages
