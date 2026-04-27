@@ -1,0 +1,65 @@
+{
+  "network": "polygon",
+  "contractName": "ChallengeDetailV2",
+  "contractAddress": "0x18B5c4992914Ce6c74AF4Ec58ad297831e02B7B7",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2025-10-23T14:05:33.952Z",
+  "blockNumber": 78061755,
+  "constructorArgs": {
+    "stakeHolders": [
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+    ],
+    "createByToken": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+    "erc721Addresses": ["0x55285EcCef5487E87C5980C880131aCadDE7767C"],
+    "primaryRequired": [1, 1752742657, 1759742657, 10, 1],
+    "awardReceivers": [
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+      "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50"
+    ],
+    "index": 1,
+    "allowGiveUp": [true, false, true],
+    "gasData": ["200000000000000000", "200000000000000000", "0"],
+    "allAwardToSponsorWhenGiveUp": true,
+    "awardReceiversPercent": [100, 100],
+    "totalAmount": "200"
+  },
+  "contractDetails": {
+    "sponsor": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+    "challenger": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+    "startTime": 1752742657,
+    "endTime": 1759742657,
+    "goal": 10,
+    "dayRequired": 1,
+    "stakingStakeId": 0,
+    "createByToken": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
+    "autoStaking": false
+  },
+  "stakingInfo": {
+    "enabled": false,
+    "stakeId": 0,
+    "tokenType": "ERC20",
+    "protocol": "aave_lending",
+    "duration": 7000000
+  },
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://polygonscan.com/address/0x18B5c4992914Ce6c74AF4Ec58ad297831e02B7B7"
+  },
+  "roleGranted": {
+    "challengeRole": true,
+    "transactionHash": "0xe9a4f83b63e124a43099c5273c1d7886820a5740f2b0a9289df4b791e64161b5",
+    "timestamp": "2025-10-23T14:05:35.744Z"
+  },
+  "transactionSendStep": {
+    "sent": true,
+    "transactionHash": "0x3b5196b293f9530bf27fa78734faeccd6c71c0e17215a89a2dc07b9823c7b608",
+    "timestamp": "2025-10-23T14:05:35.744Z",
+    "testData": {
+      "days": [10],
+      "stepIndex": [1000],
+      "timeRange": [1, 100]
+    }
+  }
+}

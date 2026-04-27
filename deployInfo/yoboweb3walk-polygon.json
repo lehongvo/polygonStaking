@@ -1,0 +1,28 @@
+{
+  "network": "polygon",
+  "contractName": "YOBOWEB3WALK",
+  "contractAddress": "0xF41D70Bd4aE673A3B62A244cBe39270eccFBb9d9",
+  "deployer": "0x980B8Cd287b01deAeAD8576846eEb6de7Bcc2A50",
+  "deploymentTime": "2025-08-08T04:46:55.181Z",
+  "blockNumber": 74938156,
+  "constructorArgs": {
+    "baseURI": "ipfs://QmQEQYguTJ4ApkCJ8J5wSMGFfgZLP5Xz4w7yGArFdHkVjr/"
+  },
+  "contractDetails": {
+    "name": "YOBOWEB3WALK",
+    "symbol": "YOB3WK",
+    "maxSupply": 201,
+    "soulBound": true
+  },
+  "initialMints": [
+    {
+      "to": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+      "count": 2,
+      "description": "Initial mints for testing"
+    }
+  ],
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://polygonscan.com/address/0xF41D70Bd4aE673A3B62A244cBe39270eccFBb9d9"
+  }
+}

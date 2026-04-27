@@ -1,0 +1,74 @@
+require('@nomicfoundation/hardhat-toolbox');
+require('@openzeppelin/hardhat-upgrades');
+require('dotenv/config');
+
+const config = {
+  mocha: {
+    timeout: 120000,
+  },
+  solidity: {
+    version: '0.8.28',
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1,
+      },
+      viaIR: true,
+    },
+  },
+  networks: {
+    hardhat: {
+      chainId: 1337,
+    },
+    polygon: {
+      url: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 137,
+    },
+    amoy: {
+      url: process.env.AMOY_RPC_URL || 'https://polygon-amoy.drpc.org',
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 80002,
+    },
+    localhost: {
+      url: 'http://127.0.0.1:8545',
+      chainId: 1337,
+    },
+  },
+  etherscan: {
+    // Single string = Etherscan API V2 (one key for all chains, chainid from network)
+    apiKey: process.env.ETHERSCAN_API_KEY || process.env.POLYGONSCAN_API_KEY || '',
+    customChains: [
+      {
+        network: 'polygon',
+        chainId: 137,
+        urls: {
+          apiURL: 'https://api.etherscan.io/v2/api',
+          browserURL: 'https://polygonscan.com',
+        },
+      },
+      {
+        network: 'polygonAmoy',
+        chainId: 80002,
+        urls: {
+          apiURL: 'https://api.etherscan.io/v2/api',
+          browserURL: 'https://amoy.polygonscan.com',
+        },
+      },
+      {
+        network: 'amoy',
+        chainId: 80002,
+        urls: {
+          apiURL: 'https://api.etherscan.io/v2/api',
+          browserURL: 'https://amoy.polygonscan.com',
+        },
+      },
+    ],
+  },
+  gasReporter: {
+    enabled: process.env.REPORT_GAS !== undefined,
+    currency: 'USD',
+  },
+};
+
+module.exports = config;

@@ -1,0 +1,70 @@
+{
+  "network": "polygon",
+  "contractName": "ChallengeBaseStep",
+  "contractAddress": "0x98eE79Bf8Cb66e8bf99D77077130D9e99eA9F1A5",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2026-03-01T15:51:12.559Z",
+  "blockNumber": 83630120,
+  "constructorArgs": {
+    "stakeHolders": [
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+    ],
+    "createByToken": "0x0000000000000000000000000000000000000000",
+    "erc721Addresses": [
+      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
+    ],
+    "primaryRequired": [
+      3,
+      1771368487,
+      1967062887,
+      100,
+      3
+    ],
+    "awardReceivers": [
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+      "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+    ],
+    "index": 1,
+    "allowGiveUp": [
+      true,
+      true,
+      true
+    ],
+    "gasData": [
+      "200000000000000000",
+      "200000000000000000",
+      "0"
+    ],
+    "allAwardToSponsorWhenGiveUp": true,
+    "awardReceiversPercent": [
+      100,
+      100
+    ],
+    "totalAmount": "1000000000000",
+    "walkingSpeedData": [
+      50,
+      30,
+      2
+    ],
+    "hiitData": [
+      3,
+      120
+    ]
+  },
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://polygonscan.com/address/0x98eE79Bf8Cb66e8bf99D77077130D9e99eA9F1A5"
+  },
+  "roleGranted": {
+    "challengeRole": true,
+    "transactionHash": "0xa5ae87587e8e9d71558643e2a8e9ef5064672c0f2627eb3c2ed00e6570341b65",
+    "timestamp": "2026-03-01T15:51:12.821Z"
+  },
+  "sendDailyResultTest": {
+    "sent": false,
+    "transactionHash": null,
+    "timestamp": "2026-03-01T15:51:12.821Z"
+  }
+}
