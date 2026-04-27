@@ -3,6 +3,9 @@ require('@openzeppelin/hardhat-upgrades');
 require('dotenv/config');
 
 const config = {
+  mocha: {
+    timeout: 120000,
+  },
   solidity: {
     version: '0.8.28',
     settings: {

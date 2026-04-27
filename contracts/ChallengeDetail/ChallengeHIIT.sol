@@ -720,6 +720,19 @@ contract ChallengeHIIT is IERC721Receiver {
     /** @dev HIIT config: total high-intensity time in seconds per day. */
     uint256 public totalHighIntensityTime;
 
+    // Reentrancy guard status: 1 = NOT_ENTERED, 2 = ENTERED.
+    uint256 private _reentrancyStatus = 1;
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     */
+    modifier nonReentrant() {
+        require(_reentrancyStatus != 2, "ReentrancyGuard: reentrant call");
+        _reentrancyStatus = 2;
+        _;
+        _reentrancyStatus = 1;
+    }
+
     /**
      * @dev Emitted when the daily result is sent.
      * @param currentStatus The current status of the daily result.
@@ -758,6 +771,7 @@ contract ChallengeHIIT is IERC721Receiver {
      * @dev Action should be called in required time.
      */
     modifier onTimeSendResult() {
+        require(block.timestamp <= endTime + 2 days, "Challenge was finished");
         require(block.timestamp >= startTime, "Challenge has not started yet");
         _;
     }
@@ -863,9 +877,12 @@ contract ChallengeHIIT is IERC721Receiver {
 
         uint256[] memory awardReceiversApprovalsTamp = new uint256[](_awardReceiversPercent.length);
 
+        uint256 totalPercent;
         for (uint256 j = 0; j < _awardReceiversPercent.length; j++) {
             awardReceiversApprovalsTamp[j] = (_awardReceiversPercent[j] * _totalAmount) / 100;
+            totalPercent += _awardReceiversPercent[j];
         }
+        require(totalPercent <= 100, "Sum of percents exceeds 100");
 
         require(_awardReceivers.length == awardReceiversApprovalsTamp.length, "Invalid lists");
 
@@ -920,7 +937,9 @@ contract ChallengeHIIT is IERC721Receiver {
      * @notice This function is triggered automatically when native coins are sent to the contract address.
      */
     receive() external payable {
-        if (isFinished) {
+        // Skip refund branch while a nonReentrant call is in progress to avoid
+        // mid-flow re-deposit loops after CEI sets isFinished early.
+        if (isFinished && _reentrancyStatus != 2) {
             tranferCoinNative(payable(msg.sender), msg.value);
         }
     }
@@ -953,7 +972,7 @@ contract ChallengeHIIT is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange
-    ) public available onTimeSendResult onlyChallenger {
+    ) public nonReentrant available onTimeSendResult onlyChallenger {
         uint256[] memory emptyArr = new uint256[](0);
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
@@ -1099,7 +1118,12 @@ contract ChallengeHIIT is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
-    ) external canGiveUp notSelectGiveUp onTime available onlyStakeHolders {
+    ) external nonReentrant canGiveUp notSelectGiveUp onTime available onlyStakeHolders {
+        // EFFECTS — write state before any external interaction (CEI)
+        isFinished = true;
+        selectGiveUpStatus = true;
+        stateInstance = ChallengeState.GAVE_UP;
+
         updateRewardSuccessAndfail();
 
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
@@ -1184,9 +1208,6 @@ contract ChallengeHIIT is IERC721Receiver {
         tranferCoinNative(feeAddress, serverFailureFee);
         emit FundTransfer(feeAddress, serverFailureFee);
 
-        isFinished = true;
-        selectGiveUpStatus = true;
-        stateInstance = ChallengeState.GAVE_UP;
         emit GiveUp(msg.sender);
     }
 
@@ -1202,7 +1223,7 @@ contract ChallengeHIIT is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
-    ) external onlyStakeHolders afterFinish availableForClose {
+    ) external nonReentrant onlyStakeHolders afterFinish availableForClose {
         transferToListReceiverFail(
             _listNFTAddress,
             _listIndexNFT,
@@ -1226,7 +1247,7 @@ contract ChallengeHIIT is IERC721Receiver {
         address[] memory _listNFTAddress,
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
-    ) external {
+    ) external nonReentrant {
         require(isFinished, "The challenge has not yet been finished");
         require(returnedNFTWallet == msg.sender, "Only returned nft wallet address");
 
@@ -1256,6 +1277,10 @@ contract ChallengeHIIT is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
     ) private {
+        // EFFECTS — write success/finished flags before any external interaction (CEI)
+        isSuccess = true;
+        isFinished = true;
+
         updateRewardSuccessAndfail();
 
         tranferCoinNative(feeAddress, serverSuccessFee);
@@ -1291,9 +1316,6 @@ contract ChallengeHIIT is IERC721Receiver {
         }
 
         transferNFTForSenderWhenFinish(_listNFTAddress, _listIndexNFT, _statusTypeNft, challenger);
-
-        isSuccess = true;
-        isFinished = true;
     }
 
     /**
@@ -1309,6 +1331,9 @@ contract ChallengeHIIT is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) private {
+        // EFFECTS — write finished flag before any external interaction (CEI)
+        isFinished = true;
+
         updateRewardSuccessAndfail();
 
         tranferCoinNative(feeAddress, serverFailureFee);
@@ -1336,7 +1361,6 @@ contract ChallengeHIIT is IERC721Receiver {
         );
 
         emit CloseChallenge(false);
-        isFinished = true;
     }
 
     /**
@@ -1434,22 +1458,28 @@ contract ChallengeHIIT is IERC721Receiver {
     }
 
     function updateRewardSuccessAndfail() private {
+        // Reset constructor-populated accumulators so the += below sums correctly.
+        // listBalanceAllToken / awardTokenReceivers are guaranteed empty here
+        // (single-call lifecycle enforced by nonReentrant + isFinished CEI).
+        sumAwardSuccess = 0;
+        sumAwardFail = 0;
+
         uint256 coinNativeBalance = address(this).balance;
 
         if (coinNativeBalance > 0) {
             serverSuccessFee = (coinNativeBalance * amountSuccessFee) / 100;
             serverFailureFee = (coinNativeBalance * amountFailFee) / 100;
 
-            for (uint256 i = 0; i < awardReceivers.length; i++) {
+            for (uint256 i = 0; i < index; i++) {
                 approvalSuccessOf[awardReceivers[i]] =
                     (awardReceiversPercent[i] * coinNativeBalance) / 100;
-                sumAwardSuccess = (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                sumAwardSuccess += (awardReceiversPercent[i] * coinNativeBalance) / 100;
             }
 
             for (uint256 i = index; i < awardReceivers.length; i++) {
                 approvalFailOf[awardReceivers[i]] =
                     (awardReceiversPercent[i] * coinNativeBalance) / 100;
-                sumAwardFail = (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                sumAwardFail += (awardReceiversPercent[i] * coinNativeBalance) / 100;
             }
         }
 
@@ -1510,9 +1540,8 @@ contract ChallengeHIIT is IERC721Receiver {
     }
 
     function tranferCoinNative(address payable from, uint256 value) private {
-        if (getContractBalance() >= value) {
-            TransferHelper.saveTransferEth(from, value);
-        }
+        require(getContractBalance() >= value, "Insufficient contract balance");
+        TransferHelper.saveTransferEth(from, value);
     }
 
     function getBalanceTokenOfContract(
