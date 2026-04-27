@@ -36,11 +36,12 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
-    "@openzeppelin/contracts-upgradeable": "^5.4.0"
+    "@openzeppelin/contracts-upgradeable": "5.0.2"
   },
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test",
+    "flatten": "mkdir -p flattened && for f in ChallengeBaseStep ChallengeDetail ChallengeHIIT; do hardhat flatten contracts/ChallengeDetail/$f.sol | sed '/^WARNING:/d' > flattened/$f.flat.sol; done",
+    "test": "env PRIVATE_KEY= hardhat test $(find test -name '*.test.ts' -type f | sort | tr '\\n' ' ')",
     "test:coverage": "hardhat coverage",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",

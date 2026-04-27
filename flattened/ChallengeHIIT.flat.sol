@@ -1,4 +1,12 @@
+
+
+// Sources flattened with hardhat v2.28.6 https://hardhat.org
+
 // SPDX-License-Identifier: MIT
+
+// File contracts/ChallengeDetail/ChallengeHIIT.sol
+
+// Original license: SPDX_License_Identifier: MIT
 // File: Challenge/IChallengeFee.sol
 
 pragma solidity ^0.8.16;
@@ -21,14 +29,14 @@ pragma solidity ^0.8.16;
 
 interface IGacha {
     /**
-     * @dev This function generates random rewards for a challenge, based on the given _dataStep array.
+     * @dev Generates random rewards for a challenge based on the given daily result data.
      * @param _challengeAddress The address of the challenge for which rewards are being generated.
-     * @param _dataStep An array of step data used to calculate the rewards.
+     * @param _dailyResult An array of daily result data (0=not achieved, 1=achieved for HIIT).
      * @return A boolean indicating whether the rewards were generated successfully.
      */
     function randomRewards(
         address _challengeAddress,
-        uint256[] memory _dataStep
+        uint256[] memory _dailyResult
     ) external returns (bool);
 }
 // File: Challenge/IERC165.sol
@@ -360,7 +368,7 @@ interface IExerciseSupplementNFT {
 
     /**
      * @dev Mint an NFT with specified parameters.
-     * @param _goal The target goal amount.
+     * @param _goal For HIIT challenges, pass `highIntensityIntervals` here (the external interface uses this slot for the primary numeric config).
      * @param _duration The duration of the challenge.
      * @param _dayRequired The number of days required for the challenge.
      * @param _createByToken The address of the creator of the token.
@@ -411,12 +419,10 @@ interface IExerciseSupplementNFT {
     /**
      * @dev Check the validity of a provided signature.
      * @param _day An array of uint256 values representing days.
-     * @param _stepIndex An array of uint256 values representing step indices.
+     * @param _stepIndex Unused for HIIT — pass empty array [].
      * @param _data A tuple of two uint64 values.
      * @param _signature The signature to be validated.
-     * @notice This function is used to verify the authenticity of a provided signature
-     *         based on certain criteria, including the provided data and time window.
-     *         It is an external function to allow external contracts to perform signature verification.
+     * @notice Verifies the authenticity of a provided signature for daily HIIT results.
      */
     function checkValidSignature(
         uint256[] memory _day,
@@ -538,17 +544,17 @@ interface IERC20 {
      */
     function symbol() external view returns (string memory);
 }
-// File: Challenge/ChallengeBaseStep.sol
+// File: Challenge/ChallengeHIIT.sol
 
 pragma solidity ^0.8.16;
 
 /**
- * @title ChallengeBaseStep
- * @dev Base step challenge with optional walking speed and optional HIIT.
- *      Step (goal steps per day) is always required.
- *      Optional: walking speed (minutes at target speed, METs); HIIT (intervals + total high-intensity seconds per day).
+ * @title ChallengeHIIT
+ * @dev HIIT (High-Intensity Interval Training) challenge contract.
+ *      Uses heart-rate-based evaluation: achieved per day is derived from highIntensityIntervals and totalHighIntensityTime.
+ *      Reuses existing signature interface; backend signs HIIT result as 0/1 per day.
  */
-contract ChallengeBaseStep is IERC721Receiver {
+contract ChallengeHIIT is IERC721Receiver {
     /** @param ChallengeState currentState of challenge:
          1 : in processs
          2 : success
@@ -596,7 +602,7 @@ contract ChallengeBaseStep is IERC721Receiver {
      */
     uint256[] private awardReceiversApprovals;
 
-    /** @dev historyData number of steps each day in challenge.
+    /** @dev historyData HIIT achieved status per day (0=not achieved, 1=achieved).
      */
     uint256[] historyData;
 
@@ -604,37 +610,13 @@ contract ChallengeBaseStep is IERC721Receiver {
      */
     uint256[] historyDate;
 
-    /** @dev historyMinutesAtTargetSpeed minutes at/above target speed each day in challenge.
+    /** @dev historyIntervals raw high-intensity interval count per day submission.
      */
-    uint256[] public historyMinutesAtTargetSpeed;
+    uint256[] historyIntervals;
 
-    /** @dev metsWalkingSpeed METs (Metabolic Equivalent of Task) values for walking speed in challenge.
+    /** @dev historyTime raw total high-intensity seconds per day submission.
      */
-    uint256[] public metsWalkingSpeed;
-
-    /** @dev HIIT optional: high-intensity intervals required per day (when HIIT enabled).
-     */
-    uint256 public highIntensityIntervals;
-
-    /** @dev HIIT optional: total high-intensity time in seconds required per day (when HIIT enabled).
-     */
-    uint256 public totalHighIntensityTime;
-
-    /** @dev historyIntervals HIIT intervals per day (when HIIT enabled).
-     */
-    uint256[] public historyIntervals;
-
-    /** @dev historyTime HIIT total high-intensity seconds per day (when HIIT enabled).
-     */
-    uint256[] public historyTime;
-
-    /** @dev hiitAchievedOn HIIT achieved status on a day (0 or 1) when HIIT enabled.
-     */
-    mapping(uint256 => uint256) public hiitAchievedOn;
-
-    /** @dev True when HIIT option was enabled at deployment.
-     */
-    bool public isHiitEnabled;
+    uint256[] historyTime;
 
     /** @dev index index to split array receivers.
      */
@@ -670,15 +652,11 @@ contract ChallengeBaseStep is IERC721Receiver {
      */
     uint256 public endTime;
 
-    /** @dev dayRequired number of day which challenger need to finish challenge.
+    /** @dev dayRequired number of days which challenger need to achieve HIIT.
      */
     uint256 public dayRequired;
 
-    /** @dev goal number of steps which challenger need to finish in day.
-     */
-    uint256 public goal;
-
-    /** @dev currentStatus currentStatus of challenge.
+    /** @dev currentStatus number of days HIIT achieved.
      */
     uint256 public currentStatus;
 
@@ -722,39 +700,33 @@ contract ChallengeBaseStep is IERC721Receiver {
      */
     mapping(address => uint256) private approvalFailOf;
 
-    /** @dev stepOn get step on a day.
+    /** @dev hiitAchievedOn HIIT achieved status on a day (0 or 1).
      */
-    mapping(uint256 => uint256) private stepOn;
+    mapping(uint256 => uint256) private hiitAchievedOn;
 
-    // Instance of the ChallengeState contract
     ChallengeState private stateInstance;
 
-    // Array of percentages for award receivers
     uint256[] private awardReceiversPercent;
 
-    // Mapping of award receivers to the index of their awarded tokens
     mapping(address => uint256[]) private awardTokenReceivers;
 
-    // Array of balances of all tokens
     uint256[] private listBalanceAllToken;
 
-    // Array of amounts of tokens to be received by each token receiver
     uint256[] private amountTokenToReceiverList;
 
-    // Total balance of the base token
     uint256 public totalBalanceBaseToken;
 
-    // Address of the creator of the token
     address public createByToken;
 
-    // Walking speed challenge config
-    uint256[] public walkingSpeedData;
-
-    // Represents the amount of success fee in percentage.
     uint8 private amountSuccessFee;
 
-    // Represents the amount of fail fee in percentage.
     uint8 private amountFailFee;
+
+    /** @dev HIIT config: number of high-intensity intervals per day. */
+    uint256 public highIntensityIntervals;
+
+    /** @dev HIIT config: total high-intensity time in seconds per day. */
+    uint256 public totalHighIntensityTime;
 
     // Reentrancy guard status: 1 = NOT_ENTERED, 2 = ENTERED.
     uint256 private _reentrancyStatus = 1;
@@ -876,7 +848,7 @@ contract ChallengeBaseStep is IERC721Receiver {
      * @param _stakeHolders Array of addresses of the stakeholders participating in the challenge.
      * @param _createByToken The address of the token used to create this challenge.
      * @param _erc721Address Array of addresses of the ERC721 tokens used in the challenge.
-     * @param _primaryRequired Array of values: [duration, startTime, endTime, goal (steps), dayRequired].
+     * @param _primaryRequired [duration, startTime, endTime, highIntensityIntervals, totalHighIntensityTime, dayRequired].
      * @param _awardReceivers Array of addresses of the receivers who will receive awards if the challenge succeeds.
      * @param _index The index of the current award receiver.
      * @param _allowGiveUp Array of boolean values indicating whether each stakeholder can give up the challenge or not.
@@ -884,11 +856,6 @@ contract ChallengeBaseStep is IERC721Receiver {
      * @param _allAwardToSponsorWhenGiveUp A boolean value indicating whether all awards should be given to the sponsor when the challenge is given up.
      * @param _awardReceiversPercent Array of percentage values representing the percentage of awards that each award receiver will receive.
      * @param _totalAmount The total amount of tokens locked in the challenge.
-     * @param _walkingSpeedData Optional array of walking speed config (length 0 = step only, length 3 = step + walking speed):
-     *        [0] target speed (km/h),
-     *        [1] required minutes per day,
-     *        [2] minimum achievement days (walking speed).
-     * @param _hiitData Optional HIIT config (length 0 = no HIIT, length 2 = step + HIIT): [highIntensityIntervals, totalHighIntensityTime].
      */
     constructor(
         address payable[] memory _stakeHolders,
@@ -901,93 +868,73 @@ contract ChallengeBaseStep is IERC721Receiver {
         uint256[] memory _gasData,
         bool _allAwardToSponsorWhenGiveUp,
         uint256[] memory _awardReceiversPercent,
-        uint256 _totalAmount,
-        uint256[] memory _walkingSpeedData,
-        uint256[] memory _hiitData
+        uint256 _totalAmount
     ) payable {
-        require(_allowGiveUp.length == 3, "Invalid allow give up"); // Checking if _allowGiveUp array length is 3.
-        require(_primaryRequired.length >= 5, "Invalid primary required length"); // [duration, startTime, endTime, goal, dayRequired]
-        require(
-            _walkingSpeedData.length == 0 || _walkingSpeedData.length == 3,
-            "Invalid walking speed data"
-        ); // 0 = step only, 3 = step + walking speed.
-        if (_walkingSpeedData.length == 3) {
-            require(_primaryRequired[4] >= _walkingSpeedData[2], "Invalid walking speed days"); // Checking if the required number of days for the challenge is greater than or equal to the minimum achievement days for walking speed condition.
-        }
-        require(_hiitData.length == 0 || _hiitData.length == 2, "Invalid HIIT data"); // 0 = no HIIT, 2 = [highIntensityIntervals, totalHighIntensityTime]
+        require(_allowGiveUp.length == 3, "Invalid allow give up");
+        require(_primaryRequired.length >= 6, "Invalid HIIT data");
 
         if (_allowGiveUp[1]) {
-            require(msg.value == _totalAmount, "Invalid award"); // Checking if msg.value is equal to _totalAmount when _allowGiveUp[1] is true.
+            require(msg.value == _totalAmount, "Invalid award");
         }
 
         uint256 i;
 
-        require(_index > 0, "Invalid value"); // Checking if _index is greater than 0.
+        require(_index > 0, "Invalid value");
 
-        _totalAmount = _totalAmount - _gasData[2]; // Subtracting _gasData[2] from _totalAmount.
+        _totalAmount = _totalAmount - _gasData[2];
 
-        uint256[] memory awardReceiversApprovalsTamp = new uint256[](_awardReceiversPercent.length); // Creating a new array with length equal to _awardReceiversPercent length.
+        uint256[] memory awardReceiversApprovalsTamp = new uint256[](_awardReceiversPercent.length);
 
         uint256 totalPercent;
         for (uint256 j = 0; j < _awardReceiversPercent.length; j++) {
-            awardReceiversApprovalsTamp[j] = (_awardReceiversPercent[j] * _totalAmount) / 100; // Calculating the award amount for each receiver.
+            awardReceiversApprovalsTamp[j] = (_awardReceiversPercent[j] * _totalAmount) / 100;
             totalPercent += _awardReceiversPercent[j];
         }
         require(totalPercent <= 100, "Sum of percents exceeds 100");
 
-        require(_awardReceivers.length == awardReceiversApprovalsTamp.length, "Invalid lists"); // Checking if _awardReceivers length is equal to awardReceiversApprovalsTamp length.
+        require(_awardReceivers.length == awardReceiversApprovalsTamp.length, "Invalid lists");
 
         for (i = 0; i < _index; i++) {
-            require(awardReceiversApprovalsTamp[i] > 0, "Invalid value0"); // Checking if the award amount for each receiver is greater than 0.
-            approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for successful participants.
-            sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for successful participants.
+            require(awardReceiversApprovalsTamp[i] > 0, "Invalid value0");
+            approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i];
+            sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i];
         }
 
         for (i = _index; i < _awardReceivers.length; i++) {
-            require(awardReceiversApprovalsTamp[i] > 0, "Invalid value1"); // Checking if the award amount for each receiver is greater than 0.
-            approvalFailOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for failed participants.
-            sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for failed participants.
+            require(awardReceiversApprovalsTamp[i] > 0, "Invalid value1");
+            approvalFailOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i];
+            sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i];
         }
 
-        sponsor = _stakeHolders[0]; // Setting the sponsor address.
-        challenger = _stakeHolders[1]; // Setting the challenger address.
-        feeAddress = _stakeHolders[2]; // Setting the fee address.
-        erc721Address = _erc721Address; // Setting the ERC721 contract address.
-        erc20ListAddress = IExerciseSupplementNFT(_erc721Address[0]).getErc20ListAddress(); // Getting the ERC20 list address from the ERC721 contract.
-        returnedNFTWallet = IExerciseSupplementNFT(_erc721Address[0]).returnedNFTWallet(); // Get the address of the returned NFT wallet from the ExerciseSupplementNFT contract
-        duration = _primaryRequired[0]; // Setting the duration of the challenge.
-        startTime = _primaryRequired[1]; // Setting the start time of the challenge.
-        endTime = _primaryRequired[2]; // Setting the end time of the challenge.
-        goal = _primaryRequired[3]; // Setting the goal of the challenge.
-        dayRequired = _primaryRequired[4]; // Setting the required number of days for the challenge.
-        stateInstance = ChallengeState.PROCESSING; // Setting the challenge state to PROCESSING.
-        awardReceivers = _awardReceivers; // Setting the list of award receivers.
-        awardReceiversApprovals = awardReceiversApprovalsTamp; // Setting the awardReceiversApprovals
-        awardReceiversPercent = _awardReceiversPercent; // Assigning the award percentage to the contract variable
-        index = _index; // Assigning the index value to the contract variable
-        gasFee = _gasData[2]; // Assigning the gas fee to the contract variable
-        createByToken = _createByToken; // Assigning the create by token value to the contract variable
+        sponsor = _stakeHolders[0];
+        challenger = _stakeHolders[1];
+        feeAddress = _stakeHolders[2];
+        erc721Address = _erc721Address;
+        erc20ListAddress = IExerciseSupplementNFT(_erc721Address[0]).getErc20ListAddress();
+        returnedNFTWallet = IExerciseSupplementNFT(_erc721Address[0]).returnedNFTWallet();
+        duration = _primaryRequired[0];
+        startTime = _primaryRequired[1];
+        endTime = _primaryRequired[2];
+        highIntensityIntervals = _primaryRequired[3];
+        totalHighIntensityTime = _primaryRequired[4];
+        dayRequired = _primaryRequired[5];
+        stateInstance = ChallengeState.PROCESSING;
+        awardReceivers = _awardReceivers;
+        awardReceiversApprovals = awardReceiversApprovalsTamp;
+        awardReceiversPercent = _awardReceiversPercent;
+        index = _index;
+        gasFee = _gasData[2];
+        createByToken = _createByToken;
 
-        // Store walking speed configuration
-        walkingSpeedData = _walkingSpeedData;
-
-        // Store HIIT configuration when enabled
-        if (_hiitData.length == 2) {
-            highIntensityIntervals = _hiitData[0];
-            totalHighIntensityTime = _hiitData[1];
-            isHiitEnabled = true;
-        }
         (amountSuccessFee, amountFailFee) = IChallengeFee(
             IExerciseSupplementNFT(_erc721Address[0]).feeSettingAddress()
         ).getAmountFee();
 
-        totalReward = _totalAmount; // Assigning the total reward to the contract variable
-        allowGiveUp = _allowGiveUp; // Assigning the allow give up value to the contract variable
+        totalReward = _totalAmount;
+        allowGiveUp = _allowGiveUp;
 
-        // Checking if give up is allowed and all awards should be given to the sponsor, then set the choiceAwardToSponsor variable to true
         if (_allowGiveUp[0] && _allAwardToSponsorWhenGiveUp) choiceAwardToSponsor = true;
 
-        // Transferring the gas fee from the challenger to the contract and emitting an event
         tranferCoinNative(challenger, gasFee);
         emit FundTransfer(challenger, gasFee);
     }
@@ -1001,15 +948,16 @@ contract ChallengeBaseStep is IERC721Receiver {
         // Skip refund branch while a nonReentrant call is in progress to avoid
         // mid-flow re-deposit loops after CEI sets isFinished early.
         if (isFinished && _reentrancyStatus != 2) {
-            // Check if the sale is finished
-            tranferCoinNative(payable(msg.sender), msg.value); // Transfer the native coins to the sender
+            tranferCoinNative(payable(msg.sender), msg.value);
         }
     }
 
     /**
-     * @dev Send daily results to update contract activities.
+     * @dev Send daily HIIT results to update contract activities.
      * @param _day An array of uint256 values representing days.
-     * @param _stepIndex An array of uint256 values representing step indices.
+     * @param _intervals Number of high-intensity intervals per day (one value per day).
+     * @param _totalSeconds Total high-intensity time in seconds per day (one value per day).
+     *        A day is achieved when _intervals[i] >= highIntensityIntervals AND _totalSeconds[i] >= totalHighIntensityTime.
      * @param _data A tuple of two uint64 values.
      * @param _signature The signature to be validated.
      * @param _listGachaAddress An array of addresses representing Gacha contract addresses.
@@ -1018,19 +966,12 @@ contract ChallengeBaseStep is IERC721Receiver {
      * @param _listSenderAddress An array of arrays representing sender addresses.
      * @param _statusTypeNft An array of boolean values representing NFT status types.
      * @param _timeRange A tuple of two uint64 values representing the time range.
-     * @param _intervals HIIT high-intensity intervals per day (required when HIIT enabled; may be empty when disabled).
-     * @param _totalSeconds HIIT total high-intensity seconds per day (required when HIIT enabled; may be empty when disabled).
-     * @param _minutesAtTargetSpeed Minutes at target speed per day (required when walking speed enabled; may be empty when disabled).
-     * @param _metsWalkingSpeed METs walking speed per day (required when walking speed enabled; may be empty when disabled).
-     * @notice This function is used to send daily results for updating contract activities.
-     *         It requires specific roles (onlyChallenger) and enforces timing constraints (onTimeSendResult).
-     *         It processes various input data related to Gacha and NFT contracts to update activities.
-     *         The provided signature is validated to ensure the authenticity of the data.
      * @dev This function can only be called by authorized challengers within a specific time frame.
      */
     function sendDailyResult(
         uint256[] memory _day,
-        uint256[] memory _stepIndex,
+        uint256[] memory _intervals,
+        uint256[] memory _totalSeconds,
         uint64[2] memory _data,
         bytes calldata _signature,
         address[] memory _listGachaAddress,
@@ -1038,122 +979,94 @@ contract ChallengeBaseStep is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft,
-        uint64[2] memory _timeRange,
-        uint256[] memory _intervals,
-        uint256[] memory _totalSeconds,
-        uint256[] memory _minutesAtTargetSpeed,
-        uint256[] memory _metsWalkingSpeed
+        uint64[2] memory _timeRange
     ) public nonReentrant available onTimeSendResult onlyChallenger {
+        uint256[] memory emptyArr = new uint256[](0);
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
-            _stepIndex,
+            emptyArr,
             _data,
             _signature
         );
 
         uint dayLength = _day.length;
-        require(dayLength > 0, "Invalid day length");
-        require(_stepIndex.length == dayLength, "Invalid step index length");
-        bool isWalkingSpeedEnabled = walkingSpeedData.length >= 3;
-        if (isWalkingSpeedEnabled) {
-            require(
-                _minutesAtTargetSpeed.length == dayLength && _metsWalkingSpeed.length == dayLength,
-                "Invalid walking speed data length"
-            );
-        }
-        if (isHiitEnabled) {
-            require(
-                _intervals.length == dayLength && _totalSeconds.length == dayLength,
-                "Invalid HIIT data length"
-            );
-        }
-        // When HIIT enabled: 1 = achieved for that day, 0 = not achieved
-        uint256[] memory hiitAchieved;
-        if (isHiitEnabled) {
-            hiitAchieved = new uint256[](dayLength);
-            for (uint256 i = 0; i < dayLength; i++) {
-                if (
-                    _intervals[i] >= highIntensityIntervals &&
-                    _totalSeconds[i] >= totalHighIntensityTime
-                ) {
-                    hiitAchieved[i] = 1;
-                }
+        require(dayLength > 0, "Invalid HIIT results length");
+        require(
+            _intervals.length == dayLength && _totalSeconds.length == dayLength,
+            "Invalid HIIT results length"
+        );
+
+        uint256[] memory achieved = new uint256[](dayLength);
+        for (uint256 i = 0; i < dayLength; i++) {
+            if (
+                _intervals[i] >= highIntensityIntervals &&
+                _totalSeconds[i] >= totalHighIntensityTime
+            ) {
+                achieved[i] = 1;
             }
         }
+
         bool isSendSameDay;
         bool isSendFailWithSameDay;
         uint256 lastIndex = totalReward;
         uint256[] storage tempHistoryDate = historyDate;
         uint256[] storage tempHistoryData = historyData;
-        uint256[] storage tempHistoryMinutes = historyMinutesAtTargetSpeed;
-        uint256[] storage tempMetsWalkingSpeed = metsWalkingSpeed;
-        uint256[] storage tempHistoryIntervals = historyIntervals;
-        uint256[] storage tempHistoryTime = historyTime;
 
         for (uint256 i = 0; i < dayLength; i++) {
+            bool dayAlreadyAchieved = false;
+            bool dayFoundInHistory = false;
+            bool thisDayIsSameDay = false;
+
             for (uint256 j = 0; j < tempHistoryDate.length; j++) {
                 if (
+                    !thisDayIsSameDay &&
                     tempHistoryDate[j] >= _timeRange[0] &&
                     tempHistoryDate[j] <= _timeRange[1] &&
                     tempHistoryDate[j] == _day[dayLength - 1]
                 ) {
-                    require(tempHistoryData[j] < goal, "Invalid step: exceeds goal or not greater");
+                    if (tempHistoryData[j] == 1) require(false, "Day already achieved");
                     isSendSameDay = true;
-                    tempHistoryData[j] = _stepIndex[dayLength - 1];
-                    if (isWalkingSpeedEnabled) {
-                        tempHistoryMinutes[j] = _minutesAtTargetSpeed[dayLength - 1];
-                        tempMetsWalkingSpeed[j] = _metsWalkingSpeed[dayLength - 1];
-                    }
-                    if (isHiitEnabled) {
-                        tempHistoryIntervals[j] = _intervals[dayLength - 1];
-                        tempHistoryTime[j] = _totalSeconds[dayLength - 1];
-                        hiitAchievedOn[_day[dayLength - 1]] = hiitAchieved[dayLength - 1];
-                    }
+                    thisDayIsSameDay = true;
+                    tempHistoryData[j] = achieved[dayLength - 1];
+                    tempHistoryDate[j] = _day[dayLength - 1];
+                    hiitAchievedOn[_day[dayLength - 1]] = achieved[dayLength - 1];
+                    historyIntervals[j] = _intervals[dayLength - 1];
+                    historyTime[j] = _totalSeconds[dayLength - 1];
                 } else {
                     if (tempHistoryDate[j] == _day[i]) {
+                        dayFoundInHistory = true;
+                        if (tempHistoryData[j] == 1) {
+                            dayAlreadyAchieved = true;
+                        }
                         lastIndex = i;
-                        tempHistoryData[j] = _stepIndex[i];
-                        if (isWalkingSpeedEnabled) {
-                            tempHistoryMinutes[j] = _minutesAtTargetSpeed[i];
-                            tempMetsWalkingSpeed[j] = _metsWalkingSpeed[i];
-                        }
-                        if (isHiitEnabled) {
-                            tempHistoryIntervals[j] = _intervals[i];
-                            tempHistoryTime[j] = _totalSeconds[i];
-                            hiitAchievedOn[_day[i]] = hiitAchieved[i];
-                        }
+                        tempHistoryData[j] = achieved[i];
+                        hiitAchievedOn[_day[i]] = achieved[i];
+                        historyIntervals[j] = _intervals[i];
+                        historyTime[j] = _totalSeconds[i];
                     }
                 }
             }
 
-            if (!isSendSameDay) {
-                if (lastIndex != i) {
-                    tempHistoryDate.push(_day[i]);
-                    tempHistoryData.push(_stepIndex[i]);
-                    if (isWalkingSpeedEnabled) {
-                        tempHistoryMinutes.push(_minutesAtTargetSpeed[i]);
-                        tempMetsWalkingSpeed.push(_metsWalkingSpeed[i]);
-                    }
-                    if (isHiitEnabled) {
-                        tempHistoryIntervals.push(_intervals[i]);
-                        tempHistoryTime.push(_totalSeconds[i]);
-                    }
-                }
-                stepOn[_day[i]] = _stepIndex[i];
+            if (!thisDayIsSameDay && !dayFoundInHistory) {
+                tempHistoryDate.push(_day[i]);
+                tempHistoryData.push(achieved[i]);
+                hiitAchievedOn[_day[i]] = achieved[i];
+                historyIntervals.push(_intervals[i]);
+                historyTime.push(_totalSeconds[i]);
             }
 
-            // Count day only when step achieved AND (if HIIT enabled) HIIT achieved for that day
-            bool stepAchieved = _stepIndex[i] >= goal;
-            bool hiitOk = !isHiitEnabled || hiitAchieved[i] == 1;
-            if (stepAchieved && hiitOk && currentStatus < dayRequired) {
-                currentStatus = currentStatus + 1;
+            uint256 achievedValue = thisDayIsSameDay ? achieved[dayLength - 1] : achieved[i];
+            if (achievedValue == 1 && !dayAlreadyAchieved && currentStatus < dayRequired) {
+                if (!thisDayIsSameDay || i == dayLength - 1) {
+                    currentStatus = currentStatus + 1;
+                }
             }
         }
 
         if (tempHistoryData.length > 1) {
             isSendFailWithSameDay = true;
             for (uint256 i = 0; i < tempHistoryData.length - 1; i++) {
-                if (tempHistoryData[i] < goal) {
+                if (tempHistoryData[i] == 0) {
                     isSendFailWithSameDay = false;
                     lastIndex = totalReward;
                     break;
@@ -1168,21 +1081,19 @@ contract ChallengeBaseStep is IERC721Receiver {
         }
 
         if (
-            _stepIndex[dayLength - 1] < goal &&
+            achieved[dayLength - 1] == 0 &&
             _day[dayLength - 1] > _timeRange[0] &&
             _day[dayLength - 1] < _timeRange[1]
         ) {
             isSendFailWithSameDay = true;
         }
 
-        // Check if the challenge has failed due to too many missed days
         if (
             sequence - currentStatus > duration - dayRequired &&
             !isSendFailWithSameDay &&
             lastIndex == totalReward
         ) {
             stateInstance = ChallengeState.FAILED;
-            // Transfer funds to the receiver addresses for the failed challenge
             transferToListReceiverFail(
                 _listNFTAddress,
                 _listIndexNFT,
@@ -1190,20 +1101,16 @@ contract ChallengeBaseStep is IERC721Receiver {
                 _statusTypeNft
             );
         } else {
-            // Success: step (+ optional HIIT) days already enforced in currentStatus; walking speed has separate threshold
-            if (currentStatus >= dayRequired && isPassWalkingSpeed()) {
+            if (currentStatus >= dayRequired) {
                 stateInstance = ChallengeState.SUCCESS;
-                // Transfer funds to the receiver addresses for the successful challenge
                 transferToListReceiverSuccess(_listNFTAddress, _listIndexNFT, _statusTypeNft);
             }
         }
 
-        // Loop through each gacha instance and invoke random rewards
         for (uint256 i = 0; i < _listGachaAddress.length; i++) {
-            IGacha(_listGachaAddress[i]).randomRewards(address(this), _stepIndex);
+            IGacha(_listGachaAddress[i]).randomRewards(address(this), achieved);
         }
 
-        // Emit an event for the current status of the challenge
         emit SendDailyResult(currentStatus);
     }
 
@@ -1325,7 +1232,6 @@ contract ChallengeBaseStep is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) external nonReentrant onlyStakeHolders afterFinish availableForClose {
-        // Transfer NFTs and handle failure scenario for receivers
         transferToListReceiverFail(
             _listNFTAddress,
             _listIndexNFT,
@@ -1333,10 +1239,7 @@ contract ChallengeBaseStep is IERC721Receiver {
             _statusTypeNft
         );
 
-        // Update challenge state to CLOSED
         stateInstance = ChallengeState.CLOSED;
-
-        // Emit event to indicate the challenge is closed
         emit CloseChallenge(false);
     }
 
@@ -1356,7 +1259,6 @@ contract ChallengeBaseStep is IERC721Receiver {
         require(isFinished, "The challenge has not yet been finished");
         require(returnedNFTWallet == msg.sender, "Only returned nft wallet address");
 
-        // Transfer ERC20 tokens
         for (uint256 i = 0; i < _listTokenErc20.length; i++) {
             address tokenErc20 = _listTokenErc20[i];
             uint256 balanceErc20 = IERC20(tokenErc20).balanceOf(address(this));
@@ -1409,7 +1311,7 @@ contract ChallengeBaseStep is IERC721Receiver {
         if (allowGiveUp[2]) {
             address currentAddressNftUse;
             (currentAddressNftUse, indexNft) = IExerciseSupplementNFT(erc721Address[0]).safeMintNFT(
-                goal,
+                highIntensityIntervals,
                 duration,
                 dayRequired,
                 createByToken,
@@ -1442,16 +1344,12 @@ contract ChallengeBaseStep is IERC721Receiver {
 
         updateRewardSuccessAndfail();
 
-        // Transfer server failure fee to fee address
         tranferCoinNative(feeAddress, serverFailureFee);
         emit FundTransfer(feeAddress, serverFailureFee);
 
-        // Transfer rewards and tokens to all receivers
         for (uint256 i = index; i < awardReceivers.length; i++) {
-            // Transfer ETH rewards to receiver
             tranferCoinNative(awardReceivers[i], approvalFailOf[awardReceivers[i]]);
 
-            // Transfer ERC20 token rewards to receiver
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
                     TransferHelper.safeTransfer(
@@ -1463,7 +1361,6 @@ contract ChallengeBaseStep is IERC721Receiver {
             }
         }
 
-        // Transfer NFTs to their original owners
         transferNFTForSenderWhenFailed(
             _listNFTAddress,
             _listIndexNFT,
@@ -1471,7 +1368,6 @@ contract ChallengeBaseStep is IERC721Receiver {
             _statusTypeNft
         );
 
-        // Emit event (challenge already marked finished at start of function)
         emit CloseChallenge(false);
     }
 
@@ -1488,11 +1384,9 @@ contract ChallengeBaseStep is IERC721Receiver {
         bool[] memory _statusTypeNft,
         address _receiveAddress
     ) private {
-        // Iterate through the list of ERC721 contracts
         for (uint256 i = 0; i < _listNFTAddress.length; i++) {
             if (_statusTypeNft[i]) {
                 for (uint256 j = 0; j < _listIndexNFT[i].length; j++) {
-                    // Transfer the NFT to the sender
                     TransferHelper.safeTransferFrom(
                         _listNFTAddress[i],
                         address(this),
@@ -1506,15 +1400,12 @@ contract ChallengeBaseStep is IERC721Receiver {
                         address(this),
                         _listIndexNFT[i][j]
                     );
-                    // Encode data transfer token
                     bytes memory extraData = abi.encode(
                         address(this),
                         _receiveAddress,
                         _listIndexNFT[i][j],
                         balanceTokenERC1155
                     );
-
-                    // Transfer the NFT to the sender
                     TransferHelper.safeTransferNFT1155(
                         _listNFTAddress[i],
                         address(this),
@@ -1541,11 +1432,9 @@ contract ChallengeBaseStep is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) private {
-        // Iterate through the list of ERC721 contracts
         for (uint256 i = 0; i < _listNFTAddress.length; i++) {
             if (_statusTypeNft[i]) {
                 for (uint256 j = 0; j < _listIndexNFT[i].length; j++) {
-                    // Transfer the NFT to the sender
                     TransferHelper.safeTransferFrom(
                         _listNFTAddress[i],
                         address(this),
@@ -1557,16 +1446,12 @@ contract ChallengeBaseStep is IERC721Receiver {
                 uint256 lengthListIndexNFT = _listIndexNFT[i].length / 2;
                 for (uint256 j = 0; j < lengthListIndexNFT; j++) {
                     uint256 balanceTokenERC1155 = _listIndexNFT[i][j + lengthListIndexNFT];
-
-                    // Encode data transfer token
                     bytes memory extraData = abi.encode(
                         address(this),
                         _listSenderAddress[i][j],
                         _listIndexNFT[i][j],
                         balanceTokenERC1155
                     );
-
-                    // Transfer the NFT to the sender
                     TransferHelper.safeTransferNFT1155(
                         _listNFTAddress[i],
                         address(this),
@@ -1580,7 +1465,6 @@ contract ChallengeBaseStep is IERC721Receiver {
         }
     }
 
-    // Update reward for successful and failed challenges
     function updateRewardSuccessAndfail() private {
         // Reset constructor-populated accumulators so the += below sums correctly.
         // listBalanceAllToken / awardTokenReceivers are guaranteed empty here
@@ -1588,12 +1472,11 @@ contract ChallengeBaseStep is IERC721Receiver {
         sumAwardSuccess = 0;
         sumAwardFail = 0;
 
-        // Update balance Matic and token
         uint256 coinNativeBalance = address(this).balance;
 
         if (coinNativeBalance > 0) {
-            serverSuccessFee = (coinNativeBalance * amountSuccessFee) / (100);
-            serverFailureFee = (coinNativeBalance * amountFailFee) / (100);
+            serverSuccessFee = (coinNativeBalance * amountSuccessFee) / 100;
+            serverFailureFee = (coinNativeBalance * amountFailFee) / 100;
 
             for (uint256 i = 0; i < index; i++) {
                 approvalSuccessOf[awardReceivers[i]] =
@@ -1607,27 +1490,20 @@ contract ChallengeBaseStep is IERC721Receiver {
                 sumAwardFail += (awardReceiversPercent[i] * coinNativeBalance) / 100;
             }
         }
-        // Get total balance of base token in contract
+
         totalBalanceBaseToken = getContractBalance();
 
-        // Loop through all ERC20 tokens in list
         for (uint256 i = 0; i < erc20ListAddress.length; i++) {
-            // Get balance of current ERC20 token
             listBalanceAllToken.push(IERC20(erc20ListAddress[i]).balanceOf(address(this)));
 
-            // Check if contract holds any balance of current ERC20 token
             if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
-                // Loop through all award receivers percentage
                 for (uint256 j = 0; j < awardReceiversPercent.length; j++) {
-                    // Calculate the amount of ERC20 token to award to current receiver
                     uint256 awardAmount = (awardReceiversPercent[j] *
                         IERC20(erc20ListAddress[i]).balanceOf(address(this))) / 100;
-                    // Add the award amount to receiver's balance for current ERC20 token
                     awardTokenReceivers[erc20ListAddress[i]].push(awardAmount);
                 }
 
-                // Transfer fee of current ERC20 token to fee address as fee
-                uint256 realAmountFee = (listBalanceAllToken[i] * amountFailFee) / (100);
+                uint256 realAmountFee = (listBalanceAllToken[i] * amountFailFee) / 100;
                 if (realAmountFee > 0) {
                     TransferHelper.safeTransfer(erc20ListAddress[i], feeAddress, realAmountFee);
                 }
@@ -1635,17 +1511,10 @@ contract ChallengeBaseStep is IERC721Receiver {
         }
     }
 
-    // Returns the owner of the specified ERC721 token.
-    function getOwnerOfNft(address _erc721Address, uint256 _index) private view returns (address) {
-        return IExerciseSupplementNFT(_erc721Address).ownerOf(_index);
-    }
-
-    // Returns the balance of the contract in the native currency (ether).
     function getContractBalance() public view returns (uint256) {
         return address(this).balance;
     }
 
-    // Returns the history of the challenge as an array of dates and corresponding data values.
     function getChallengeHistory()
         external
         view
@@ -1654,131 +1523,13 @@ contract ChallengeBaseStep is IERC721Receiver {
         return (historyDate, historyData);
     }
 
-    // Returns the current state of the challenge as an enumerated value.
-    function getState() external view returns (ChallengeState) {
-        return stateInstance;
-    }
-
-    // Check if the contract has enough balance to transfer
-    function tranferCoinNative(address payable from, uint256 value) private {
-        require(getContractBalance() >= value, "Insufficient contract balance");
-        TransferHelper.saveTransferEth(from, value);
-    }
-
-    // Private function to get balance of a specific ERC20 token in the contract
-    function getBalanceTokenOfContract(
-        address _erc20Address,
-        address _fromAddress
-    ) private view returns (uint256) {
-        return IERC20(_erc20Address).balanceOf(_fromAddress);
-    }
-
-    // Private function to compare two strings
-    function compareStrings(string memory a, string memory b) private pure returns (bool) {
-        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
-    }
-
-    // Public function to return all ERC20 token contract addresses
-    function allContractERC20() external view returns (address[] memory) {
-        return erc20ListAddress;
-    }
-
-    // Return information about the current challenge
-    function getChallengeInfo()
-        external
-        view
-        returns (uint256 challengeCleared, uint256 challengeDayRequired, uint256 daysRemained)
-    {
-        return (
-            currentStatus, // The current status of the challenge
-            dayRequired, // The number of days required to complete the challenge
-            dayRequired - (currentStatus) // The number of days remaining in the challenge
-        );
-    }
-
     /**
-     * @dev Gộp: loại challenge (1–4), config (walking + HIIT), và toàn bộ history (step, walking nếu có, HIIT nếu có).
-     * - challengeType: 1 = only step, 2 = step + walking, 3 = step + HIIT, 4 = step + walking + HIIT.
-     * - walkingSpeedData: length 0 hoặc 3 [targetSpeed, requiredMinutesPerDay, minAchievementDays].
-     * - highIntensityIntervals, totalHighIntensityTime: config HIIT (0,0 khi không bật).
-     * - historyDateStep, historyDataStep: ngày và số bước mỗi ngày.
-     * - historyWalkingMinutes, historyWalkingMets: rỗng nếu không bật walking.
-     * - historyHiitIntervals, historyHiitTime: rỗng nếu không bật HIIT.
+     * @dev Returns raw HIIT submission history per day.
+     * @return date Array of submission timestamps.
+     * @return data Array of achieved status per day (0=not achieved, 1=achieved).
+     * @return intervals Array of raw high-intensity interval counts per day.
+     * @return time Array of raw total high-intensity seconds per day.
      */
-    function getChallengeTypeAndHistory()
-        external
-        view
-        returns (
-            uint256 challengeType,
-            uint256[] memory walkingSpeedDataConfig,
-            uint256 highIntensityIntervalsConfig,
-            uint256 totalHighIntensityTimeConfig,
-            uint256[] memory historyDateStep,
-            uint256[] memory historyDataStep,
-            uint256[] memory historyWalkingMinutes,
-            uint256[] memory historyWalkingMets,
-            uint256[] memory historyHiitIntervals,
-            uint256[] memory historyHiitTime
-        )
-    {
-        bool hasWalking = walkingSpeedData.length >= 3;
-        if (!hasWalking && !isHiitEnabled) challengeType = 1;
-        else if (hasWalking && !isHiitEnabled) challengeType = 2;
-        else if (!hasWalking && isHiitEnabled) challengeType = 3;
-        else challengeType = 4;
-
-        walkingSpeedDataConfig = walkingSpeedData;
-        highIntensityIntervalsConfig = highIntensityIntervals;
-        totalHighIntensityTimeConfig = totalHighIntensityTime;
-
-        uint256 len = historyDate.length;
-        historyDateStep = new uint256[](len);
-        historyDataStep = new uint256[](len);
-        for (uint256 i = 0; i < len; i++) {
-            historyDateStep[i] = historyDate[i];
-            historyDataStep[i] = historyData[i];
-        }
-
-        if (hasWalking) {
-            historyWalkingMinutes = new uint256[](len);
-            historyWalkingMets = new uint256[](len);
-            for (uint256 i = 0; i < len; i++) {
-                historyWalkingMinutes[i] = historyMinutesAtTargetSpeed[i];
-                historyWalkingMets[i] = metsWalkingSpeed[i];
-            }
-        } else {
-            historyWalkingMinutes = new uint256[](0);
-            historyWalkingMets = new uint256[](0);
-        }
-
-        if (isHiitEnabled) {
-            historyHiitIntervals = new uint256[](len);
-            historyHiitTime = new uint256[](len);
-            for (uint256 i = 0; i < len; i++) {
-                historyHiitIntervals[i] = historyIntervals[i];
-                historyHiitTime[i] = historyTime[i];
-            }
-        } else {
-            historyHiitIntervals = new uint256[](0);
-            historyHiitTime = new uint256[](0);
-        }
-    }
-
-    /** @dev Returns the HIIT configuration when HIIT is enabled (0,0 when disabled). */
-    function getHIITConfig()
-        external
-        view
-        returns (uint256 _highIntensityIntervals, uint256 _totalHighIntensityTime)
-    {
-        return (highIntensityIntervals, totalHighIntensityTime);
-    }
-
-    /** @dev Returns the HIIT achievement status for a specific day (0 or 1 when HIIT enabled). */
-    function getHIITAchievedOn(uint256 _day) external view returns (uint256) {
-        return hiitAchievedOn[_day];
-    }
-
-    /** @dev Returns HIIT history: date, achieved (0/1 derived from hiitAchievedOn), intervals, time. When HIIT disabled, returns empty arrays. */
     function getHIITHistory()
         external
         view
@@ -1789,102 +1540,71 @@ contract ChallengeBaseStep is IERC721Receiver {
             uint256[] memory time
         )
     {
-        if (!isHiitEnabled) {
-            date = new uint256[](0);
-            data = new uint256[](0);
-            intervals = new uint256[](0);
-            time = new uint256[](0);
-            return (date, data, intervals, time);
-        }
-        uint256 len = historyIntervals.length;
-        date = new uint256[](len);
-        data = new uint256[](len);
-        intervals = new uint256[](len);
-        time = new uint256[](len);
-        for (uint256 i = 0; i < len; i++) {
-            date[i] = historyDate[i];
-            data[i] = hiitAchievedOn[historyDate[i]];
-            intervals[i] = historyIntervals[i];
-            time[i] = historyTime[i];
-        }
-        return (date, data, intervals, time);
+        return (historyDate, historyData, historyIntervals, historyTime);
     }
 
-    /**
-     * @dev Check if walking speed condition is passed.
-     * When walking speed is disabled (walkingSpeedData.length < 3), returns true (step-only challenge).
-     * When enabled, uses historyMinutesAtTargetSpeed and walkingSpeedData config.
-     * @return True if the walking speed condition is passed or disabled, false otherwise.
+    function getState() external view returns (ChallengeState) {
+        return stateInstance;
+    }
+
+    function tranferCoinNative(address payable from, uint256 value) private {
+        require(getContractBalance() >= value, "Insufficient contract balance");
+        TransferHelper.saveTransferEth(from, value);
+    }
+
+    function getBalanceTokenOfContract(
+        address _erc20Address,
+        address _fromAddress
+    ) private view returns (uint256) {
+        return IERC20(_erc20Address).balanceOf(_fromAddress);
+    }
+
+    function allContractERC20() external view returns (address[] memory) {
+        return erc20ListAddress;
+    }
+
+    /** @dev Returns HIIT challenge progress info.
+     *  @return challengeCleared Number of days HIIT was achieved.
+     *  @return challengeDayRequired Total days required to complete the challenge.
+     *  @return daysRemained Days still needed to achieve HIIT.
      */
-    function isPassWalkingSpeed() internal view returns (bool) {
-        if (walkingSpeedData.length < 3) {
-            return true; // Step only: no walking speed requirement
-        }
-
-        uint256 requiredMinutesPerDay = walkingSpeedData[1];
-        uint256 minAchievementDays = walkingSpeedData[2];
-
-        if (requiredMinutesPerDay == 0 || minAchievementDays == 0) {
-            return true;
-        }
-
-        uint256 count = 0;
-        uint256 length = historyMinutesAtTargetSpeed.length;
-
-        for (uint256 i = 0; i < length; i++) {
-            if (historyMinutesAtTargetSpeed[i] >= requiredMinutesPerDay) {
-                count++;
-            }
-        }
-
-        return count >= minAchievementDays;
+    function getChallengeInfo()
+        external
+        view
+        returns (uint256 challengeCleared, uint256 challengeDayRequired, uint256 daysRemained)
+    {
+        return (currentStatus, dayRequired, dayRequired - currentStatus);
     }
 
-    /**
-     * @dev Check if HIIT condition is passed (for view/query; success path uses currentStatus which already only counts step+HIIT days when HIIT enabled).
-     * When HIIT is disabled, returns true. When enabled, returns true if the number of days with HIIT achieved is at least dayRequired.
-     */
-    function isPassHiit() internal view returns (bool) {
-        if (!isHiitEnabled) {
-            return true; // HIIT not enabled: no HIIT requirement
-        }
-
-        uint256 count = 0;
-        uint256 len = historyIntervals.length;
-
-        for (uint256 i = 0; i < len; i++) {
-            if (hiitAchievedOn[historyDate[i]] == 1) {
-                count++;
-            }
-        }
-
-        return count >= dayRequired;
+    /** @dev Returns the HIIT configuration for this challenge. */
+    function getHIITConfig()
+        external
+        view
+        returns (uint256 _highIntensityIntervals, uint256 _totalHighIntensityTime)
+    {
+        return (highIntensityIntervals, totalHighIntensityTime);
     }
 
-    // Return the array of award receiver percentages
+    /** @dev Returns the HIIT achievement status for a specific day. */
+    function getHIITAchievedOn(uint256 _day) external view returns (uint256) {
+        return hiitAchievedOn[_day];
+    }
+
     function getAwardReceiversPercent() public view returns (uint256[] memory) {
         return (awardReceiversPercent);
     }
 
-    // Return the array of token balances for each token in the contract
     function getBalanceToken() public view returns (uint256[] memory) {
         return listBalanceAllToken;
     }
 
-    /**
-     * This function returns the address of an award receiver at the specified index.
-     * If _isAddressSuccess is false, it returns the address of the award receiver who did not approve the transaction.
-     * If _isAddressSuccess is true, it returns the address of the award receiver who approved the transaction.
-     */
     function getAwardReceiversAtIndex(
         uint256 _index,
         bool _isAddressSuccess
     ) public view returns (address) {
-        // If _isAddressSuccess is false, return the address of the award receiver who did not approve the transaction.
         if (!_isAddressSuccess) {
             return awardReceivers[_index + index];
         }
-        // If _isAddressSuccess is true, return the address of the award receiver who approved the transaction.
         return awardReceivers[_index];
     }
 
