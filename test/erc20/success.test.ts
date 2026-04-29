@@ -1,3 +1,6 @@
+// チャレンジ成功時の ERC20 送金フロー検証。
+// feeAddr / 受取人 recv0 への送金額、および getBalanceToken() の
+// スナップショット値が想定通りかを確認する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { deployChallenge, moveToStart, sendStep } from '../helpers/deployHelpers.ts';
@@ -21,6 +24,7 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
     return { tkn1, tknAddr, challenge, challengeAddr, signers, startTime, endTime };
   }
 
+  // 成功時、feeAddr へ 10% の手数料（100 TKN1）が送られる
   it('feeAddr receives 10% of TKN1 on success', async function () {
     const { tkn1, challenge, signers, startTime } = await setup();
     const challenger = signers[1];
@@ -33,6 +37,7 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
     expect(await tkn1.balanceOf(feeAddr.address)).to.equal(hre.ethers.parseEther('100'));
   });
 
+  // 成功時、成功側受取人 recv0 へ 50% 配分（500 TKN1）が送られる
   it('recv0 receives 50% of TKN1 on success', async function () {
     const { tkn1, challenge, signers, startTime } = await setup();
     const challenger = signers[1];
@@ -45,6 +50,7 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
     expect(await tkn1.balanceOf(recv0.address)).to.equal(hre.ethers.parseEther('500'));
   });
 
+  // getBalanceToken() は手数料控除前の元残高（1000 TKN1）を返すスナップショット
   it('getBalanceToken() returns pre-fee snapshot [1000 TKN1]', async function () {
     const { challenge, signers, startTime } = await setup();
     const challenger = signers[1];
