@@ -1,3 +1,6 @@
+// F5: walkingSpeedData[0]（目標速度）はオンチェーンでは検証されない仕様の検証。
+// 値が極端に大きくても小さくても判定結果に影響せず、いずれの場合も
+// 歩数 + 歩行分数の条件のみで成功判定が行われる。
 import { expect } from 'chai';
 import { deployChallenge, sendStep, moveToStart } from '../helpers/deployHelpers.ts';
 
@@ -28,6 +31,7 @@ describe('T18 – F5: walkingSpeedData[0] (target speed) is not enforced on-chai
     });
   }
 
+  // 目標速度 999（非現実的に大きい値）でも、歩数+分数の条件を満たせば成功する
   it('succeeds when walkingSpeedData[0]=999 (absurd target) and minutes >= required', async function () {
     const { challenge, signers, startTime } = await setupWith(999);
     expect(await challenge.walkingSpeedData(0)).to.equal(999n);
@@ -35,6 +39,7 @@ describe('T18 – F5: walkingSpeedData[0] (target speed) is not enforced on-chai
     expect(await challenge.isSuccess()).to.equal(true);
   });
 
+  // 目標速度 1（極端に小さい値）でも同様に成功する → ターゲットは判定に未使用
   it('succeeds when walkingSpeedData[0]=1 (trivial target) and minutes >= required', async function () {
     const { challenge, signers, startTime } = await setupWith(1);
     expect(await challenge.walkingSpeedData(0)).to.equal(1n);
@@ -42,6 +47,7 @@ describe('T18 – F5: walkingSpeedData[0] (target speed) is not enforced on-chai
     expect(await challenge.isSuccess()).to.equal(true);
   });
 
+  // 高い目標速度と低い目標速度で結果が同一 → ターゲット値が無効であることの最終確認
   it('walkingSpeedData[0]=999 and walkingSpeedData[0]=1 yield identical isSuccess=true', async function () {
     const high = await setupWith(999);
     const low = await setupWith(1);
