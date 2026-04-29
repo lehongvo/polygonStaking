@@ -1,3 +1,6 @@
+// 概要（JP）: ChallengeDetail コントラクトの giveUp フロー検証。
+// (a) 全額スポンサー返還: sponsor 9 ETH / fee 1 ETH、二重 giveUp は revert。
+// (b) 1日達成（cs=1）/ 必要4日: sponsor 6.75 / recv1 1.25 / fee 1 に按分される。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -33,6 +36,7 @@ async function deploy(allAwardToSponsor: boolean) {
 }
 
 describe('T4-C2 — giveUp flow (ChallengeDetail)', function () {
+  // (a) allAwardToSponsor=true: sponsor +9 / fee +1、再 giveUp は revert
   it('(a) sponsor=9 ETH, fee=1 ETH', async function () {
     const { challenger, sponsor, feeAddr, challenge, startTime } = await deploy(true);
     await time.increaseTo(startTime + 100);
@@ -50,6 +54,7 @@ describe('T4-C2 — giveUp flow (ChallengeDetail)', function () {
     await expect(challenge.connect(challenger).giveUp([], [], [], [])).to.be.reverted;
   });
 
+  // (b) 達成1日 / 必要4日 → 比率に応じて sponsor 6.75 / recv1 1.25 / fee 1
   it('(b) cs=1, dayRequired=4: sponsor=6.75, recv1=1.25, fee=1', async function () {
     const { challenger, sponsor, feeAddr, recv1, challenge, startTime } = await deploy(false);
     await time.increaseTo(startTime + 100);

@@ -1,3 +1,7 @@
+// 概要（JP）: ChallengeHIIT の達成判定ロジック検証。
+// HIIT 達成は「intervals 数」と「totalSeconds」の両方が閾値以上のときのみ
+// 成立する（AND 条件）。片方のみ満たしても currentStatus は増えない。
+// あわせて履歴（getHIITHistory）に生値が記録されることを確認する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -38,6 +42,7 @@ async function deployHIIT() {
 }
 
 describe('T7-C3 — HIIT achieved logic: both thresholds required (ChallengeHIIT)', function () {
+  // 両方の閾値（intervals & totalSeconds）を満たす日のみ currentStatus が増える
   it('currentStatus increments only when BOTH intervals AND totalSeconds >= their thresholds', async function () {
     const { challenger, challenge, startTime, endTime } = await deployHIIT();
 
@@ -74,6 +79,7 @@ describe('T7-C3 — HIIT achieved logic: both thresholds required (ChallengeHIIT
     expect(await challenge.getHIITAchievedOn(day4)).to.equal(0n);
   });
 
+  // 履歴 API は提出された intervals / totalSeconds の生値を保持する
   it('getHIITHistory records intervals and totalSeconds raw values per submission', async function () {
     const { challenger, challenge, startTime, endTime } = await deployHIIT();
 

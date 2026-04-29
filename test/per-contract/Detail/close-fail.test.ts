@@ -1,3 +1,7 @@
+// 概要（JP）: ChallengeDetail（Detail コントラクト）の失敗確定フロー検証。
+// (a) 期間終了 + 2 日後に closeChallenge を実行 → CLOSED 状態に遷移し
+//     失敗側受取人と feeAddr に正しい比率で支払いが行われる。
+// (b) 連続失敗の閾値超過後、最終日提出（narrowRange）で失敗確定する内部トリガを確認。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -34,6 +38,7 @@ async function deploy() {
 }
 
 describe('T5-C2 — closeChallenge + fail trigger (ChallengeDetail)', function () {
+  // (a) 終了 + 2 日後に closeChallenge → CLOSED(4) / recv2 = 4 ETH / fee = 1 ETH
   it('(a) closeChallenge after endTime+2days: state=CLOSED, recv2=4 ETH, fee=1 ETH', async function () {
     const { sponsor, feeAddr, recv2, challenge, endTime } = await deploy();
 
@@ -50,6 +55,7 @@ describe('T5-C2 — closeChallenge + fail trigger (ChallengeDetail)', function (
     expect((await hre.ethers.provider.getBalance(feeAddr.address)) - feeBefore).to.equal(hre.ethers.parseEther('1'));
   });
 
+  // (b) 失敗トリガ: 失敗4日 + 最終日 narrowRange で sendDailyResult 内に失敗確定
   it('(b) Fail trigger: 4 fail days (broadRange) + 1 pass (narrowRange)', async function () {
     const { challenger, feeAddr, recv2, challenge, startTime, endTime } = await deploy();
     await time.increaseTo(startTime + 100);
