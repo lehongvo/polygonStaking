@@ -1,3 +1,6 @@
+// 失敗ルート（giveUp）における ERC721 NFT の戻し処理を検証する。
+// チャレンジコントラクトが保持していた NFT が、giveUp 経由で
+// 指定アドレスへ正しく転送されるかを確認する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { deployChallenge, moveToStart } from '../helpers/deployHelpers.ts';
@@ -26,6 +29,7 @@ describe('T14 – NFT fail-path transfers via giveUp (ChallengeBaseStep)', funct
     return { challenge, erc721, challenger, challengeAddr, startTime };
   }
 
+  // giveUp 時にトークン id=3 が challenger に返却され、コントラクト残高が 0 になる
   it('ERC721 token id=3 returned to challenger via giveUp', async function () {
     const { challenge, erc721, challenger, challengeAddr, startTime } = await setup();
     await moveToStart(startTime);
@@ -39,6 +43,7 @@ describe('T14 – NFT fail-path transfers via giveUp (ChallengeBaseStep)', funct
     expect(await erc721.balanceOf(challengeAddr)).to.equal(0n);
   });
 
+  // NFT 配列が空でも giveUp は成立し、isFinished=true になる
   it('challenge isFinished=true after giveUp with empty NFT lists', async function () {
     const { challenge, challenger, startTime } = await setup();
     await moveToStart(startTime);
