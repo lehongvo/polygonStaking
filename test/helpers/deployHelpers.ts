@@ -1,6 +1,11 @@
+// テスト用デプロイ・操作ヘルパー。
+// 3 種のチャレンジコントラクト（BaseStep / Detail / HIIT）を共通の
+// オプションでデプロイしたり、時間を進めたり、sendDailyResult を呼ぶ
+// 際の煩雑な配列引数をラップする。
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 
+// 成功時手数料率（%） / 失敗時手数料率（%）
 export const SUCCESS_FEE = 5;
 export const FAIL_FEE = 10;
 
@@ -34,6 +39,8 @@ export interface DeployOpts extends Record<string, any> {
   erc20List?: string[]; // pre-populated ERC20 list on registry
 }
 
+// テスト用の MockExerciseSupplementNFT をデプロイする。
+// erc20List を指定するとレジストリに事前登録した状態で返す。
 export async function deployMockNFT(opts?: { erc20List?: string[] }) {
   const [, , , wallet] = await hre.ethers.getSigners();
   const Mock = await hre.ethers.getContractFactory('MockExerciseSupplementNFT');
@@ -44,6 +51,8 @@ export async function deployMockNFT(opts?: { erc20List?: string[] }) {
   return nft;
 }
 
+// 各コントラクト名に応じて適切なコンストラクタ引数を組み立てて
+// チャレンジをデプロイし、challenge / nft / 開始時刻 / 終了時刻 / signers を返す。
 export async function deployChallenge(name: ContractName, opts: DeployOpts) {
   const signers = await hre.ethers.getSigners();
   const [defaultSponsor, defaultChallenger, defaultFee, ,] = signers;
@@ -151,7 +160,9 @@ export interface SendStepArgs {
 }
 
 /**
- * Convenience: call sendDailyResult on any of the 3 contracts with sane defaults.
+ * 3 種のコントラクトの sendDailyResult をラップするユーティリティ。
+ * 引数構成がコントラクトごとに異なるため、共通形 SendStepArgs から
+ * 適切な配列引数を組み立てて呼び出す。
  */
 export async function sendStep(
   contract: any,
@@ -219,10 +230,12 @@ export async function sendStep(
     );
 }
 
+// チャレンジ開始時刻を少し過ぎた地点まで EVM 時刻を進める
 export async function moveToStart(startTime: number, offset = 100) {
   await time.increaseTo(startTime + offset);
 }
 
+// チャレンジ終了から 2 日以上後に EVM 時刻を進める（closeChallenge 検証用）
 export async function moveAfterEnd(endTime: number, offset = 2 * 86400 + 100) {
   await time.increaseTo(endTime + offset);
 }
