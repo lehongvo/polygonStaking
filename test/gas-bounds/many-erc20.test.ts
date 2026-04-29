@@ -1,7 +1,10 @@
+// 複数の ERC20 トークン（5種）を保持する状態で giveUp を実行した場合の
+// ガス消費上限と、N2 修正（残高記録の重複防止）を検証する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { deployChallenge, moveToStart, FAIL_FEE } from '../helpers/deployHelpers.ts';
 
+// 5 トークン分のループでも 1.5M ガス未満に収まることを期待
 const GAS_LIMIT_GIVEUP = 1_500_000n;
 const TOKEN_MINT = hre.ethers.parseEther('1000');
 
@@ -37,6 +40,7 @@ describe('T27 – many ERC20 loop gas + N2 reset (5 tokens)', function () {
     return { challenge, startTime, signers, tokens };
   }
 
+  // 5 トークン分の giveUp 処理が 1.5M ガス未満で完了すること
   it('giveUp with 5 ERC20 tokens completes under 1.5 M gas', async function () {
     const { challenge, startTime, signers } = await setup();
 
@@ -50,6 +54,7 @@ describe('T27 – many ERC20 loop gas + N2 reset (5 tokens)', function () {
     expect(gasUsed).to.be.lt(GAS_LIMIT_GIVEUP);
   });
 
+  // feeAddress が各 ERC20 から FAIL_FEE% を正確に受け取っていること
   it('feeAddress received exactly FAIL_FEE% of each ERC20 token', async function () {
     const { challenge, startTime, signers, tokens } = await setup();
 
@@ -64,6 +69,7 @@ describe('T27 – many ERC20 loop gas + N2 reset (5 tokens)', function () {
     }
   });
 
+  // N2 修正の確認: giveUp 後に登録トークンが 5 件のまま（重複なし）
   it('getBalanceToken().length == 5 after giveUp (N2 reset)', async function () {
     const { challenge, startTime, signers } = await setup();
 
@@ -74,6 +80,7 @@ describe('T27 – many ERC20 loop gas + N2 reset (5 tokens)', function () {
     expect(balanceTokens.length).to.equal(5);
   });
 
+  // giveUp 後はチャレンジ状態が GAVE_UP (=3) に遷移し isFinished=true
   it('challenge state == GAVE_UP (3) after giveUp', async function () {
     const { challenge, startTime, signers } = await setup();
 

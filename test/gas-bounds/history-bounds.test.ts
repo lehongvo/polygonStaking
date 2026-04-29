@@ -1,9 +1,12 @@
+// historyData の増加が "1日 1 件" に抑えられていることを保証するテスト。
+// 同一日内の多重 push を防ぎ、ストレージ膨張やガス爆発を避けることが目的。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { deployChallenge, sendStep, moveToStart } from '../helpers/deployHelpers.ts';
 
 describe('T26 – historyData growth bounded: 1 push per unique day', function () {
+  // 各ユニークな日ごとに履歴は厳密に +1 件、10日経過後は length=10
   it('history length increments by exactly 1 for each unique day, final length == 10', async function () {
     const { challenge, startTime } = await deployChallenge('ChallengeBaseStep', {
       awardReceiversPercent: [50, 50],
@@ -41,6 +44,7 @@ describe('T26 – historyData growth bounded: 1 push per unique day', function (
     expect(await challenge.isSuccess()).to.be.true;
   });
 
+  // 成功確定後はチャレンジが終了状態となり、それ以上の歩数提出は revert する
   it('sendDailyResult after success reverts "Challenge was finished"', async function () {
     const { challenge, startTime } = await deployChallenge('ChallengeBaseStep', {
       awardReceiversPercent: [50, 50],

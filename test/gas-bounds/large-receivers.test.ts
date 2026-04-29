@@ -1,11 +1,15 @@
+// 受取人を10名に増やしたときの成功時送金処理が、ガス上限内で
+// 完了することを保証するテスト（DoS 防止のための上界確認）。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
 import { deployChallenge, sendStep, moveToStart } from '../helpers/deployHelpers.ts';
 
+// 受取人10名でも 2M ガス未満に収まることを期待
 const GAS_LIMIT_SUCCESS_PAYOUT = 2_000_000n;
 
 describe('T25 – large awardReceivers gas bounds (10 receivers)', function () {
+  // 10 名への一括送金が 2M ガス未満で完了し、成功フラグが立つこと
   it('transferToListReceiverSuccess with 10 receivers uses < 2 M gas', async function () {
     const { challenge, startTime } = await deployChallenge('ChallengeBaseStep', {
       awardReceiversPercent: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
