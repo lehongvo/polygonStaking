@@ -1,3 +1,6 @@
+// 概要（JP）: 受取人が ETH を送り返してくる悪意あるコントラクトであっても、
+// F-A10 ガード（_reentrancyStatus チェック）により無限ループ DoS が
+// 起きずに送金処理が完了することを検証する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -23,6 +26,8 @@ const SUCCESS_FEE = 5;
 const FAIL_FEE = 10;
 
 describe('T3 — DoS via bouncing receiver (F-A10)', function () {
+  // 修正済み: バウンス（送り返し）受取人がいても成功フローが完走し、
+  // バウンス分は challenge コントラクトに静かに保持される（DoS 不可）
   it('Patched: success path completes despite bouncing receiver (no DoS)', async function () {
     const [, challenger, feeAddr, returnedNFTWallet, sponsor, , recv2] =
       await hre.ethers.getSigners();

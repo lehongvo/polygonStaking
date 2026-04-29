@@ -1,3 +1,7 @@
+// 概要（JP）: ChallengeHIIT の失敗確定フロー検証。
+// (a) 期間終了 + 2 日後の closeChallenge → CLOSED 状態への遷移と配分。
+// (b) 達成不足の HIIT 提出が 4 日 + 達成 1 日 → 連続失敗閾値超過で
+//     sendDailyResult 内に失敗確定（FAILED 状態）する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -38,6 +42,7 @@ async function deployHIIT() {
 }
 
 describe('T5-C3 — closeChallenge + fail trigger (ChallengeHIIT)', function () {
+  // (a) 終了 +2 日後の closeChallenge → CLOSED(4)、recv2 +4 / fee +1、再 close は revert
   it('(a) closeChallenge after endTime+2days: state=CLOSED, recv2=4 ETH, fee=1 ETH', async function () {
     const { sponsor, feeAddr, recv2, challenge, endTime } = await deployHIIT();
 
@@ -64,6 +69,7 @@ describe('T5-C3 — closeChallenge + fail trigger (ChallengeHIIT)', function () 
     await expect(challenge.connect(sponsor).closeChallenge([], [], [], [])).to.be.reverted;
   });
 
+  // (b) HIIT 失敗 4 日 + 達成 1 日 → sendDailyResult 内で FAILED(2) へ遷移
   it('(b) Fail triggers from sendDailyResult: 4 failing HIIT days + 1 passing day', async function () {
     const { challenger, feeAddr, recv2, challenge, startTime, endTime } = await deployHIIT();
 

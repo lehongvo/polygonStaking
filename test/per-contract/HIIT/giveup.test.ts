@@ -1,3 +1,6 @@
+// 概要（JP）: ChallengeHIIT の giveUp フロー検証。
+// (a) allAwardToSponsor=true: sponsor +9 / fee +1、二重 giveUp は revert。
+// (b) HIIT 1 日達成（cs=1）/ 必要 4 日 → sponsor 6.75 / recv1 1.25 / fee 1。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -38,6 +41,7 @@ async function deployHIIT(allAwardToSponsor: boolean, dayRequired = 4) {
 }
 
 describe('T4-C3 — giveUp flow (ChallengeHIIT)', function () {
+  // (a) sponsor +9 / fee +1、GAVE_UP(3) へ遷移、再 giveUp は revert
   it('(a) choiceAwardToSponsor=true: sponsor=9 ETH, fee=1 ETH, second giveUp blocked', async function () {
     const { challenger, sponsor, feeAddr, challenge, startTime } = await deployHIIT(true);
 
@@ -64,6 +68,7 @@ describe('T4-C3 — giveUp flow (ChallengeHIIT)', function () {
     await expect(challenge.connect(challenger).giveUp([], [], [], [])).to.be.reverted;
   });
 
+  // (b) HIIT 1 日達成 / 必要 4 日 → 比率に応じて sponsor 6.75 / recv1 1.25 / fee 1
   it('(b) choiceAwardToSponsor=false: cs=1 / dayRequired=4 → sponsor=6.75, recv1=1.25, fee=1', async function () {
     const { challenger, sponsor, feeAddr, recv1, challenge, startTime, endTime } = await deployHIIT(false, 4);
 

@@ -1,3 +1,7 @@
+// 概要（JP）: ChallengeBaseStep の giveUp フルフローを 2 系統で検証する。
+// (a) choiceAwardToSponsor=true: 残額を全額スポンサーへ返還（手数料控除）
+// (b) choiceAwardToSponsor=false: 達成日数比に応じて受取人にも按分
+// 同時に CEI / nonReentrant / 二重 giveUp ブロックなどのガード動作も確認する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -55,6 +59,8 @@ async function deploy(allAwardToSponsor: boolean) {
 }
 
 describe('T4 — giveUp flow', function () {
+  // (a) 全額スポンサー返還モード: スポンサー +9 ETH / feeAddr +1 ETH、
+  //     残高 0、二度目の giveUp は revert（GAVE_UP=3 状態）
   it('(a) choiceAwardToSponsor=true: sponsor gets all (minus fee), CEI applied, second giveUp blocked', async function () {
     const { challenger, sponsor, feeAddr, challenge, startTime } = await deploy(true);
 
@@ -105,6 +111,7 @@ describe('T4 — giveUp flow', function () {
     ).to.be.reverted;
   });
 
+  // (b) 按分モード: 1日達成（cs=1）/ 必要4日 → スポンサー 6.75 / recv1 1.25 / fee 1
   it('(b) choiceAwardToSponsor=false: sponsor + receiver split based on currentStatus', async function () {
     const { challenger, sponsor, feeAddr, recv1, challenge, startTime } =
       await deploy(false);

@@ -1,3 +1,6 @@
+// 概要（JP）: ChallengeDetail に対する F1-B 範囲修正と N2 リセットの検証。
+// F1-B: 成功配分が receivers[0..index-1] の範囲に閉じていること。
+// N2: giveUp 後に listBalanceAllToken が 0 件のまま（重複登録なし）であること。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -6,6 +9,7 @@ const SUCCESS_FEE = 5;
 const FAIL_FEE = 10;
 
 describe('T6-C2 — F1-B range + N2 reset (ChallengeDetail)', function () {
+  // F1-B: 成功時送金は [0..index-1] のみ。失敗側 recv2(idx=2) は 0 のまま
   it('F1-B: success loop pays only [0..index-1]; recv2 (idx=2 fail-side) gets 0', async function () {
     const [, challenger, feeAddr, returnedNFTWallet, sponsor, recv0, recv1, recv2] = await hre.ethers.getSigners();
     const MockNFT = await hre.ethers.getContractFactory('MockExerciseSupplementNFT');
@@ -55,6 +59,7 @@ describe('T6-C2 — F1-B range + N2 reset (ChallengeDetail)', function () {
     expect((await hre.ethers.provider.getBalance(recv2.address)) - recv2Before).to.equal(0n);
   });
 
+  // N2: 登録 ERC20 なしの構成では giveUp 後も length=0 のまま（重複 push なし）
   it('N2 reset: getBalanceToken().length == 0 post-giveUp (no ERC20 in registry)', async function () {
     const [, challenger, feeAddr, returnedNFTWallet, sponsor, recv1, recv2] = await hre.ethers.getSigners();
     const MockNFT = await hre.ethers.getContractFactory('MockExerciseSupplementNFT');

@@ -1,3 +1,7 @@
+// 概要（JP）: ChallengeBaseStep の失敗確定フローを 2 系統で検証する。
+// (a) 期間終了後にスポンサーが closeChallenge を呼ぶ → 失敗側に配分。
+// (b) sendDailyResult の中で「連続失敗が閾値を超えた」と判定され、
+//     その場で失敗確定する内部トリガを検証する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -58,6 +62,8 @@ async function deploy() {
 }
 
 describe('T5 — closeChallenge + fail trigger', function () {
+  // 期間終了 + 2 日経過後に closeChallenge → 失敗側受取人への支払いと
+  // CLOSED(=4) 状態への遷移、二重 close の revert を確認
   it('(a) closeChallenge after endTime+2days: fail-side receivers paid, state=CLOSED', async function () {
     const { challenger, sponsor, feeAddr, recv2, challenge, startTime, endTime } =
       await deploy();
@@ -97,6 +103,8 @@ describe('T5 — closeChallenge + fail trigger', function () {
     ).to.be.reverted;
   });
 
+  // 連続失敗が閾値（duration - dayRequired）を超えた状態で
+  // 最終日に達成提出 → sendDailyResult の中で失敗確定（state=FAILED=2）
   it('(b) Fail triggered from sendDailyResult when sequence overruns + last day passing', async function () {
     // Note: fail check is gated by `!isSendFailWithSameDay`. Post-loop block
     // sets isSendFailWithSameDay = true when the latest submitted step < goal

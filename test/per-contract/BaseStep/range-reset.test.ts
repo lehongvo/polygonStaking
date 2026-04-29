@@ -1,3 +1,8 @@
+// 概要（JP）: F1-B 修正の確認と N2 修正の内部状態観察。
+// F1-B: 成功配分ループの範囲を「0..index」に限定し、失敗側受取人へ
+//       誤って支払われないことを確認。
+// N2: 1 ライフサイクル後に listBalanceAllToken が二重成長していないこと
+//     を getBalanceToken().length で間接確認する。
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -23,6 +28,7 @@ const SUCCESS_FEE = 5;
 const FAIL_FEE = 10;
 
 describe('T6 — F1-B range + N2 reset', function () {
+  // F1-B: 成功時送金は receivers[0..index-1] のみ。失敗側 recv2 には支払われない
   it('F1-B: success loop only pays receivers[0..index-1], skips fail-side', async function () {
     const [, challenger, feeAddr, returnedNFTWallet, sponsor, recv0, recv1, recv2] =
       await hre.ethers.getSigners();
@@ -130,6 +136,8 @@ describe('T6 — F1-B range + N2 reset', function () {
     );
   });
 
+  // N2: ライフサイクル後の listBalanceAllToken 配列が境界（=登録 ERC20 数）を
+  //     超えて成長しないことを確認（delete + push の正しさ）
   it('N2 reset: getBalanceToken() returns bounded array (no double-growth)', async function () {
     const [, challenger, feeAddr, returnedNFTWallet, sponsor, recv1, recv2] =
       await hre.ethers.getSigners();
