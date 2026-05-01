@@ -3214,21 +3214,15 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
                     // If the reward token type is ERC721
                     if (currentRewardToken.typeToken == TypeToken.ERC721) {
-                        // Get the next available token ID to mint
-
                         // If the reward is to mint a new NFT
                         if (currentRewardToken.isMintNft) {
+                            indexTokenReward = IChallenge(currentTokenAddress).nextTokenIdToMint();
                             for (uint256 i = 0; i < currentRewardToken.rewardValue; i++) {
                                 IChallenge(erc721Address).safeMintNFT721Heper(
                                     currentTokenAddress,
                                     challengerAddress
                                 );
                             }
-                            // Mint a new NFT
-                            uint256 currentIndexNFT = IChallenge(currentTokenAddress)
-                                .nextTokenIdToMint();
-                            // Set the reward index to the newly minted token ID
-                            indexTokenReward = currentIndexNFT;
                         } else {
                             /**
                              * If the reward is to transfer an existing NFT
@@ -3357,7 +3351,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         address _tokenAddress,
         uint256 _indexToken,
         TypeToken _typeToken
-    ) external {
+    ) external onlyRole(CLOSE_GACHA_ROLE) {
         // Check if the token type is not ERC1155
         if (_typeToken != TypeToken.ERC1155) {
             // Handle the case for native token
@@ -3490,17 +3484,12 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         // Delete the reward token from the rewardTokens mapping
         delete rewardTokens[_indexOfTokenReward];
 
-        /**
-         * Loop through the list of reward token IDs and find the index of the reward token to be deleted
-         * Then replace the deleted token with the last token in the list and remove the last element of the list
-         */
         for (uint256 i = 0; i < listIdToken.length; i++) {
             if (listIdToken[i] == _indexOfTokenReward) {
                 listIdToken[i] = listIdToken[listIdToken.length.sub(1)];
+                break;
             }
         }
-
-        // Remove the last element from the list of token IDs
         listIdToken.pop();
 
         // Emit an event to signal that a reward has been deleted
@@ -3817,6 +3806,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                 break;
             }
         }
+        require(isExistIndexToken, "INDEX OF TOKEN REWARD NOT EXIST.");
     }
 
     /**

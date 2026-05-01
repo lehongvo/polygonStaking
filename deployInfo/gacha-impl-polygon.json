@@ -1,0 +1,19 @@
+{
+  "network": "polygon",
+  "contractName": "Gacha",
+  "role": "implementation",
+  "contractAddress": "0xeA48C0b3cDfb3e58DdeDc5b6eC937624d89603f8",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2026-05-01T15:14:22.099Z",
+  "blockNumber": 86264193,
+  "transactionHash": "0x8cb4f41ee57c7b6418c9f0648a3a4d59bec4b239358c46112d33e8603d2b0fc3",
+  "gasUsed": "5122208",
+  "gasLimit": 6196834,
+  "estimatedGas": "5164028",
+  "gasPriceGwei": "128.870861442",
+  "estimatedCostMatic": "0.665492736870608376",
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://polygonscan.com/address/0xeA48C0b3cDfb3e58DdeDc5b6eC937624d89603f8"
+  }
+}

@@ -155,10 +155,10 @@ async function main() {
   const feeEnv = process.env.FEE || 20;
   const addr = process.env.ADDR || '0xFe7d8E5A02107cF96C3720461c23E1DB711a58E0';
   const rpc =
-    process.env.RPC ||
-    process.env.POLYGON_RPC ||
-    process.env.JSON_RPC ||
-    'https://polygon-mainnet.g.alchemy.com/v2/***REMOVED-ALCHEMY-KEY***';
+    process.env.RPC || process.env.POLYGON_RPC || process.env.JSON_RPC;
+  if (!rpc) {
+    throw new Error('Missing RPC env: set RPC, POLYGON_RPC, or JSON_RPC');
+  }
 
   if (!addr) {
     console.log('Missing ADDR env');

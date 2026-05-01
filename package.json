@@ -87,6 +87,11 @@
     "verify:challenge:amoy": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network amoy",
     "verify:challenge:polygon": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network polygon",
     "gen:bytecode": "hardhat compile && node scripts/challenge/gen-bytecode-abi.js",
-    "get-gacha-impl:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/get-gacha-implementation.ts --network polygon"
+    "get-gacha-impl:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/get-gacha-implementation.ts --network polygon",
+    "deploy:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/deploy-gacha-impl.ts --network polygon",
+    "upgrade:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/upgrade-gacha-proxies.ts --network polygon",
+    "check-role:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/check-upgrader-role.ts --network polygon",
+    "check-close-role:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/check-close-gacha-role.ts --network polygon",
+    "check-admin-role:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/check-admin-role.ts --network polygon"
   }
 }
