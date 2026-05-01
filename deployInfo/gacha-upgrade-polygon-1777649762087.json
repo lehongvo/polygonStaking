@@ -1,0 +1,88 @@
+{
+  "network": "polygon",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "newImplAddress": "0xeA48C0b3cDfb3e58DdeDc5b6eC937624d89603f8",
+  "newImplDeployAt": "2026-05-01T15:14:22.099Z",
+  "timestamp": "2026-05-01T15:36:02.087Z",
+  "summary": {
+    "total": 10,
+    "ready": 10,
+    "success": 10,
+    "failed": 0,
+    "skipped": 0,
+    "noRole": 0,
+    "invalid": 0
+  },
+  "results": [
+    {
+      "name": "Default",
+      "proxy": "0x05D8505737d94D49BD4d01eef9edf23859e744DF",
+      "status": "success",
+      "tx": "0x835dcf7e71dbaf1c35ff17cec63b987241385e8422a654d67eaba828902c1105",
+      "gas": "39758"
+    },
+    {
+      "name": "Company A",
+      "proxy": "0x4006b37A1e83e11278584202bBA425f08895BfD0",
+      "status": "success",
+      "tx": "0x33d9e966d38738c11dcdad70568601cca8ad088b3dbf573903acff1893746b13",
+      "gas": "39758"
+    },
+    {
+      "name": "Company B",
+      "proxy": "0x074a36C80e8e5Ee006aC3Ddd4fd5C7a63EFdCabb",
+      "status": "success",
+      "tx": "0x80de4f81bb28d6d837c2a2e7b9242930b1063f8d2364f83753126f30b4cca020",
+      "gas": "39758"
+    },
+    {
+      "name": "Company C",
+      "proxy": "0x0c2c056310cC444A5EfC70ca4FEC44A9CF1518f7",
+      "status": "success",
+      "tx": "0xe79eaaa52a16ab070ffe17ad7dd0d0cc4868cb393803b743ace7ae8281e39805",
+      "gas": "39749"
+    },
+    {
+      "name": "Company D",
+      "proxy": "0x34d2A04fe9B106c25c83025976B29ca45e975C06",
+      "status": "success",
+      "tx": "0x39bf47b7c456f34a3e22213bd925a443102b0bbd5d41f31c5249bd8de3c24d65",
+      "gas": "39758"
+    },
+    {
+      "name": "Company E",
+      "proxy": "0x102E9BC142085E5f2175565409a9db270e19054b",
+      "status": "success",
+      "tx": "0x5c7be117ec9b3999e84909583d37953fe0f6826db0a3586563b2edceaf8fbbc6",
+      "gas": "39758"
+    },
+    {
+      "name": "Company F",
+      "proxy": "0xDf6C4312414c257986B2c5d424A2078B208e0E66",
+      "status": "success",
+      "tx": "0x79bf0d9d9ceff0c9cbd551d5f1ef010c635ec1c0e1b7cd6eb02961e56bd38a6b",
+      "gas": "39758"
+    },
+    {
+      "name": "Company G",
+      "proxy": "0xb516b133384Fe10De7230e9A091F90a9C4D93E7b",
+      "status": "success",
+      "tx": "0x9f85ef2b1b24564c88bae91d3041ec4721232ab8ceb31293d58b1bec13b2edff",
+      "gas": "39758"
+    },
+    {
+      "name": "Company H",
+      "proxy": "0xC8b4E2db9ed152848f016A26FefFf8f2f3215270",
+      "status": "success",
+      "tx": "0xc72745556bb2cebb8a35222de9797ae10cb5e688a493eb601f5e50f6c76435ea",
+      "gas": "39749"
+    },
+    {
+      "name": "Company I",
+      "proxy": "0x27d3969a77FDde1c503d5296b6dF101a785d214B",
+      "status": "success",
+      "tx": "0x05e3332e0e921cf908c34bde675e334d38c17050b3b70526319a795178adf5c3",
+      "gas": "39749"
+    }
+  ]
+}
