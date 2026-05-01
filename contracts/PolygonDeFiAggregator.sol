@@ -3,11 +3,13 @@ pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-// Interface cho Polygon DeFi Staking Protocols
+// Interfaces for Polygon DeFi Staking Protocols
 interface ILiquidStaking {
     function deposit(uint256 _amount) external returns (uint256);
     function withdraw(uint256 _shares) external returns (uint256);
@@ -16,7 +18,7 @@ interface ILiquidStaking {
     function totalSupply() external view returns (uint256);
 }
 
-// Interface cho Aave-style protocols
+// Interface for Aave-style protocols
 interface IAavePool {
     function supply(
         address asset,
@@ -27,7 +29,7 @@ interface IAavePool {
     function withdraw(address asset, uint256 amount, address to) external returns (uint256);
 }
 
-// Interface cho Compound-style protocols
+// Interface for Compound-style protocols
 interface ICompoundPool {
     function mint(uint256 mintAmount) external returns (uint256);
     function redeem(uint256 redeemTokens) external returns (uint256);
@@ -35,7 +37,7 @@ interface ICompoundPool {
     function exchangeRateStored() external view returns (uint256);
 }
 
-// Interface cho WMATIC
+// Interface for WMATIC
 interface IWMATIC {
     function deposit() external payable;
     function withdraw(uint256 wad) external;
@@ -47,10 +49,16 @@ interface IWMATIC {
 
 /**
  * @title PolygonDeFiAggregator
- * @dev Contract trung gian để tương tác với các DeFi staking protocols trên Polygon PoS
- * Enhanced với time-locking features và multi-token support
+ * @dev DeFi staking aggregator contract for Polygon PoS
+ * Enhanced with time-locking features and multi-token support
  */
-contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
+contract PolygonDeFiAggregator is
+    Initializable,
+    OwnableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable,
+    UUPSUpgradeable
+{
     using SafeERC20 for IERC20;
 
     struct TimeLockedStake {
@@ -58,8 +66,8 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         uint256 shares;
         uint256 startTime;
         uint256 endTime;
-        address stakingToken; // Token được stake (TTJP, POL, etc.)
-        string protocol; // Protocol name (ankr, aave, etc.)
+        address stakingToken; // Token being staked
+        string protocol; // Protocol name
         bool isActive;
         bool isScheduled; // true if start time is in future
     }
@@ -67,9 +75,9 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     struct UserPosition {
         uint256 totalDeposited;
         uint256 lastActionTime;
-        mapping(address => mapping(string => uint256)) tokenProtocolBalances; // token => protocol => balance
-        mapping(address => mapping(string => uint256)) tokenProtocolShares; // token => protocol => shares
-        TimeLockedStake[] timeLockedStakes; // Array of time-locked stakes
+        mapping(address => mapping(string => uint256)) tokenProtocolBalances;
+        mapping(address => mapping(string => uint256)) tokenProtocolShares;
+        TimeLockedStake[] timeLockedStakes;
     }
 
     struct ProtocolInfo {
@@ -89,7 +97,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     }
 
     // Constants
-    address public constant WMATIC_ADDRESS = 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
+    address public WMATIC_ADDRESS;
 
     // State variables
     mapping(address => SupportedToken) public supportedTokens;
@@ -101,10 +109,15 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     string[] public supportedProtocols;
 
     // Performance tracking
-    mapping(address => mapping(string => uint256)) public tokenProtocolTVL; // token => protocol => TVL
+    mapping(address => mapping(string => uint256)) public tokenProtocolTVL;
     mapping(string => uint256) public protocolLastUpdate;
-    // Aggregate shares for interest-bearing protocols (e.g., Aave aTokens)
-    mapping(address => mapping(string => uint256)) public tokenProtocolTotalShares; // token => protocol => total minted shares
+    mapping(address => mapping(string => uint256)) public tokenProtocolTotalShares;
+
+    // Fee system
+    uint256 public percentFeeForSystem = 20;
+
+    // Aave Reward token (e.g., WMATIC on Polygon) - used for v3 getUserUnclaimedRewards
+    address public AAVE_REWARD_TOKEN;
 
     // Events
     event TokenAdded(address indexed token, string symbol, uint8 decimals);
@@ -129,10 +142,22 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
     event ProtocolAdded(string protocolName, address contractAddress, string protocolType);
     event APYUpdated(string protocolName, uint256 oldAPY, uint256 newAPY);
+    event FeeUpdated(uint256 oldFee, uint256 newFee);
 
-    constructor() Ownable(msg.sender) {}
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
-    // Accept native MATIC (required for WMATIC unwrap)
+    function initialize(address initialOwner, address _wmaticAddress) public initializer {
+        __Ownable_init(initialOwner);
+        __ReentrancyGuard_init();
+        __Pausable_init();
+        __UUPSUpgradeable_init();
+        WMATIC_ADDRESS = _wmaticAddress;
+    }
+
+    // Accept native MATIC
     receive() external payable {}
     fallback() external payable {}
 
@@ -202,18 +227,18 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     // ===== TIME-LOCKED STAKING FUNCTIONS =====
 
     /**
-     * @dev Create time-locked stake (immediate execution)
-     * @param _token Token address to stake (TTJP, POL, etc.)
+     * @dev Create time-locked stake
+     * @param _token Token address to stake
      * @param _amount Amount to stake
      * @param _protocol Protocol to stake in
-     * @param _lockDuration How long to lock (in seconds)
+     * @param _lockDuration Lock duration in seconds
      */
     function createTimeLockedStake(
         address _token,
         uint256 _amount,
         string memory _protocol,
         uint256 _lockDuration
-    ) external payable nonReentrant whenNotPaused {
+    ) external payable nonReentrant whenNotPaused returns (uint256 stakeId) {
         require(_lockDuration >= 1 days, "Minimum lock duration is 1 day");
         require(_lockDuration <= 365 days, "Maximum lock duration is 365 days");
 
@@ -222,7 +247,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
         uint256 actualAmount;
 
-        // Handle native MATIC staking (wrap to WMATIC)
+        // Handle native MATIC staking
         if (_token == WMATIC_ADDRESS && msg.value > 0) {
             require(msg.value > 0, "Cannot stake 0 MATIC");
             require(
@@ -236,7 +261,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
             IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
             wmatic.deposit{ value: actualAmount }();
         } else {
-            // Handle regular ERC20 token staking
+            // Handle ERC20 token staking
             require(_amount > 0, "Cannot stake 0");
             require(msg.value == 0, "Don't send MATIC for ERC20 staking");
             require(supportedTokens[_token].isActive, "Token not supported");
@@ -247,7 +272,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
             IERC20(_token).safeTransferFrom(msg.sender, address(this), actualAmount);
         }
 
-        // Calculate end time (start immediately)
+        // Calculate end time
         uint256 startTime = block.timestamp;
         uint256 endTime = startTime + _lockDuration;
 
@@ -268,11 +293,11 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
                 stakingToken: _token,
                 protocol: _protocol,
                 isActive: true,
-                isScheduled: false // Always executed immediately
+                isScheduled: false
             })
         );
 
-        uint256 stakeId = position.timeLockedStakes.length - 1;
+        stakeId = position.timeLockedStakes.length - 1;
 
         // Update position tracking
         position.totalDeposited += actualAmount;
@@ -293,39 +318,42 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
             startTime,
             endTime
         );
+
+        return stakeId;
     }
 
     /**
-     * @dev Withdraw time-locked stake (always 100% return)
+     * @dev Withdraw time-locked stake
      * @param _stakeId ID of the stake to withdraw
-     *
-     * Logic:
-     * - User ALWAYS gets 100% of actualWithdrawn (principal + rewards)
-     * - No penalty whether withdrawn early or at maturity
-     * - Flexible withdrawal anytime after stake execution
      */
-    function withdrawTimeLockedStake(uint256 _stakeId) external nonReentrant {
+    function withdrawTimeLockedStake(
+        uint256 _stakeId,
+        address systemFeeAddress
+    ) external nonReentrant {
         UserPosition storage position = userPositions[msg.sender];
         require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
 
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
-        require(stake.isActive, "Stake not active");
-        require(!stake.isScheduled, "Stake not yet executed");
 
         ProtocolInfo storage protocol = protocols[stake.protocol];
 
-        // Withdraw from protocol (gets principal + rewards)
+        // Withdraw from protocol
         uint256 actualWithdrawn = _withdrawFromProtocol(
             stake.stakingToken,
             stake.protocol,
             stake.shares
         );
 
-        // Calculate rewards
+        // Calculate rewards and ensure we don't lose principal
         uint256 rewards = actualWithdrawn > stake.amount ? actualWithdrawn - stake.amount : 0;
 
-        // User always gets 100% of actualWithdrawn (principal + rewards)
-        uint256 finalAmount = actualWithdrawn;
+        // Calculate system fee from rewards only (not from principal)
+        uint256 systemFeeAmount = 0;
+        uint256 remaining = rewards;
+        if (rewards > 0 && percentFeeForSystem > 0) {
+            systemFeeAmount = (rewards * percentFeeForSystem) / 100; // Direct percentage calculation
+            remaining = rewards - systemFeeAmount; // User gets rewards minus fee
+        }
 
         // Update state
         stake.isActive = false;
@@ -337,23 +365,52 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         protocol.totalDeposited -= stake.amount;
         tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
 
-        // Handle withdrawal based on token type
+        // Handle withdrawal - transfer principal and rewards separately for visibility
         if (stake.stakingToken == WMATIC_ADDRESS) {
-            // Unwrap WMATIC to native MATIC and send to user
             IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
-            wmatic.withdraw(finalAmount);
-            (bool success, ) = msg.sender.call{value: finalAmount}("");
-            require(success, "MATIC transfer failed");
+
+            // Transfer principal amount
+            wmatic.withdraw(stake.amount);
+            (bool success1, ) = msg.sender.call{ value: stake.amount }("");
+            require(success1, "Principal MATIC transfer failed");
+
+            // Transfer rewards if any
+            if (rewards > 0) {
+                wmatic.withdraw(remaining);
+                (bool success2, ) = msg.sender.call{ value: remaining }("");
+                require(success2, "Rewards MATIC transfer failed");
+            }
+
+            // Transfer system fee to specified address if any
+            if (systemFeeAmount > 0) {
+                wmatic.withdraw(systemFeeAmount);
+                (bool success3, ) = systemFeeAddress.call{ value: systemFeeAmount }("");
+                require(success3, "System fee MATIC transfer failed");
+            }
         } else {
-            IERC20(stake.stakingToken).safeTransfer(msg.sender, finalAmount);
+            // Transfer principal
+            IERC20(stake.stakingToken).safeTransfer(
+                msg.sender,
+                actualWithdrawn <= stake.amount ? actualWithdrawn : stake.amount
+            );
+
+            // Transfer rewards if any
+            if (rewards > 0) {
+                IERC20(stake.stakingToken).safeTransfer(msg.sender, remaining);
+            }
+
+            // Transfer system fee to specified address if any
+            if (systemFeeAmount > 0) {
+                IERC20(stake.stakingToken).safeTransfer(systemFeeAddress, systemFeeAmount);
+            }
         }
 
-        // Emit withdrawal event
+        // Emit event with actual amounts
         emit WithdrawTimeLockedStake(msg.sender, _stakeId, stake.amount, rewards, block.timestamp);
     }
 
     /**
-     * @dev Internal function to stake to specific protocol
+     * @dev Internal function to stake to protocol
      */
     function _stakeToProtocol(
         address _token,
@@ -365,18 +422,8 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             shares = ILiquidStaking(protocol.contractAddress).deposit(_amount);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            // For Aave lending, compute shares from actual aToken balance received
-            address aTokenAddress;
-            if (_token == WMATIC_ADDRESS) {
-                aTokenAddress = 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97; // aPolWM
-            } else {
-                revert("Unsupported token for Aave lending");
-            }
-
-            uint256 balanceBefore = IERC20(aTokenAddress).balanceOf(address(this));
-            IAavePool(protocol.contractAddress).supply(_token, _amount, address(this), 0);
-            uint256 balanceAfter = IERC20(aTokenAddress).balanceOf(address(this));
-            shares = balanceAfter - balanceBefore;
+            IAavePool(protocol.contractAddress).supply(_token, _amount, msg.sender, 0);
+            shares = _amount;
             tokenProtocolTotalShares[_token][_protocol] += shares;
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             shares = ICompoundPool(protocol.contractAddress).mint(_amount);
@@ -386,7 +433,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @dev Internal function to withdraw from specific protocol
+     * @dev Internal function to withdraw from protocol
      */
     function _withdrawFromProtocol(
         address _token,
@@ -398,44 +445,13 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             amount = ILiquidStaking(protocol.contractAddress).withdraw(_shares);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            // Hotfix: withdraw max underlying from Aave, then pro-rate for the caller's shares
-            address aTokenAddress;
-            if (_token == WMATIC_ADDRESS) {
-                aTokenAddress = 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97; // aPolWM
-            } else {
-                revert("Unsupported token for Aave lending");
-            }
-
-            uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
-            require(totalSharesBefore > 0, "No shares to withdraw");
-
-            // 1) Withdraw all available underlying from Aave for this asset
-            uint256 withdrawnAll = IAavePool(protocol.contractAddress).withdraw(
+            // Withdraw from Aave - use type(uint256).max to withdraw all available
+            // This prevents precision loss issues with small amounts
+            amount = IAavePool(protocol.contractAddress).withdraw(
                 _token,
-                type(uint256).max,
-                address(this)
+                type(uint256).max, // Withdraw all available (Aave handles the calculation)
+                msg.sender
             );
-
-            // 2) Pro-rate the user's amount based on their shares
-            amount = (withdrawnAll * _shares) / totalSharesBefore;
-
-            // 3) Re-supply the remainder to keep other users invested
-            uint256 remainder = withdrawnAll - amount;
-            if (remainder > 0) {
-                // Approve and re-supply the remainder back to Aave
-                IERC20(_token).approve(protocol.contractAddress, remainder);
-                uint256 aTokenBalanceBefore = IERC20(aTokenAddress).balanceOf(address(this));
-                IAavePool(protocol.contractAddress).supply(_token, remainder, address(this), 0);
-                uint256 aTokenBalanceAfter = IERC20(aTokenAddress).balanceOf(address(this));
-                uint256 mintedShares = aTokenBalanceAfter - aTokenBalanceBefore;
-
-                // Update aggregate shares: remove user's shares, add back minted shares for remainder
-                // This keeps accounting aligned for the remaining positions
-                tokenProtocolTotalShares[_token][_protocol] = (totalSharesBefore - _shares) + mintedShares;
-            } else {
-                // No remainder, all funds withdrawn and will be sent to user
-                tokenProtocolTotalShares[_token][_protocol] = totalSharesBefore - _shares;
-            }
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             amount = ICompoundPool(protocol.contractAddress).redeem(_shares);
         }
@@ -443,7 +459,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         return amount;
     }
 
-    // ===== TIME-LOCKED VIEW FUNCTIONS =====
+    // ===== VIEW FUNCTIONS =====
 
     /**
      * @dev Get user's time-locked stakes
@@ -468,10 +484,8 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         return stake.isActive && !stake.isScheduled && block.timestamp >= stake.endTime;
     }
 
-    // ===== ORIGINAL VIEW FUNCTIONS =====
-
     /**
-     * @dev Get user's total position across all tokens and protocols
+     * @dev Get user's total position
      */
     function getUserTotalPosition(
         address _user
@@ -479,7 +493,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         UserPosition storage position = userPositions[_user];
         totalDeposited = position.totalDeposited;
 
-        // Calculate estimated current value and pending rewards
+        // Calculate estimated value and rewards
         for (uint256 i = 0; i < supportedTokensList.length; i++) {
             address token = supportedTokensList[i];
             for (uint256 j = 0; j < supportedProtocols.length; j++) {
@@ -488,11 +502,11 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
 
                 if (balance > 0) {
                     estimatedValue += balance;
-                    // Add estimated accrued interest based on APY and time
+                    // Add estimated interest
                     uint256 timeElapsed = block.timestamp - protocolLastUpdate[protocolName];
-                    uint256 interest = (balance *
-                        protocols[protocolName].currentAPY *
-                        timeElapsed) / (365 days * 10000);
+                    uint256 interest =
+                        (balance * protocols[protocolName].currentAPY * timeElapsed) /
+                            (365 days * 10000);
                     totalRewards += interest;
                 }
             }
@@ -500,7 +514,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @dev Get user's position in specific token and protocol
+     * @dev Get user's position for token and protocol
      */
     function getUserTokenProtocolPosition(
         address _user,
@@ -519,7 +533,7 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
     }
 
     /**
-     * @dev Get all protocols with stats
+     * @dev Get all protocols
      */
     function getAllProtocols()
         external
@@ -568,10 +582,64 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         }
     }
 
+    /**
+     * @dev Get system fee information
+     */
+    function getSystemFeeInfo()
+        external
+        view
+        returns (uint256 feePercent, uint256 feeInBasisPoints)
+    {
+        return (percentFeeForSystem, percentFeeForSystem);
+    }
+
+    /**
+     * @dev Get aToken address for a given token
+     */
+    function getATokenAddress(address _token) external view returns (address) {
+        return _getATokenAddress(_token);
+    }
+
+    /**
+     * @dev Internal function to get aToken address from Aave protocol
+     */
+    function _getATokenAddress(address _token) internal view returns (address) {
+        // Aave v3 Polygon aToken addresses
+        if (_token == WMATIC_ADDRESS) {
+            return 0x6d80113e533a2C0fe82EaBD35f1875DcEA89Ea97; // aPolWMATIC
+        }
+        // USDT
+        if (_token == 0xc2132D05D31c914a87C6611C10748AEb04B58e8F) {
+            return 0x6ab707Aca953eDAeFBc4fD23bA73294241490620; // aPolUSDT
+        }
+        // USDC
+        if (_token == 0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174) {
+            return 0x625E7708F30cA75bFD92583e0c60ccdE3c2839A6; // aPolUSDC
+        }
+        // DAI
+        if (_token == 0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063) {
+            return 0x82E64f49Ed5EC1bC6e43DAD4FC8Af9bb3A2312EE; // aPolDAI
+        }
+        // WETH
+        if (_token == 0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619) {
+            return 0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8; // aPolWETH
+        }
+        // WBTC
+        if (_token == 0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6) {
+            return 0x5c2ed810328349100A66B82b78a1791B101C9D61; // aPolWBTC
+        }
+        // AAVE
+        if (_token == 0xD6DF932A45C0f255f85145f286eA0b292B21C90B) {
+            return 0xf329e36C7bF6E5E86ce2150875a84Ce77f477375; // aPolAAVE
+        }
+
+        revert("aToken address not found for this token");
+    }
+
     // ===== ADMIN FUNCTIONS =====
 
     /**
-     * @dev Update protocol APY (only owner)
+     * @dev Update protocol APY
      */
     function updateProtocolAPY(string memory _protocol, uint256 _newAPY) external onlyOwner {
         require(protocols[_protocol].isActive, "Protocol not found");
@@ -605,6 +673,22 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
         protocols[_protocol].isActive = _isActive;
     }
 
+    /**
+     * @dev Set system fee percentage
+     * @param _percentFee New fee percentage (0-100 basis points)
+     */
+    function setPercentFeeForSystem(uint256 _percentFee) external onlyOwner {
+        require(
+            _percentFee >= 0 && _percentFee <= 100,
+            "Fee must be between 0 and 100 basis points"
+        );
+
+        uint256 oldFee = percentFeeForSystem;
+        percentFeeForSystem = _percentFee;
+
+        emit FeeUpdated(oldFee, _percentFee);
+    }
+
     function emergencyWithdraw(address _token) external onlyOwner {
         IERC20 token = IERC20(_token);
         uint256 balance = token.balanceOf(address(this));
@@ -612,4 +696,12 @@ contract PolygonDeFiAggregator is Ownable, ReentrancyGuard, Pausable {
             token.safeTransfer(owner(), balance);
         }
     }
+
+    /**
+     * @dev Authorize upgrade (only owner)
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
 }

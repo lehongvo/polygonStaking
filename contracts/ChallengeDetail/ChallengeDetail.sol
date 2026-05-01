@@ -12,10 +12,7 @@ interface IChallengeFee {
      * @return successFee The current amount of success fee.
      * @return failFee The current amount of fail fee.
      */
-    function getAmountFee()
-        external
-        view
-        returns (uint8 successFee, uint8 failFee);
+    function getAmountFee() external view returns (uint8 successFee, uint8 failFee);
 }
 
 // File: Challenge/IGacha.sol
@@ -73,10 +70,7 @@ pragma solidity ^0.8.0;
  * _Available since v3.1._
  */
 interface IERC1155 is IERC165 {
-    function balanceOf(
-        address account,
-        uint256 id
-    ) external view returns (uint256);
+    function balanceOf(address account, uint256 id) external view returns (uint256);
 
     function nextTokenIdToMint() external view returns (uint256);
 }
@@ -100,19 +94,10 @@ library TransferHelper {
         );
     }
 
-    function saveTransferEth(
-        address payable recipient,
-        uint256 amount
-    ) internal {
-        require(
-            address(this).balance >= amount,
-            "Address: insufficient balance"
-        );
-        (bool success, ) = recipient.call{value: amount}("");
-        require(
-            success,
-            "Address: unable to send value, recipient may have reverted"
-        );
+    function saveTransferEth(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, "Address: insufficient balance");
+        (bool success, ) = recipient.call{ value: amount }("");
+        require(success, "Address: unable to send value, recipient may have reverted");
     }
 
     function safeMintNFT1155(
@@ -141,11 +126,7 @@ library TransferHelper {
         );
     }
 
-    function safeApproveForAllNFT1155(
-        address token,
-        address operator,
-        bool approved
-    ) internal {
+    function safeApproveForAllNFT1155(address token, address operator, bool approved) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa22cb465, operator, approved)
         );
@@ -173,9 +154,7 @@ library TransferHelper {
     }
 
     function safeMintNFT(address token, address to) internal {
-        (bool success, bytes memory data) = token.call(
-            abi.encodeWithSelector(0x40d097c3, to)
-        );
+        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x40d097c3, to));
         require(
             success && (data.length == 0 || abi.decode(data, (bool))),
             "TransferHelper: MINT_NFT_FAILED"
@@ -192,12 +171,7 @@ library TransferHelper {
         );
     }
 
-    function safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
+    function safeTransferFrom(address token, address from, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x23b872dd, from, to, value)
         );
@@ -241,29 +215,17 @@ interface IExerciseSupplementNFT {
     /**
      * @dev Emitted when `tokenId` token is transferred from `from` to `to`.
      */
-    event Transfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed tokenId
-    );
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
     /**
      * @dev Emitted when `owner` enables `approved` to manage the `tokenId` token.
      */
-    event Approval(
-        address indexed owner,
-        address indexed approved,
-        uint256 indexed tokenId
-    );
+    event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId);
 
     /**
      * @dev Emitted when `owner` enables or disables (`approved`) `operator` to manage all of its assets.
      */
-    event ApprovalForAll(
-        address indexed owner,
-        address indexed operator,
-        bool approved
-    );
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
 
     /**
      * @dev Returns the number of tokens in ``owner``'s account.
@@ -313,11 +275,7 @@ interface IExerciseSupplementNFT {
      *
      * Emits a {Transfer} event.
      */
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 tokenId
-    ) external;
+    function safeTransferFrom(address from, address to, uint256 tokenId) external;
 
     /**
      * @dev Transfers `tokenId` token from `from` to `to`.
@@ -371,19 +329,14 @@ interface IExerciseSupplementNFT {
      *
      * - `tokenId` must exist.
      */
-    function getApproved(
-        uint256 tokenId
-    ) external view returns (address operator);
+    function getApproved(uint256 tokenId) external view returns (address operator);
 
     /**
      * @dev Returns if the `operator` is allowed to manage all of the assets of `owner`.
      *
      * See {setApprovalForAll}
      */
-    function isApprovedForAll(
-        address owner,
-        address operator
-    ) external view returns (bool);
+    function isApprovedForAll(address owner, address operator) external view returns (bool);
 
     /**
      * @dev Returns the ERC-20 token symbol.
@@ -447,10 +400,7 @@ interface IExerciseSupplementNFT {
      * @param to The address of the receiver.
      * @return The address of the receiver of the specified NFT's history.
      */
-    function getHistoryNFT(
-        uint256 tokenId,
-        address to
-    ) external view returns (address);
+    function getHistoryNFT(uint256 tokenId, address to) external view returns (address);
 
     /**
      * This function returns the address of the NFT wallet that was previously set by the contract owner.
@@ -527,10 +477,7 @@ interface IERC20 {
      *
      * Emits a {Transfer} event.
      */
-    function transfer(
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
+    function transfer(address recipient, uint256 amount) external returns (bool);
 
     /**
      * @dev Returns the remaining number of tokens that `spender` will be
@@ -539,10 +486,7 @@ interface IERC20 {
      *
      * This value changes when {approve} or {transferFrom} are called.
      */
-    function allowance(
-        address owner,
-        address spender
-    ) external view returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
 
     /**
      * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.
@@ -587,11 +531,7 @@ interface IERC20 {
      * @dev Emitted when the allowance of a `spender` for an `owner` is set by
      * a call to {approve}. `value` is the new allowance.
      */
-    event Approval(
-        address indexed owner,
-        address indexed spender,
-        uint256 value
-    );
+    event Approval(address indexed owner, address indexed spender, uint256 value);
 
     /**
      * @dev Returns the ERC-20 token symbol.
@@ -775,6 +715,19 @@ contract ChallengeDetail is IERC721Receiver {
     // Represents the amount of fail fee in percentage.
     uint8 private amountFailFee;
 
+    // Reentrancy guard status: 1 = NOT_ENTERED, 2 = ENTERED.
+    uint256 private _reentrancyStatus = 1;
+
+    /**
+     * @dev Prevents a contract from calling itself, directly or indirectly.
+     */
+    modifier nonReentrant() {
+        require(_reentrancyStatus != 2, "ReentrancyGuard: reentrant call");
+        _reentrancyStatus = 2;
+        _;
+        _reentrancyStatus = 1;
+    }
+
     /**
      * @dev Emitted when the daily result is sent.
      * @param currentStatus The current status of the daily result.
@@ -813,7 +766,7 @@ contract ChallengeDetail is IERC721Receiver {
      * @dev Action should be called in required time.
      */
     modifier onTimeSendResult() {
-        // require(block.timestamp <= endTime + 2 days, "Challenge was finished");
+        require(block.timestamp <= endTime + 2 days, "Challenge was finished");
         require(block.timestamp >= startTime, "Challenge has not started yet");
         _;
     }
@@ -822,10 +775,7 @@ contract ChallengeDetail is IERC721Receiver {
      * @dev Action should be called after challenge finish.
      */
     modifier afterFinish() {
-        require(
-            block.timestamp > endTime + 2 days,
-            "Challenge has not finished yet"
-        );
+        require(block.timestamp > endTime + 2 days, "Challenge has not finished yet");
         _;
     }
 
@@ -868,10 +818,7 @@ contract ChallengeDetail is IERC721Receiver {
      * @dev Action only called from challenger.
      */
     modifier onlyChallenger() {
-        require(
-            msg.sender == challenger,
-            "Only challenger can call this function"
-        );
+        require(msg.sender == challenger, "Only challenger can call this function");
         _;
     }
 
@@ -922,26 +869,20 @@ contract ChallengeDetail is IERC721Receiver {
 
         _totalAmount = _totalAmount - _gasData[2]; // Subtracting _gasData[2] from _totalAmount.
 
-        uint256[] memory awardReceiversApprovalsTamp = new uint256[](
-            _awardReceiversPercent.length
-        ); // Creating a new array with length equal to _awardReceiversPercent length.
+        uint256[] memory awardReceiversApprovalsTamp = new uint256[](_awardReceiversPercent.length); // Creating a new array with length equal to _awardReceiversPercent length.
 
+        uint256 totalPercent;
         for (uint256 j = 0; j < _awardReceiversPercent.length; j++) {
-            awardReceiversApprovalsTamp[j] =
-                (_awardReceiversPercent[j] * _totalAmount) /
-                100; // Calculating the award amount for each receiver.
+            awardReceiversApprovalsTamp[j] = (_awardReceiversPercent[j] * _totalAmount) / 100; // Calculating the award amount for each receiver.
+            totalPercent += _awardReceiversPercent[j];
         }
+        require(totalPercent <= 100, "Sum of percents exceeds 100");
 
-        require(
-            _awardReceivers.length == awardReceiversApprovalsTamp.length,
-            "Invalid lists"
-        ); // Checking if _awardReceivers length is equal to awardReceiversApprovalsTamp length.
+        require(_awardReceivers.length == awardReceiversApprovalsTamp.length, "Invalid lists"); // Checking if _awardReceivers length is equal to awardReceiversApprovalsTamp length.
 
         for (i = 0; i < _index; i++) {
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value0"); // Checking if the award amount for each receiver is greater than 0.
-            approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[
-                i
-            ]; // Setting the award amount for successful participants.
+            approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for successful participants.
             sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for successful participants.
         }
 
@@ -955,10 +896,8 @@ contract ChallengeDetail is IERC721Receiver {
         challenger = _stakeHolders[1]; // Setting the challenger address.
         feeAddress = _stakeHolders[2]; // Setting the fee address.
         erc721Address = _erc721Address; // Setting the ERC721 contract address.
-        erc20ListAddress = IExerciseSupplementNFT(_erc721Address[0])
-            .getErc20ListAddress(); // Getting the ERC20 list address from the ERC721 contract.
-        returnedNFTWallet = IExerciseSupplementNFT(_erc721Address[0])
-            .returnedNFTWallet(); // Get the address of the returned NFT wallet from the ExerciseSupplementNFT contract
+        erc20ListAddress = IExerciseSupplementNFT(_erc721Address[0]).getErc20ListAddress(); // Getting the ERC20 list address from the ERC721 contract.
+        returnedNFTWallet = IExerciseSupplementNFT(_erc721Address[0]).returnedNFTWallet(); // Get the address of the returned NFT wallet from the ExerciseSupplementNFT contract
         duration = _primaryRequired[0]; // Setting the duration of the challenge.
         startTime = _primaryRequired[1]; // Setting the start time of the challenge.
         endTime = _primaryRequired[2]; // Setting the end time of the challenge.
@@ -981,8 +920,7 @@ contract ChallengeDetail is IERC721Receiver {
         allowGiveUp = _allowGiveUp; // Assigning the allow give up value to the contract variable
 
         // Checking if give up is allowed and all awards should be given to the sponsor, then set the choiceAwardToSponsor variable to true
-        if (_allowGiveUp[0] && _allAwardToSponsorWhenGiveUp)
-            choiceAwardToSponsor = true;
+        if (_allowGiveUp[0] && _allAwardToSponsorWhenGiveUp) choiceAwardToSponsor = true;
 
         // Transferring the gas fee from the challenger to the contract and emitting an event
         tranferCoinNative(challenger, gasFee);
@@ -995,7 +933,9 @@ contract ChallengeDetail is IERC721Receiver {
      * @notice This function is triggered automatically when native coins are sent to the contract address.
      */
     receive() external payable {
-        if (isFinished) {
+        // Skip refund branch while a nonReentrant call is in progress to avoid
+        // mid-flow re-deposit loops after CEI sets isFinished early.
+        if (isFinished && _reentrancyStatus != 2) {
             // Check if the sale is finished
             tranferCoinNative(payable(msg.sender), msg.value); // Transfer the native coins to the sender
         }
@@ -1030,7 +970,7 @@ contract ChallengeDetail is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange
-    ) public available onTimeSendResult onlyChallenger {
+    ) public nonReentrant available onTimeSendResult onlyChallenger {
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
             _stepIndex,
@@ -1047,17 +987,11 @@ contract ChallengeDetail is IERC721Receiver {
 
         for (uint256 i = 0; i < dayLength; i++) {
             for (uint256 j = 0; j < tempHistoryDate.length; j++) {
-                if (
-                    tempHistoryDate[j] >= _timeRange[0] &&
-                    tempHistoryDate[j] <= _timeRange[1]
-                ) {
-                    require(
-                        tempHistoryData[j] < goal,
-                        "Invalid step: exceeds goal or not greater"
-                    );
+                if (tempHistoryDate[j] >= _timeRange[0] && tempHistoryDate[j] <= _timeRange[1]) {
+                    require(tempHistoryData[j] < goal, "Invalid step: exceeds goal or not greater");
                     isSendSameDay = true;
-                    tempHistoryData[j] = _stepIndex[dayLength-1];
-                    tempHistoryDate[j] = _day[dayLength-1];
+                    tempHistoryData[j] = _stepIndex[dayLength - 1];
+                    tempHistoryDate[j] = _day[dayLength - 1];
                 } else {
                     if (tempHistoryDate[j] == _day[i]) {
                         lastIndex = i;
@@ -1079,10 +1013,14 @@ contract ChallengeDetail is IERC721Receiver {
             }
         }
 
-        for (uint256 i = 0; i < tempHistoryData.length - 1; i++) {
-            if (tempHistoryData[i] < goal) {
-                isSendFailWithSameDay = false;
-                lastIndex = totalReward;
+        if (tempHistoryData.length > 1) {
+            isSendFailWithSameDay = true;
+            for (uint256 i = 0; i < tempHistoryData.length - 1; i++) {
+                if (tempHistoryData[i] < goal) {
+                    isSendFailWithSameDay = false;
+                    lastIndex = totalReward;
+                    break;
+                }
             }
         }
 
@@ -1119,20 +1057,13 @@ contract ChallengeDetail is IERC721Receiver {
             if (currentStatus >= dayRequired) {
                 stateInstance = ChallengeState.SUCCESS;
                 // Transfer funds to the receiver addresses for the successful challenge
-                transferToListReceiverSuccess(
-                    _listNFTAddress,
-                    _listIndexNFT,
-                    _statusTypeNft
-                );
+                transferToListReceiverSuccess(_listNFTAddress, _listIndexNFT, _statusTypeNft);
             }
         }
 
         // Loop through each gacha instance and invoke random rewards
         for (uint256 i = 0; i < _listGachaAddress.length; i++) {
-            IGacha(_listGachaAddress[i]).randomRewards(
-                address(this),
-                _stepIndex
-            );
+            IGacha(_listGachaAddress[i]).randomRewards(address(this), _stepIndex);
         }
 
         // Emit an event for the current status of the challenge
@@ -1151,7 +1082,12 @@ contract ChallengeDetail is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
-    ) external canGiveUp notSelectGiveUp onTime available onlyStakeHolders {
+    ) external nonReentrant canGiveUp notSelectGiveUp onTime available onlyStakeHolders {
+        // EFFECTS — write state before any external interaction (CEI)
+        isFinished = true;
+        selectGiveUpStatus = true;
+        stateInstance = ChallengeState.GAVE_UP;
+
         updateRewardSuccessAndfail();
 
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
@@ -1176,28 +1112,21 @@ contract ChallengeDetail is IERC721Receiver {
 
             emit FundTransfer(sponsor, amount);
         } else {
-            uint256 amountToReceiverList = (amount * currentStatus) /
-                dayRequired;
+            uint256 amountToReceiverList = (amount * currentStatus) / dayRequired;
 
             tranferCoinNative(sponsor, amount - amountToReceiverList);
 
             for (uint256 i = 0; i < erc20ListAddress.length; i++) {
                 uint256 amountTokenToReceiver;
-                uint256 totalTokenRewardSubtractFee = (listBalanceAllToken[i] *
-                    remainningAmountFee) / 100;
+                uint256 totalTokenRewardSubtractFee =
+                    (listBalanceAllToken[i] * remainningAmountFee) / 100;
 
-                if (
-                    getBalanceTokenOfContract(
-                        erc20ListAddress[i],
-                        address(this)
-                    ) > 0
-                ) {
+                if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
                     amountTokenToReceiver =
-                        (totalTokenRewardSubtractFee * currentStatus) /
-                        dayRequired;
+                        (totalTokenRewardSubtractFee * currentStatus) / dayRequired;
 
-                    uint256 amountNativeToSponsor = totalTokenRewardSubtractFee -
-                            amountTokenToReceiver;
+                    uint256 amountNativeToSponsor =
+                        totalTokenRewardSubtractFee - amountTokenToReceiver;
 
                     TransferHelper.safeTransfer(
                         erc20ListAddress[i],
@@ -1213,23 +1142,16 @@ contract ChallengeDetail is IERC721Receiver {
                 if (amount > 0) {
                     tranferCoinNative(
                         awardReceivers[i],
-                        (approvalSuccessOf[awardReceivers[i]] *
-                            amountToReceiverList) / amount
+                        (approvalSuccessOf[awardReceivers[i]] * amountToReceiverList) / amount
                     );
                 }
 
                 for (uint256 j = 0; j < erc20ListAddress.length; j++) {
-                    if (
-                        getBalanceTokenOfContract(
-                            erc20ListAddress[j],
-                            address(this)
-                        ) > 0
-                    ) {
-                        uint256 amountTokenTmp = (awardTokenReceivers[
-                            erc20ListAddress[j]
-                        ][i] * amountTokenToReceiverList[j]) /
-                            ((listBalanceAllToken[j] * remainningAmountFee) /
-                                100);
+                    if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
+                        uint256 amountTokenTmp =
+                            (awardTokenReceivers[erc20ListAddress[j]][i] *
+                                amountTokenToReceiverList[j]) /
+                                ((listBalanceAllToken[j] * remainningAmountFee) / 100);
 
                         TransferHelper.safeTransfer(
                             erc20ListAddress[j],
@@ -1251,9 +1173,6 @@ contract ChallengeDetail is IERC721Receiver {
         tranferCoinNative(feeAddress, serverFailureFee);
         emit FundTransfer(feeAddress, serverFailureFee);
 
-        isFinished = true;
-        selectGiveUpStatus = true;
-        stateInstance = ChallengeState.GAVE_UP;
         emit GiveUp(msg.sender);
     }
 
@@ -1269,7 +1188,7 @@ contract ChallengeDetail is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
-    ) external onlyStakeHolders afterFinish availableForClose {
+    ) external nonReentrant onlyStakeHolders afterFinish availableForClose {
         // Transfer NFTs and handle failure scenario for receivers
         transferToListReceiverFail(
             _listNFTAddress,
@@ -1297,23 +1216,16 @@ contract ChallengeDetail is IERC721Receiver {
         address[] memory _listNFTAddress,
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
-    ) external {
+    ) external nonReentrant {
         require(isFinished, "The challenge has not yet been finished");
-        require(
-            returnedNFTWallet == msg.sender,
-            "Only returned nft wallet address"
-        );
+        require(returnedNFTWallet == msg.sender, "Only returned nft wallet address");
 
         // Transfer ERC20 tokens
         for (uint256 i = 0; i < _listTokenErc20.length; i++) {
             address tokenErc20 = _listTokenErc20[i];
             uint256 balanceErc20 = IERC20(tokenErc20).balanceOf(address(this));
 
-            TransferHelper.safeTransfer(
-                tokenErc20,
-                returnedNFTWallet,
-                balanceErc20
-            );
+            TransferHelper.safeTransfer(tokenErc20, returnedNFTWallet, balanceErc20);
         }
 
         transferNFTForSenderWhenFinish(
@@ -1335,24 +1247,20 @@ contract ChallengeDetail is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
     ) private {
+        // EFFECTS — write success/finished flags before any external interaction (CEI)
+        isSuccess = true;
+        isFinished = true;
+
         updateRewardSuccessAndfail();
 
         tranferCoinNative(feeAddress, serverSuccessFee);
         emit FundTransfer(feeAddress, serverSuccessFee);
 
         for (uint256 i = 0; i < index; i++) {
-            tranferCoinNative(
-                awardReceivers[i],
-                approvalSuccessOf[awardReceivers[i]]
-            );
+            tranferCoinNative(awardReceivers[i], approvalSuccessOf[awardReceivers[i]]);
 
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
-                if (
-                    getBalanceTokenOfContract(
-                        erc20ListAddress[j],
-                        address(this)
-                    ) > 0
-                ) {
+                if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
                     TransferHelper.safeTransfer(
                         erc20ListAddress[j],
                         awardReceivers[i],
@@ -1364,30 +1272,20 @@ contract ChallengeDetail is IERC721Receiver {
 
         if (allowGiveUp[2]) {
             address currentAddressNftUse;
-            (currentAddressNftUse, indexNft) = IExerciseSupplementNFT(
-                erc721Address[0]
-            ).safeMintNFT(
-                    goal,
-                    duration,
-                    dayRequired,
-                    createByToken,
-                    totalReward,
-                    awardReceiversPercent[0],
-                    address(awardReceivers[0]),
-                    address(challenger)
-                );
+            (currentAddressNftUse, indexNft) = IExerciseSupplementNFT(erc721Address[0]).safeMintNFT(
+                goal,
+                duration,
+                dayRequired,
+                createByToken,
+                totalReward,
+                awardReceiversPercent[0],
+                address(awardReceivers[0]),
+                address(challenger)
+            );
             erc721Address.push(currentAddressNftUse);
         }
 
-        transferNFTForSenderWhenFinish(
-            _listNFTAddress,
-            _listIndexNFT,
-            _statusTypeNft,
-            challenger
-        );
-
-        isSuccess = true;
-        isFinished = true;
+        transferNFTForSenderWhenFinish(_listNFTAddress, _listIndexNFT, _statusTypeNft, challenger);
     }
 
     /**
@@ -1403,6 +1301,9 @@ contract ChallengeDetail is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) private {
+        // EFFECTS — write finished flag before any external interaction (CEI)
+        isFinished = true;
+
         updateRewardSuccessAndfail();
 
         // Transfer server failure fee to fee address
@@ -1412,19 +1313,11 @@ contract ChallengeDetail is IERC721Receiver {
         // Transfer rewards and tokens to all receivers
         for (uint256 i = index; i < awardReceivers.length; i++) {
             // Transfer ETH rewards to receiver
-            tranferCoinNative(
-                awardReceivers[i],
-                approvalFailOf[awardReceivers[i]]
-            );
+            tranferCoinNative(awardReceivers[i], approvalFailOf[awardReceivers[i]]);
 
             // Transfer ERC20 token rewards to receiver
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
-                if (
-                    getBalanceTokenOfContract(
-                        erc20ListAddress[j],
-                        address(this)
-                    ) > 0
-                ) {
+                if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
                     TransferHelper.safeTransfer(
                         erc20ListAddress[j],
                         awardReceivers[i],
@@ -1442,9 +1335,8 @@ contract ChallengeDetail is IERC721Receiver {
             _statusTypeNft
         );
 
-        // Emit event and mark challenge as finished
+        // Emit event (challenge already marked finished at start of function)
         emit CloseChallenge(false);
-        isFinished = true;
     }
 
     /**
@@ -1474,8 +1366,10 @@ contract ChallengeDetail is IERC721Receiver {
                 }
             } else {
                 for (uint256 j = 0; j < _listIndexNFT[i].length; j++) {
-                    uint256 balanceTokenERC1155 = IERC1155(_listNFTAddress[i])
-                        .balanceOf(address(this), _listIndexNFT[i][j]);
+                    uint256 balanceTokenERC1155 = IERC1155(_listNFTAddress[i]).balanceOf(
+                        address(this),
+                        _listIndexNFT[i][j]
+                    );
                     // Encode data transfer token
                     bytes memory extraData = abi.encode(
                         address(this),
@@ -1526,9 +1420,7 @@ contract ChallengeDetail is IERC721Receiver {
             } else {
                 uint256 lengthListIndexNFT = _listIndexNFT[i].length / 2;
                 for (uint256 j = 0; j < lengthListIndexNFT; j++) {
-                    uint256 balanceTokenERC1155 = _listIndexNFT[i][
-                        j + lengthListIndexNFT
-                    ];
+                    uint256 balanceTokenERC1155 = _listIndexNFT[i][j + lengthListIndexNFT];
 
                     // Encode data transfer token
                     bytes memory extraData = abi.encode(
@@ -1554,6 +1446,12 @@ contract ChallengeDetail is IERC721Receiver {
 
     // Update reward for successful and failed challenges
     function updateRewardSuccessAndfail() private {
+        // Reset constructor-populated accumulators so the += below sums correctly.
+        // listBalanceAllToken / awardTokenReceivers are guaranteed empty here
+        // (single-call lifecycle enforced by nonReentrant + isFinished CEI).
+        sumAwardSuccess = 0;
+        sumAwardFail = 0;
+
         // Update balance Matic and token
         uint256 coinNativeBalance = address(this).balance;
 
@@ -1561,22 +1459,16 @@ contract ChallengeDetail is IERC721Receiver {
             serverSuccessFee = (coinNativeBalance * amountSuccessFee) / (100);
             serverFailureFee = (coinNativeBalance * amountFailFee) / (100);
 
-            for (uint256 i = 0; i < awardReceivers.length; i++) {
+            for (uint256 i = 0; i < index; i++) {
                 approvalSuccessOf[awardReceivers[i]] =
-                    (awardReceiversPercent[i] * coinNativeBalance) /
-                    100;
-                sumAwardSuccess =
-                    (awardReceiversPercent[i] * coinNativeBalance) /
-                    100;
+                    (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                sumAwardSuccess += (awardReceiversPercent[i] * coinNativeBalance) / 100;
             }
 
             for (uint256 i = index; i < awardReceivers.length; i++) {
                 approvalFailOf[awardReceivers[i]] =
-                    (awardReceiversPercent[i] * coinNativeBalance) /
-                    100;
-                sumAwardFail =
-                    (awardReceiversPercent[i] * coinNativeBalance) /
-                    100;
+                    (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                sumAwardFail += (awardReceiversPercent[i] * coinNativeBalance) / 100;
             }
         }
         // Get total balance of base token in contract
@@ -1585,44 +1477,31 @@ contract ChallengeDetail is IERC721Receiver {
         // Loop through all ERC20 tokens in list
         for (uint256 i = 0; i < erc20ListAddress.length; i++) {
             // Get balance of current ERC20 token
-            listBalanceAllToken.push(
-                IERC20(erc20ListAddress[i]).balanceOf(address(this))
-            );
+            listBalanceAllToken.push(IERC20(erc20ListAddress[i]).balanceOf(address(this)));
 
             // Check if contract holds any balance of current ERC20 token
-            if (
-                getBalanceTokenOfContract(erc20ListAddress[i], address(this)) >
-                0
-            ) {
+            if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
                 // Loop through all award receivers percentage
                 for (uint256 j = 0; j < awardReceiversPercent.length; j++) {
                     // Calculate the amount of ERC20 token to award to current receiver
-                    uint256 awardAmount = (awardReceiversPercent[j] *
-                        IERC20(erc20ListAddress[i]).balanceOf(address(this))) /
-                        100;
+                    uint256 awardAmount =
+                        (awardReceiversPercent[j] *
+                            IERC20(erc20ListAddress[i]).balanceOf(address(this))) / 100;
                     // Add the award amount to receiver's balance for current ERC20 token
                     awardTokenReceivers[erc20ListAddress[i]].push(awardAmount);
                 }
 
                 // Transfer fee of current ERC20 token to fee address as fee
-                uint256 realAmountFee = (listBalanceAllToken[i] *
-                    amountFailFee) / (100);
+                uint256 realAmountFee = (listBalanceAllToken[i] * amountFailFee) / (100);
                 if (realAmountFee > 0) {
-                    TransferHelper.safeTransfer(
-                        erc20ListAddress[i],
-                        feeAddress,
-                        realAmountFee
-                    );
+                    TransferHelper.safeTransfer(erc20ListAddress[i], feeAddress, realAmountFee);
                 }
             }
         }
     }
 
     // Returns the owner of the specified ERC721 token.
-    function getOwnerOfNft(
-        address _erc721Address,
-        uint256 _index
-    ) private view returns (address) {
+    function getOwnerOfNft(address _erc721Address, uint256 _index) private view returns (address) {
         return IExerciseSupplementNFT(_erc721Address).ownerOf(_index);
     }
 
@@ -1647,10 +1526,8 @@ contract ChallengeDetail is IERC721Receiver {
 
     // Check if the contract has enough balance to transfer
     function tranferCoinNative(address payable from, uint256 value) private {
-        if (getContractBalance() >= value) {
-            // If the contract has enough balance, transfer the ETH to the 'from' address
-            TransferHelper.saveTransferEth(from, value);
-        }
+        require(getContractBalance() >= value, "Insufficient contract balance");
+        TransferHelper.saveTransferEth(from, value);
     }
 
     // Private function to get balance of a specific ERC20 token in the contract
@@ -1662,12 +1539,8 @@ contract ChallengeDetail is IERC721Receiver {
     }
 
     // Private function to compare two strings
-    function compareStrings(
-        string memory a,
-        string memory b
-    ) private pure returns (bool) {
-        return (keccak256(abi.encodePacked((a))) ==
-            keccak256(abi.encodePacked((b))));
+    function compareStrings(string memory a, string memory b) private pure returns (bool) {
+        return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
     // Public function to return all ERC20 token contract addresses
@@ -1679,11 +1552,7 @@ contract ChallengeDetail is IERC721Receiver {
     function getChallengeInfo()
         external
         view
-        returns (
-            uint256 challengeCleared,
-            uint256 challengeDayRequired,
-            uint256 daysRemained
-        )
+        returns (uint256 challengeCleared, uint256 challengeDayRequired, uint256 daysRemained)
     {
         return (
             currentStatus, // The current status of the challenge

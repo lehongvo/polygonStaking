@@ -41,18 +41,18 @@ export function getPolygonDeFiAddress(): string {
       'deployInfo',
       'defi-polygon.json'
     );
-    
+
     if (!fs.existsSync(deploymentPath)) {
       throw new Error('deployInfo/defi-polygon.json not found');
     }
-    
+
     const deploymentData = fs.readFileSync(deploymentPath, 'utf8');
     const deploymentInfo: DeploymentInfo = JSON.parse(deploymentData);
-    
+
     if (!deploymentInfo.contractAddress) {
       throw new Error('Contract address not found in deployment info');
     }
-    
+
     return deploymentInfo.contractAddress;
   } catch (error) {
     console.error('Error reading PolygonDeFi address:', error);
@@ -67,11 +67,11 @@ export function getDeploymentInfo(): DeploymentInfo {
       'deployInfo',
       'defi-polygon.json'
     );
-    
+
     if (!fs.existsSync(deploymentPath)) {
       throw new Error('deployInfo/defi-polygon.json not found');
     }
-    
+
     const deploymentData = fs.readFileSync(deploymentPath, 'utf8');
     return JSON.parse(deploymentData);
   } catch (error) {

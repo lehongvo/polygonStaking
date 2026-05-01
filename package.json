@@ -11,6 +11,7 @@
     "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.9.1",
     "@typechain/ethers-v6": "^0.5.0",
     "@typechain/hardhat": "^9.0.0",
     "@types/chai": "^4.2.0",
@@ -34,16 +35,18 @@
     "typescript": ">=4.5.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0"
+    "@openzeppelin/contracts": "^5.4.0",
+    "@openzeppelin/contracts-upgradeable": "5.0.2"
   },
   "scripts": {
     "compile": "hardhat compile",
-    "test": "hardhat test",
+    "flatten": "mkdir -p flattened && for f in ChallengeBaseStep ChallengeDetail ChallengeHIIT; do hardhat flatten contracts/ChallengeDetail/$f.sol | sed '/^WARNING:/d' > flattened/$f.flat.sol; done",
+    "test": "env PRIVATE_KEY= hardhat test $(find test -name '*.test.ts' -type f | sort | tr '\\n' ' ')",
     "test:coverage": "hardhat coverage",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "format": "prettier --write \"**/*.{js,ts,sol,json,md}\"",
-    "format:check": "prettier --check \"**/*.{js,ts,sol,json,md}\"",
+    "format": "prettier --write \"**/*.{js,cjs,mjs,ts,sol,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,cjs,mjs,ts,sol,json,md}\"",
     "format:solidity": "prettier --write \"contracts/**/*.sol\"",
     "format:typescript": "prettier --write \"scripts/**/*.ts test/**/*.ts\"",
     "deploy:amoy": "hardhat run scripts/setup-polygon-defi.ts --network amoy",
@@ -78,6 +81,12 @@
     "node": "hardhat node",
     "coverage": "hardhat coverage",
     "gas": "REPORT_GAS=true hardhat test",
-    "update-contract-address": "ts-node scripts/utils/updateContractAddress.ts"
+    "update-contract-address": "ts-node scripts/utils/updateContractAddress.ts",
+    "deploy:challenge:amoy": "hardhat run scripts/challenge/deploy-challenge-detail-v2.ts --network amoy",
+    "deploy:challenge:polygon": "hardhat run scripts/challenge/deploy-challenge-detail-v2.ts --network polygon",
+    "verify:challenge:amoy": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network amoy",
+    "verify:challenge:polygon": "hardhat run scripts/challenge/verify-challenge-detail-v2.ts --network polygon",
+    "gen:bytecode": "hardhat compile && node scripts/challenge/gen-bytecode-abi.js",
+    "get-gacha-impl:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/get-gacha-implementation.ts --network polygon"
   }
 }

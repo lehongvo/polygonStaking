@@ -10,8 +10,11 @@ cache
 artifacts
 
 # IDEs
-.vscode
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea
+.claude/
 
 # OS
 .DS_Store
@@ -63,3 +66,6 @@ package-lock.json
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 deployment-info.json
+
+# Internal docs (not for public repo)
+docs/

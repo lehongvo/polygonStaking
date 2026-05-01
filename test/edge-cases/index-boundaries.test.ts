@@ -1,0 +1,104 @@
+// index（成功側受取人の人数）の境界値テスト。
+// index=0（無効値）/ index=2（複数受取人）/ index=1（単一受取人）の
+// それぞれを検証する。
+import { expect } from 'chai';
+import hre from 'hardhat';
+import {
+  deployChallenge,
+  moveToStart,
+  sendStep,
+} from '../helpers/deployHelpers.ts';
+
+describe('T19 – ChallengeBaseStep: index boundary cases', () => {
+  const GOAL = 1000;
+  const DAY_REQUIRED = 1;
+  const DURATION = 30;
+  const TOTAL_AMOUNT = hre.ethers.parseEther('1');
+
+  // index=0 はコントラクト側の既存ガードで弾かれることを確認
+  it('index=0 reverts "Invalid value" (pre-existing guard)', async () => {
+    await expect(
+      deployChallenge('ChallengeBaseStep', {
+        awardReceiversPercent: [50, 50],
+        index: 0,
+        totalAmount: TOTAL_AMOUNT,
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      })
+    ).to.be.revertedWith('Invalid value');
+  });
+
+  // index=2: 2人の受取人がすべて成功側 → 成功時に両者へ送金される
+  it('index=2 with 2 receivers (all success-side): both receivers paid on success', async () => {
+    const signers = await hre.ethers.getSigners();
+    const recv0 = signers[4];
+    const recv1 = signers[5];
+    const challenger = signers[1];
+
+    const { challenge, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [40, 40],
+        receivers: [recv0.address, recv1.address],
+        index: 2,
+        totalAmount: TOTAL_AMOUNT,
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      }
+    );
+
+    await moveToStart(startTime);
+
+    const balBefore0 = await hre.ethers.provider.getBalance(recv0.address);
+    const balBefore1 = await hre.ethers.provider.getBalance(recv1.address);
+
+    await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+      day: startTime + 200,
+      steps: GOAL,
+    });
+
+    expect(await challenge.isSuccess()).to.equal(true);
+    expect(await hre.ethers.provider.getBalance(recv0.address)).to.be.gt(
+      balBefore0
+    );
+    expect(await hre.ethers.provider.getBalance(recv1.address)).to.be.gt(
+      balBefore1
+    );
+  });
+
+  // index=1: 受取人1人のみ（失敗側ループは空） → 成功時に recv0 のみ送金
+  it('index=1 with 1 receiver (fail loop empty): recv0 paid on success', async () => {
+    const signers = await hre.ethers.getSigners();
+    const recv0 = signers[4];
+    const challenger = signers[1];
+
+    const { challenge, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [80],
+        receivers: [recv0.address],
+        index: 1,
+        totalAmount: TOTAL_AMOUNT,
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      }
+    );
+
+    await moveToStart(startTime);
+
+    const balBefore = await hre.ethers.provider.getBalance(recv0.address);
+
+    await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+      day: startTime + 200,
+      steps: GOAL,
+    });
+
+    expect(await challenge.isSuccess()).to.equal(true);
+    expect(await hre.ethers.provider.getBalance(recv0.address)).to.be.gt(
+      balBefore
+    );
+  });
+});
