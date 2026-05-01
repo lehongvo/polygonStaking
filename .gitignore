@@ -58,10 +58,8 @@ package-lock.json
 .yarn-integrity
 
 # dotenv environment variables file
-.env
-.env.test
-.env.production
-.env.local
+.env*
+!.env.example
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test

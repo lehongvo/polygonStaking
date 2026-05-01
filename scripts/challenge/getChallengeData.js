@@ -1794,7 +1794,7 @@ function getRpcUrl() {
   if (process.env.RPC_URL && process.env.RPC_URL.trim() !== '') {
     return process.env.RPC_URL.trim();
   }
-  return 'https://polygon-mainnet.infura.io/v3/***REMOVED-INFURA-KEY***';
+  throw new Error('Missing RPC_URL env');
 }
 
 const provider = new ethers.JsonRpcProvider(getRpcUrl());

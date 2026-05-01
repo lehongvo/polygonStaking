@@ -2,7 +2,7 @@ require('dotenv').config();
 const { ethers } = require('ethers');
 const munbai = 'https://matic-mumbai.chainstacklabs.com';
 const polygon = 'https://polygon-rpc.com';
-const goerli = 'https://goerli.infura.io/v3/***REMOVED-INFURA-KEY***';
+const goerli = process.env.GOERLI_RPC_URL || '';
 const astar = 'https://evm.astar.network';
 
 const ExerciseSupplementNFT_ABI = [
