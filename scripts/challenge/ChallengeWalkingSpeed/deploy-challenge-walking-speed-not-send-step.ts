@@ -126,8 +126,12 @@ async function main() {
     );
   }
 
-  console.log('🚀 CHALLENGE BASE STEP (Walking Speed) DEPLOYMENT — NO SEND STEP');
-  console.log('=================================================================');
+  console.log(
+    '🚀 CHALLENGE BASE STEP (Walking Speed) DEPLOYMENT — NO SEND STEP'
+  );
+  console.log(
+    '================================================================='
+  );
 
   const [deployer] = await hre.ethers.getSigners();
   console.log(`📍 Network: ${network.name}`);

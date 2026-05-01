@@ -1185,15 +1185,15 @@ contract ChallengeDetailV2 is IERC721Receiver {
 
             for (uint256 i = 0; i < erc20ListAddress.length; i++) {
                 uint256 amountTokenToReceiver;
-                uint256 totalTokenRewardSubtractFee = (listBalanceAllToken[i] *
-                    remainningAmountFee) / 100;
+                uint256 totalTokenRewardSubtractFee =
+                    (listBalanceAllToken[i] * remainningAmountFee) / 100;
 
                 if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
                     amountTokenToReceiver =
                         (totalTokenRewardSubtractFee * currentStatus) / dayRequired;
 
-                    uint256 amountNativeToSponsor = totalTokenRewardSubtractFee -
-                        amountTokenToReceiver;
+                    uint256 amountNativeToSponsor =
+                        totalTokenRewardSubtractFee - amountTokenToReceiver;
 
                     TransferHelper.safeTransfer(
                         erc20ListAddress[i],
@@ -1215,9 +1215,10 @@ contract ChallengeDetailV2 is IERC721Receiver {
 
                 for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                     if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
-                        uint256 amountTokenTmp = (awardTokenReceivers[erc20ListAddress[j]][i] *
-                            amountTokenToReceiverList[j]) /
-                            ((listBalanceAllToken[j] * remainningAmountFee) / 100);
+                        uint256 amountTokenTmp =
+                            (awardTokenReceivers[erc20ListAddress[j]][i] *
+                                amountTokenToReceiverList[j]) /
+                                ((listBalanceAllToken[j] * remainningAmountFee) / 100);
 
                         TransferHelper.safeTransfer(
                             erc20ListAddress[j],
@@ -1551,8 +1552,9 @@ contract ChallengeDetailV2 is IERC721Receiver {
                 // Loop through all award receivers percentage
                 for (uint256 j = 0; j < awardReceiversPercent.length; j++) {
                     // Calculate the amount of ERC20 token to award to current receiver
-                    uint256 awardAmount = (awardReceiversPercent[j] *
-                        IERC20(erc20ListAddress[i]).balanceOf(address(this))) / 100;
+                    uint256 awardAmount =
+                        (awardReceiversPercent[j] *
+                            IERC20(erc20ListAddress[i]).balanceOf(address(this))) / 100;
                     // Add the award amount to receiver's balance for current ERC20 token
                     awardTokenReceivers[erc20ListAddress[i]].push(awardAmount);
                 }
@@ -1746,9 +1748,8 @@ contract ChallengeDetailV2 is IERC721Receiver {
         uint256 currentStakeId = stakingStakeId;
 
         if (stakingStakeId > 0 && stakingToken != address(0)) {
-            address underlyingToken = createByToken == address(0)
-                ? WMATIC_WPOC_ADDRESS
-                : createByToken;
+            address underlyingToken =
+                createByToken == address(0) ? WMATIC_WPOC_ADDRESS : createByToken;
 
             uint256 actualWithdrawn = aavePool.withdraw(
                 underlyingToken,

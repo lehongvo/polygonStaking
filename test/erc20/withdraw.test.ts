@@ -10,13 +10,16 @@ describe('T11 – withdrawTokensOnCompletion ERC20 sweep', function () {
     const tkn1 = await MockERC20.deploy('Token1', 'TKN1');
     const tknAddr = await tkn1.getAddress();
 
-    const { challenge, signers, startTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [50, 40],
-      index: 1,
-      dayRequired: 20,
-      allAwardToSponsor: true,
-      erc20List: [tknAddr],
-    });
+    const { challenge, signers, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [50, 40],
+        index: 1,
+        dayRequired: 20,
+        allAwardToSponsor: true,
+        erc20List: [tknAddr],
+      }
+    );
 
     const challengeAddr = await challenge.getAddress();
     await tkn1.mint(challengeAddr, hre.ethers.parseEther('1000'));
@@ -24,7 +27,14 @@ describe('T11 – withdrawTokensOnCompletion ERC20 sweep', function () {
     await challenge.connect(signers[1]).giveUp([], [], [], []);
 
     const returnedNFTWallet = signers[3];
-    return { tkn1, tknAddr, challenge, challengeAddr, signers, returnedNFTWallet };
+    return {
+      tkn1,
+      tknAddr,
+      challenge,
+      challengeAddr,
+      signers,
+      returnedNFTWallet,
+    };
   }
 
   // 前提条件: giveUp 後はコントラクト残高がクリアされていること
@@ -35,22 +45,29 @@ describe('T11 – withdrawTokensOnCompletion ERC20 sweep', function () {
 
   // 終了後に追加で mint されたトークンを returnedNFTWallet が回収できることを確認
   it('extra TKN1 minted after finish swept to returnedNFTWallet', async function () {
-    const { tkn1, tknAddr, challenge, challengeAddr, returnedNFTWallet } = await setup();
+    const { tkn1, tknAddr, challenge, challengeAddr, returnedNFTWallet } =
+      await setup();
     const extra = hre.ethers.parseEther('500');
     await tkn1.mint(challengeAddr, extra);
 
     const before = await tkn1.balanceOf(returnedNFTWallet.address);
-    await challenge.connect(returnedNFTWallet).withdrawTokensOnCompletion([tknAddr], [], [], []);
+    await challenge
+      .connect(returnedNFTWallet)
+      .withdrawTokensOnCompletion([tknAddr], [], [], []);
 
     expect(await tkn1.balanceOf(challengeAddr)).to.equal(0n);
-    expect(await tkn1.balanceOf(returnedNFTWallet.address)).to.equal(before + extra);
+    expect(await tkn1.balanceOf(returnedNFTWallet.address)).to.equal(
+      before + extra
+    );
   });
 
   // returnedNFTWallet 以外の呼び出しは権限エラーで revert する
   it('reverts when caller is not returnedNFTWallet', async function () {
     const { tknAddr, challenge, signers } = await setup();
     await expect(
-      challenge.connect(signers[0]).withdrawTokensOnCompletion([tknAddr], [], [], []),
+      challenge
+        .connect(signers[0])
+        .withdrawTokensOnCompletion([tknAddr], [], [], [])
     ).to.be.revertedWith('Only returned nft wallet address');
   });
 });

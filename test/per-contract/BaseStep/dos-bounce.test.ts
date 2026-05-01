@@ -35,11 +35,13 @@ describe('T3 — DoS via bouncing receiver (F-A10)', function () {
     const MockNFT = await hre.ethers.getContractFactory(
       'MockExerciseSupplementNFT'
     );
-    const nft = await MockNFT.deploy(returnedNFTWallet.address, SUCCESS_FEE, FAIL_FEE);
-
-    const Bouncer = await hre.ethers.getContractFactory(
-      'MockBouncingReceiver'
+    const nft = await MockNFT.deploy(
+      returnedNFTWallet.address,
+      SUCCESS_FEE,
+      FAIL_FEE
     );
+
+    const Bouncer = await hre.ethers.getContractFactory('MockBouncingReceiver');
     const bouncer = await Bouncer.deploy();
     await bouncer.setEnabled(true); // arm bouncing
 

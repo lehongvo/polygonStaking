@@ -2,7 +2,11 @@
 // ガス消費上限と、N2 修正（残高記録の重複防止）を検証する。
 import { expect } from 'chai';
 import hre from 'hardhat';
-import { deployChallenge, moveToStart, FAIL_FEE } from '../helpers/deployHelpers.ts';
+import {
+  deployChallenge,
+  moveToStart,
+  FAIL_FEE,
+} from '../helpers/deployHelpers.ts';
 
 // 5 トークン分のループでも 1.5M ガス未満に収まることを期待
 const GAS_LIMIT_GIVEUP = 1_500_000n;
@@ -18,19 +22,22 @@ describe('T27 – many ERC20 loop gas + N2 reset (5 tokens)', function () {
       MockERC20.deploy('Token3', 'TK3'),
       MockERC20.deploy('Token4', 'TK4'),
     ]);
-    const tokenAddresses = await Promise.all(tokens.map((t) => t.getAddress()));
+    const tokenAddresses = await Promise.all(tokens.map(t => t.getAddress()));
 
-    const { challenge, startTime, signers } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [50, 50],
-      index: 1,
-      duration: 30,
-      dayRequired: 20,
-      goal: 1000,
-      allowGiveUp: [true, true, false],
-      allAwardToSponsor: true,
-      totalAmount: hre.ethers.parseEther('10'),
-      erc20List: tokenAddresses,
-    });
+    const { challenge, startTime, signers } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [50, 50],
+        index: 1,
+        duration: 30,
+        dayRequired: 20,
+        goal: 1000,
+        allowGiveUp: [true, true, false],
+        allAwardToSponsor: true,
+        totalAmount: hre.ethers.parseEther('10'),
+        erc20List: tokenAddresses,
+      }
+    );
 
     const challengeAddress = await challenge.getAddress();
     for (const token of tokens) {

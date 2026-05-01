@@ -3,7 +3,11 @@
 // それぞれを検証する。
 import { expect } from 'chai';
 import hre from 'hardhat';
-import { deployChallenge, moveToStart, sendStep } from '../helpers/deployHelpers.ts';
+import {
+  deployChallenge,
+  moveToStart,
+  sendStep,
+} from '../helpers/deployHelpers.ts';
 
 describe('T19 – ChallengeBaseStep: index boundary cases', () => {
   const GOAL = 1000;
@@ -21,7 +25,7 @@ describe('T19 – ChallengeBaseStep: index boundary cases', () => {
         goal: GOAL,
         dayRequired: DAY_REQUIRED,
         duration: DURATION,
-      }),
+      })
     ).to.be.revertedWith('Invalid value');
   });
 
@@ -32,15 +36,18 @@ describe('T19 – ChallengeBaseStep: index boundary cases', () => {
     const recv1 = signers[5];
     const challenger = signers[1];
 
-    const { challenge, startTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [40, 40],
-      receivers: [recv0.address, recv1.address],
-      index: 2,
-      totalAmount: TOTAL_AMOUNT,
-      goal: GOAL,
-      dayRequired: DAY_REQUIRED,
-      duration: DURATION,
-    });
+    const { challenge, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [40, 40],
+        receivers: [recv0.address, recv1.address],
+        index: 2,
+        totalAmount: TOTAL_AMOUNT,
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      }
+    );
 
     await moveToStart(startTime);
 
@@ -48,12 +55,17 @@ describe('T19 – ChallengeBaseStep: index boundary cases', () => {
     const balBefore1 = await hre.ethers.provider.getBalance(recv1.address);
 
     await sendStep(challenge, 'ChallengeBaseStep', challenger, {
-      day: startTime + 200, steps: GOAL,
+      day: startTime + 200,
+      steps: GOAL,
     });
 
     expect(await challenge.isSuccess()).to.equal(true);
-    expect(await hre.ethers.provider.getBalance(recv0.address)).to.be.gt(balBefore0);
-    expect(await hre.ethers.provider.getBalance(recv1.address)).to.be.gt(balBefore1);
+    expect(await hre.ethers.provider.getBalance(recv0.address)).to.be.gt(
+      balBefore0
+    );
+    expect(await hre.ethers.provider.getBalance(recv1.address)).to.be.gt(
+      balBefore1
+    );
   });
 
   // index=1: 受取人1人のみ（失敗側ループは空） → 成功時に recv0 のみ送金
@@ -62,25 +74,31 @@ describe('T19 – ChallengeBaseStep: index boundary cases', () => {
     const recv0 = signers[4];
     const challenger = signers[1];
 
-    const { challenge, startTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [80],
-      receivers: [recv0.address],
-      index: 1,
-      totalAmount: TOTAL_AMOUNT,
-      goal: GOAL,
-      dayRequired: DAY_REQUIRED,
-      duration: DURATION,
-    });
+    const { challenge, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [80],
+        receivers: [recv0.address],
+        index: 1,
+        totalAmount: TOTAL_AMOUNT,
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      }
+    );
 
     await moveToStart(startTime);
 
     const balBefore = await hre.ethers.provider.getBalance(recv0.address);
 
     await sendStep(challenge, 'ChallengeBaseStep', challenger, {
-      day: startTime + 200, steps: GOAL,
+      day: startTime + 200,
+      steps: GOAL,
     });
 
     expect(await challenge.isSuccess()).to.equal(true);
-    expect(await hre.ethers.provider.getBalance(recv0.address)).to.be.gt(balBefore);
+    expect(await hre.ethers.provider.getBalance(recv0.address)).to.be.gt(
+      balBefore
+    );
   });
 });

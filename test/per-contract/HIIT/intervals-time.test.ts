@@ -15,8 +15,14 @@ async function deployHIIT() {
   const [, challenger, feeAddr, returnedNFTWallet, sponsor, recv1, recv2] =
     await hre.ethers.getSigners();
 
-  const MockNFT = await hre.ethers.getContractFactory('MockExerciseSupplementNFT');
-  const nft = await MockNFT.deploy(returnedNFTWallet.address, SUCCESS_FEE, FAIL_FEE);
+  const MockNFT = await hre.ethers.getContractFactory(
+    'MockExerciseSupplementNFT'
+  );
+  const nft = await MockNFT.deploy(
+    returnedNFTWallet.address,
+    SUCCESS_FEE,
+    FAIL_FEE
+  );
 
   const Factory = await hre.ethers.getContractFactory('ChallengeHIIT');
   const block = await hre.ethers.provider.getBlock('latest');
@@ -49,7 +55,21 @@ describe('T8-C3 — Boundary tests: intervals/totalSeconds thresholds (Challenge
     const { challenger, challenge, startTime, endTime } = await deployHIIT();
     await time.increaseTo(startTime + 100);
     const day = startTime + 200;
-    await challenge.connect(challenger).sendDailyResult([day], [HI], [HT], [0, 0], '0x', [], [], [], [], [], [0, endTime]);
+    await challenge
+      .connect(challenger)
+      .sendDailyResult(
+        [day],
+        [HI],
+        [HT],
+        [0, 0],
+        '0x',
+        [],
+        [],
+        [],
+        [],
+        [],
+        [0, endTime]
+      );
     expect(await challenge.currentStatus()).to.equal(1n);
     expect(await challenge.getHIITAchievedOn(day)).to.equal(1n);
   });
@@ -59,7 +79,21 @@ describe('T8-C3 — Boundary tests: intervals/totalSeconds thresholds (Challenge
     const { challenger, challenge, startTime, endTime } = await deployHIIT();
     await time.increaseTo(startTime + 100);
     const day = startTime + 200;
-    await challenge.connect(challenger).sendDailyResult([day], [HI - 1], [HT], [0, 0], '0x', [], [], [], [], [], [0, endTime]);
+    await challenge
+      .connect(challenger)
+      .sendDailyResult(
+        [day],
+        [HI - 1],
+        [HT],
+        [0, 0],
+        '0x',
+        [],
+        [],
+        [],
+        [],
+        [],
+        [0, endTime]
+      );
     expect(await challenge.currentStatus()).to.equal(0n);
     expect(await challenge.getHIITAchievedOn(day)).to.equal(0n);
   });
@@ -69,7 +103,21 @@ describe('T8-C3 — Boundary tests: intervals/totalSeconds thresholds (Challenge
     const { challenger, challenge, startTime, endTime } = await deployHIIT();
     await time.increaseTo(startTime + 100);
     const day = startTime + 200;
-    await challenge.connect(challenger).sendDailyResult([day], [HI], [HT - 1], [0, 0], '0x', [], [], [], [], [], [0, endTime]);
+    await challenge
+      .connect(challenger)
+      .sendDailyResult(
+        [day],
+        [HI],
+        [HT - 1],
+        [0, 0],
+        '0x',
+        [],
+        [],
+        [],
+        [],
+        [],
+        [0, endTime]
+      );
     expect(await challenge.currentStatus()).to.equal(0n);
     expect(await challenge.getHIITAchievedOn(day)).to.equal(0n);
   });
@@ -79,7 +127,21 @@ describe('T8-C3 — Boundary tests: intervals/totalSeconds thresholds (Challenge
     const { challenger, challenge, startTime, endTime } = await deployHIIT();
     await time.increaseTo(startTime + 100);
     const day = startTime + 200;
-    await challenge.connect(challenger).sendDailyResult([day], [HI - 1], [HT - 1], [0, 0], '0x', [], [], [], [], [], [0, endTime]);
+    await challenge
+      .connect(challenger)
+      .sendDailyResult(
+        [day],
+        [HI - 1],
+        [HT - 1],
+        [0, 0],
+        '0x',
+        [],
+        [],
+        [],
+        [],
+        [],
+        [0, endTime]
+      );
     expect(await challenge.currentStatus()).to.equal(0n);
     expect(await challenge.getHIITAchievedOn(day)).to.equal(0n);
   });
@@ -89,7 +151,21 @@ describe('T8-C3 — Boundary tests: intervals/totalSeconds thresholds (Challenge
     const { challenger, challenge, startTime, endTime } = await deployHIIT();
     await time.increaseTo(startTime + 100);
     const day = startTime + 200;
-    await challenge.connect(challenger).sendDailyResult([day], [HI + 1], [HT + 1], [0, 0], '0x', [], [], [], [], [], [0, endTime]);
+    await challenge
+      .connect(challenger)
+      .sendDailyResult(
+        [day],
+        [HI + 1],
+        [HT + 1],
+        [0, 0],
+        '0x',
+        [],
+        [],
+        [],
+        [],
+        [],
+        [0, endTime]
+      );
     expect(await challenge.currentStatus()).to.equal(1n);
     expect(await challenge.getHIITAchievedOn(day)).to.equal(1n);
   });

@@ -23,7 +23,7 @@ const POLYGON_CHAIN_ID = 137;
 const ETHERSCAN_V2_URL = 'https://api.etherscan.io/v2/api';
 const RATE_LIMIT_DELAY_MS = 250;
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 function getApiKey(): string {
   const key = process.env.ETHERSCAN_API_KEY ?? process.env.POLYGONSCAN_API_KEY;
@@ -124,7 +124,9 @@ async function getGachaImplementations(): Promise<void> {
     }
 
     if (entry.Network !== 'polygon') {
-      console.log(`⚠️  ${tag} — Network is '${entry.Network}', not polygon, skip`);
+      console.log(
+        `⚠️  ${tag} — Network is '${entry.Network}', not polygon, skip`
+      );
       skipped++;
       continue;
     }
@@ -156,7 +158,7 @@ async function getGachaImplementations(): Promise<void> {
 }
 
 if (require.main === module) {
-  getGachaImplementations().catch((err) => {
+  getGachaImplementations().catch(err => {
     console.error('Fatal:', err);
     process.exit(1);
   });

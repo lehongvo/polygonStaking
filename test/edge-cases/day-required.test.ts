@@ -3,7 +3,12 @@
 // 成功・失敗の両ルートを検証する。
 import { expect } from 'chai';
 import hre from 'hardhat';
-import { deployChallenge, moveToStart, moveAfterEnd, sendStep } from '../helpers/deployHelpers.ts';
+import {
+  deployChallenge,
+  moveToStart,
+  moveAfterEnd,
+  sendStep,
+} from '../helpers/deployHelpers.ts';
 
 describe('T20 – ChallengeBaseStep: dayRequired boundary cases', () => {
   const GOAL = 1000;
@@ -15,18 +20,24 @@ describe('T20 – ChallengeBaseStep: dayRequired boundary cases', () => {
     const recv0 = signers[4];
     const challenger = signers[1];
 
-    const { challenge, startTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [70],
-      receivers: [recv0.address],
-      index: 1,
-      totalAmount: TOTAL_AMOUNT,
-      goal: GOAL,
-      dayRequired: 1,
-      duration: 30,
-    });
+    const { challenge, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [70],
+        receivers: [recv0.address],
+        index: 1,
+        totalAmount: TOTAL_AMOUNT,
+        goal: GOAL,
+        dayRequired: 1,
+        duration: 30,
+      }
+    );
 
     await moveToStart(startTime);
-    await sendStep(challenge, 'ChallengeBaseStep', challenger, { day: startTime + 200, steps: GOAL });
+    await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+      day: startTime + 200,
+      steps: GOAL,
+    });
     expect(await challenge.isSuccess()).to.equal(true);
   });
 
@@ -36,22 +47,34 @@ describe('T20 – ChallengeBaseStep: dayRequired boundary cases', () => {
     const recv0 = signers[4];
     const challenger = signers[1];
 
-    const { challenge, startTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [70],
-      receivers: [recv0.address],
-      index: 1,
-      totalAmount: TOTAL_AMOUNT,
-      goal: GOAL,
-      dayRequired: 3,
-      duration: 3,
-    });
+    const { challenge, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [70],
+        receivers: [recv0.address],
+        index: 1,
+        totalAmount: TOTAL_AMOUNT,
+        goal: GOAL,
+        dayRequired: 3,
+        duration: 3,
+      }
+    );
 
     await moveToStart(startTime);
     const DAY = 86400; // 1日 = 86400秒
     // 3日間それぞれで目標歩数を送信し、連続達成を再現する
-    await sendStep(challenge, 'ChallengeBaseStep', challenger, { day: startTime + 200, steps: GOAL });
-    await sendStep(challenge, 'ChallengeBaseStep', challenger, { day: startTime + DAY + 200, steps: GOAL });
-    await sendStep(challenge, 'ChallengeBaseStep', challenger, { day: startTime + 2 * DAY + 200, steps: GOAL });
+    await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+      day: startTime + 200,
+      steps: GOAL,
+    });
+    await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+      day: startTime + DAY + 200,
+      steps: GOAL,
+    });
+    await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+      day: startTime + 2 * DAY + 200,
+      steps: GOAL,
+    });
     expect(await challenge.isSuccess()).to.equal(true);
   });
 

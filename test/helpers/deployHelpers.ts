@@ -72,7 +72,8 @@ export async function deployChallenge(name: ContractName, opts: DeployOpts) {
   const dayRequired = opts.dayRequired ?? 20;
 
   const receivers =
-    opts.receivers ?? signers.slice(4, 4 + opts.awardReceiversPercent.length).map((s) => s.address);
+    opts.receivers ??
+    signers.slice(4, 4 + opts.awardReceiversPercent.length).map(s => s.address);
   const idx = opts.index ?? 1;
   const allowGiveUp = opts.allowGiveUp ?? [true, true, false];
   const gasData = [0, 0, opts.gasFee ?? 0];

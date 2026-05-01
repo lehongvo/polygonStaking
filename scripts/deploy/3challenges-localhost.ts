@@ -131,7 +131,7 @@ async function main() {
   console.log('All deployments + sanity checks passed');
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error(err);
   process.exit(1);
 });

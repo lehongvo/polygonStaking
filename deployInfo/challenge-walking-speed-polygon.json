@@ -12,46 +12,20 @@
       "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
     ],
     "createByToken": "0x0000000000000000000000000000000000000000",
-    "erc721Addresses": [
-      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
-    ],
-    "primaryRequired": [
-      3,
-      1771368487,
-      1967062887,
-      100,
-      3
-    ],
+    "erc721Addresses": ["0x55285EcCef5487E87C5980C880131aCadDE7767C"],
+    "primaryRequired": [3, 1771368487, 1967062887, 100, 3],
     "awardReceivers": [
       "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
       "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
     ],
     "index": 1,
-    "allowGiveUp": [
-      true,
-      true,
-      true
-    ],
-    "gasData": [
-      "200000000000000000",
-      "200000000000000000",
-      "0"
-    ],
+    "allowGiveUp": [true, true, true],
+    "gasData": ["200000000000000000", "200000000000000000", "0"],
     "allAwardToSponsorWhenGiveUp": true,
-    "awardReceiversPercent": [
-      100,
-      100
-    ],
+    "awardReceiversPercent": [100, 100],
     "totalAmount": "1000000000000",
-    "walkingSpeedData": [
-      50,
-      30,
-      2
-    ],
-    "hiitData": [
-      3,
-      120
-    ]
+    "walkingSpeedData": [50, 30, 2],
+    "hiitData": [3, 120]
   },
   "verification": {
     "verified": true,

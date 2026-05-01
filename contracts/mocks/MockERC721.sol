@@ -60,12 +60,7 @@ contract MockERC721 {
         // raw call selector directly, not safeTransferFrom).
     }
 
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        bytes calldata
-    ) external {
+    function safeTransferFrom(address from, address to, uint256 id, bytes calldata) external {
         transferFrom(from, to, id);
     }
 }

@@ -2,7 +2,11 @@
 // 値が極端に大きくても小さくても判定結果に影響せず、いずれの場合も
 // 歩数 + 歩行分数の条件のみで成功判定が行われる。
 import { expect } from 'chai';
-import { deployChallenge, sendStep, moveToStart } from '../helpers/deployHelpers.ts';
+import {
+  deployChallenge,
+  sendStep,
+  moveToStart,
+} from '../helpers/deployHelpers.ts';
 
 describe('T18 – F5: walkingSpeedData[0] (target speed) is not enforced on-chain', function () {
   const GOAL = 1000;
@@ -22,12 +26,22 @@ describe('T18 – F5: walkingSpeedData[0] (target speed) is not enforced on-chai
     return ctx;
   }
 
-  async function sendTwoPassingDays(challenge: any, challenger: any, startTime: number) {
+  async function sendTwoPassingDays(
+    challenge: any,
+    challenger: any,
+    startTime: number
+  ) {
     await sendStep(challenge, 'ChallengeBaseStep', challenger, {
-      day: startTime + 86400 * 1, steps: GOAL, minutes: REQUIRED_MINUTES, mets: 100,
+      day: startTime + 86400 * 1,
+      steps: GOAL,
+      minutes: REQUIRED_MINUTES,
+      mets: 100,
     });
     await sendStep(challenge, 'ChallengeBaseStep', challenger, {
-      day: startTime + 86400 * 2, steps: GOAL, minutes: REQUIRED_MINUTES, mets: 100,
+      day: startTime + 86400 * 2,
+      steps: GOAL,
+      minutes: REQUIRED_MINUTES,
+      mets: 100,
     });
   }
 

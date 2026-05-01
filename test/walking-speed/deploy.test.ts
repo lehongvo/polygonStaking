@@ -38,7 +38,7 @@ describe('T16 – ChallengeBaseStep: walkingSpeedData deploy validation', functi
         awardReceiversPercent: [50, 40],
         walkingSpeedData: [10, 30],
         hiitData: [],
-      }),
+      })
     ).to.be.revertedWith('Invalid walking speed data');
   });
 
@@ -50,7 +50,7 @@ describe('T16 – ChallengeBaseStep: walkingSpeedData deploy validation', functi
         walkingSpeedData: [10, 30, 5],
         hiitData: [],
         dayRequired: 3,
-      }),
+      })
     ).to.be.revertedWith('Invalid walking speed days');
   });
 });

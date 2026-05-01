@@ -33,7 +33,11 @@ async function deploy() {
   const MockNFT = await hre.ethers.getContractFactory(
     'MockExerciseSupplementNFT'
   );
-  const nft = await MockNFT.deploy(returnedNFTWallet.address, SUCCESS_FEE, FAIL_FEE);
+  const nft = await MockNFT.deploy(
+    returnedNFTWallet.address,
+    SUCCESS_FEE,
+    FAIL_FEE
+  );
   const Factory = await hre.ethers.getContractFactory('ChallengeBaseStep');
 
   const block = await hre.ethers.provider.getBlock('latest');
@@ -58,15 +62,31 @@ async function deploy() {
     { value: hre.ethers.parseEther('10') }
   );
 
-  return { challenger, sponsor, feeAddr, recv1, recv2, challenge, startTime, endTime };
+  return {
+    challenger,
+    sponsor,
+    feeAddr,
+    recv1,
+    recv2,
+    challenge,
+    startTime,
+    endTime,
+  };
 }
 
 describe('T5 — closeChallenge + fail trigger', function () {
   // 期間終了 + 2 日経過後に closeChallenge → 失敗側受取人への支払いと
   // CLOSED(=4) 状態への遷移、二重 close の revert を確認
   it('(a) closeChallenge after endTime+2days: fail-side receivers paid, state=CLOSED', async function () {
-    const { challenger, sponsor, feeAddr, recv2, challenge, startTime, endTime } =
-      await deploy();
+    const {
+      challenger,
+      sponsor,
+      feeAddr,
+      recv2,
+      challenge,
+      startTime,
+      endTime,
+    } = await deploy();
 
     // Move way past endTime+2days so afterFinish modifier passes
     await time.increaseTo(endTime + 2 * 86400 + 100);
@@ -79,10 +99,13 @@ describe('T5 — closeChallenge + fail trigger', function () {
     const receipt = await tx.wait();
     expect(receipt!.status).to.equal(1);
 
-    expect(await challenge.isFinished()).to.be.true,
-      '[F-A5] isFinished true after closeChallenge';
+    (expect(await challenge.isFinished()).to.be.true,
+      '[F-A5] isFinished true after closeChallenge');
     expect(await challenge.isSuccess()).to.be.false;
-    expect(await challenge.getState()).to.equal(4n, 'state = CLOSED enum index 4');
+    expect(await challenge.getState()).to.equal(
+      4n,
+      'state = CLOSED enum index 4'
+    );
 
     // recv2 is fail-side (index 1, percent=40), gets payout
     const recv2Gain =
@@ -98,9 +121,8 @@ describe('T5 — closeChallenge + fail trigger', function () {
     expect(feeGain).to.equal(hre.ethers.parseEther('1'));
 
     // Second close should revert (availableForClose: !isFinished fails)
-    await expect(
-      challenge.connect(sponsor).closeChallenge([], [], [], [])
-    ).to.be.reverted;
+    await expect(challenge.connect(sponsor).closeChallenge([], [], [], [])).to
+      .be.reverted;
   });
 
   // 連続失敗が閾値（duration - dayRequired）を超えた状態で
@@ -117,7 +139,8 @@ describe('T5 — closeChallenge + fail trigger', function () {
     //   Day5 pass: cs++=1, scan sees prior fails → bool=false, post-loop
     //     skipped (last >= goal). Fail check: seq-cs = 5-1 = 4 > 3 → YES.
 
-    const { challenger, feeAddr, recv2, challenge, startTime, endTime } = await deploy();
+    const { challenger, feeAddr, recv2, challenge, startTime, endTime } =
+      await deploy();
 
     await time.increaseTo(startTime + 100);
     const sig = '0x';
@@ -172,10 +195,13 @@ describe('T5 — closeChallenge + fail trigger', function () {
         []
       );
 
-    expect(await challenge.isFinished()).to.be.true,
-      '[F-A5 CEI] fail trigger from sendDailyResult marks finished';
+    (expect(await challenge.isFinished()).to.be.true,
+      '[F-A5 CEI] fail trigger from sendDailyResult marks finished');
     expect(await challenge.isSuccess()).to.be.false;
-    expect(await challenge.getState()).to.equal(2n, 'state = FAILED enum index 2');
+    expect(await challenge.getState()).to.equal(
+      2n,
+      'state = FAILED enum index 2'
+    );
 
     const recv2Gain =
       (await hre.ethers.provider.getBalance(recv2.address)) - recv2Before;

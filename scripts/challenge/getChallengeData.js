@@ -1,1774 +1,1777 @@
-const challengeBaseStepContractAddress = "0x4076E70ef7C1D74c6F4c5dF19ef453EA7830c556";
-const challengeHIITContractAddress = "0x2527486CA8780AB64F9EF52A97DDAd6EcE0cf0Ff";
-const originChallengeDetailContractAddress = "0x959541f8652704747e92c13b2e7f2b182035942c";
+const challengeBaseStepContractAddress =
+  '0x4076E70ef7C1D74c6F4c5dF19ef453EA7830c556';
+const challengeHIITContractAddress =
+  '0x2527486CA8780AB64F9EF52A97DDAd6EcE0cf0Ff';
+const originChallengeDetailContractAddress =
+  '0x959541f8652704747e92c13b2e7f2b182035942c';
 const challengeBaseStepContractABI = [
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address payable[]",
-        "name": "_stakeHolders",
-        "type": "address[]"
+        internalType: 'address payable[]',
+        name: '_stakeHolders',
+        type: 'address[]',
       },
       {
-        "internalType": "address",
-        "name": "_createByToken",
-        "type": "address"
+        internalType: 'address',
+        name: '_createByToken',
+        type: 'address',
       },
       {
-        "internalType": "address[]",
-        "name": "_erc721Address",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_erc721Address',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_primaryRequired",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_primaryRequired',
+        type: 'uint256[]',
       },
       {
-        "internalType": "address payable[]",
-        "name": "_awardReceivers",
-        "type": "address[]"
+        internalType: 'address payable[]',
+        name: '_awardReceivers',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256",
-        "name": "_index",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '_index',
+        type: 'uint256',
       },
       {
-        "internalType": "bool[]",
-        "name": "_allowGiveUp",
-        "type": "bool[]"
+        internalType: 'bool[]',
+        name: '_allowGiveUp',
+        type: 'bool[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_gasData",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_gasData',
+        type: 'uint256[]',
       },
       {
-        "internalType": "bool",
-        "name": "_allAwardToSponsorWhenGiveUp",
-        "type": "bool"
+        internalType: 'bool',
+        name: '_allAwardToSponsorWhenGiveUp',
+        type: 'bool',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_awardReceiversPercent",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_awardReceiversPercent',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256",
-        "name": "_totalAmount",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '_totalAmount',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_walkingSpeedData",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_walkingSpeedData',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_hiitData",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: '_hiitData',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "payable",
-    "type": "constructor"
+    stateMutability: 'payable',
+    type: 'constructor',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "bool",
-        "name": "challengeStatus",
-        "type": "bool"
-      }
+        indexed: true,
+        internalType: 'bool',
+        name: 'challengeStatus',
+        type: 'bool',
+      },
     ],
-    "name": "CloseChallenge",
-    "type": "event"
+    name: 'CloseChallenge',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
+        indexed: true,
+        internalType: 'address',
+        name: 'to',
+        type: 'address',
       },
       {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "valueSend",
-        "type": "uint256"
-      }
+        indexed: true,
+        internalType: 'uint256',
+        name: 'valueSend',
+        type: 'uint256',
+      },
     ],
-    "name": "FundTransfer",
-    "type": "event"
+    name: 'FundTransfer',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "from",
-        "type": "address"
-      }
+        indexed: true,
+        internalType: 'address',
+        name: 'from',
+        type: 'address',
+      },
     ],
-    "name": "GiveUp",
-    "type": "event"
+    name: 'GiveUp',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "currentStatus",
-        "type": "uint256"
-      }
+        indexed: true,
+        internalType: 'uint256',
+        name: 'currentStatus',
+        type: 'uint256',
+      },
     ],
-    "name": "SendDailyResult",
-    "type": "event"
+    name: 'SendDailyResult',
+    type: 'event',
   },
   {
-    "inputs": [],
-    "name": "allContractERC20",
-    "outputs": [
+    inputs: [],
+    name: 'allContractERC20',
+    outputs: [
       {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
-      }
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "allowGiveUp",
-    "outputs": [
+    name: 'allowGiveUp',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "challenger",
-    "outputs": [
+    inputs: [],
+    name: 'challenger',
+    outputs: [
       {
-        "internalType": "address payable",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address payable',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address[]",
-        "name": "_listNFTAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listNFTAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[][]",
-        "name": "_listIndexNFT",
-        "type": "uint256[][]"
+        internalType: 'uint256[][]',
+        name: '_listIndexNFT',
+        type: 'uint256[][]',
       },
       {
-        "internalType": "address[][]",
-        "name": "_listSenderAddress",
-        "type": "address[][]"
+        internalType: 'address[][]',
+        name: '_listSenderAddress',
+        type: 'address[][]',
       },
       {
-        "internalType": "bool[]",
-        "name": "_statusTypeNft",
-        "type": "bool[]"
-      }
+        internalType: 'bool[]',
+        name: '_statusTypeNft',
+        type: 'bool[]',
+      },
     ],
-    "name": "closeChallenge",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'closeChallenge',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "createByToken",
-    "outputs": [
+    inputs: [],
+    name: 'createByToken',
+    outputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "currentStatus",
-    "outputs": [
+    inputs: [],
+    name: 'currentStatus',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "dayRequired",
-    "outputs": [
+    inputs: [],
+    name: 'dayRequired',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "duration",
-    "outputs": [
+    inputs: [],
+    name: 'duration',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "endTime",
-    "outputs": [
+    inputs: [],
+    name: 'endTime',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "erc721Address",
-    "outputs": [
+    name: 'erc721Address',
+    outputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "_index",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '_index',
+        type: 'uint256',
       },
       {
-        "internalType": "bool",
-        "name": "_isAddressSuccess",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '_isAddressSuccess',
+        type: 'bool',
+      },
     ],
-    "name": "getAwardReceiversAtIndex",
-    "outputs": [
+    name: 'getAwardReceiversAtIndex',
+    outputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getAwardReceiversPercent",
-    "outputs": [
+    inputs: [],
+    name: 'getAwardReceiversPercent',
+    outputs: [
       {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: '',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getBalanceToken",
-    "outputs": [
+    inputs: [],
+    name: 'getBalanceToken',
+    outputs: [
       {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: '',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getChallengeHistory",
-    "outputs": [
+    inputs: [],
+    name: 'getChallengeHistory',
+    outputs: [
       {
-        "internalType": "uint256[]",
-        "name": "date",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'date',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "data",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: 'data',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getChallengeInfo",
-    "outputs": [
+    inputs: [],
+    name: 'getChallengeInfo',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "challengeCleared",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'challengeCleared',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "challengeDayRequired",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'challengeDayRequired',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "daysRemained",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: 'daysRemained',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getChallengeTypeAndHistory",
-    "outputs": [
+    inputs: [],
+    name: 'getChallengeTypeAndHistory',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "challengeType",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'challengeType',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256[]",
-        "name": "walkingSpeedDataConfig",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'walkingSpeedDataConfig',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256",
-        "name": "highIntensityIntervalsConfig",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'highIntensityIntervalsConfig',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "totalHighIntensityTimeConfig",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'totalHighIntensityTimeConfig',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256[]",
-        "name": "historyDateStep",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'historyDateStep',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "historyDataStep",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'historyDataStep',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "historyWalkingMinutes",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'historyWalkingMinutes',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "historyWalkingMets",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'historyWalkingMets',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "historyHiitIntervals",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'historyHiitIntervals',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "historyHiitTime",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: 'historyHiitTime',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getContractBalance",
-    "outputs": [
+    inputs: [],
+    name: 'getContractBalance',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "_day",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '_day',
+        type: 'uint256',
+      },
     ],
-    "name": "getHIITAchievedOn",
-    "outputs": [
+    name: 'getHIITAchievedOn',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getHIITConfig",
-    "outputs": [
+    inputs: [],
+    name: 'getHIITConfig',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "_highIntensityIntervals",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '_highIntensityIntervals',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "_totalHighIntensityTime",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '_totalHighIntensityTime',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getHIITHistory",
-    "outputs": [
+    inputs: [],
+    name: 'getHIITHistory',
+    outputs: [
       {
-        "internalType": "uint256[]",
-        "name": "date",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'date',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "data",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'data',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "intervals",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'intervals',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "time",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: 'time',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getState",
-    "outputs": [
+    inputs: [],
+    name: 'getState',
+    outputs: [
       {
-        "internalType": "enum ChallengeBaseStep.ChallengeState",
-        "name": "",
-        "type": "uint8"
-      }
+        internalType: 'enum ChallengeBaseStep.ChallengeState',
+        name: '',
+        type: 'uint8',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address[]",
-        "name": "_listNFTAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listNFTAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[][]",
-        "name": "_listIndexNFT",
-        "type": "uint256[][]"
+        internalType: 'uint256[][]',
+        name: '_listIndexNFT',
+        type: 'uint256[][]',
       },
       {
-        "internalType": "address[][]",
-        "name": "_listSenderAddress",
-        "type": "address[][]"
+        internalType: 'address[][]',
+        name: '_listSenderAddress',
+        type: 'address[][]',
       },
       {
-        "internalType": "bool[]",
-        "name": "_statusTypeNft",
-        "type": "bool[]"
-      }
+        internalType: 'bool[]',
+        name: '_statusTypeNft',
+        type: 'bool[]',
+      },
     ],
-    "name": "giveUp",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'giveUp',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "goal",
-    "outputs": [
+    inputs: [],
+    name: 'goal',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "highIntensityIntervals",
-    "outputs": [
+    inputs: [],
+    name: 'highIntensityIntervals',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "hiitAchievedOn",
-    "outputs": [
+    name: 'hiitAchievedOn',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "historyIntervals",
-    "outputs": [
+    name: 'historyIntervals',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "historyMinutesAtTargetSpeed",
-    "outputs": [
+    name: 'historyMinutesAtTargetSpeed',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "historyTime",
-    "outputs": [
+    name: 'historyTime',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "indexNft",
-    "outputs": [
+    inputs: [],
+    name: 'indexNft',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "isFinished",
-    "outputs": [
+    inputs: [],
+    name: 'isFinished',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "isHiitEnabled",
-    "outputs": [
+    inputs: [],
+    name: 'isHiitEnabled',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "isSuccess",
-    "outputs": [
+    inputs: [],
+    name: 'isSuccess',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "metsWalkingSpeed",
-    "outputs": [
+    name: 'metsWalkingSpeed',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
       {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
+        internalType: 'bytes',
+        name: '',
+        type: 'bytes',
+      },
     ],
-    "name": "onERC1155Received",
-    "outputs": [
+    name: 'onERC1155Received',
+    outputs: [
       {
-        "internalType": "bytes4",
-        "name": "",
-        "type": "bytes4"
-      }
+        internalType: 'bytes4',
+        name: '',
+        type: 'bytes4',
+      },
     ],
-    "stateMutability": "pure",
-    "type": "function"
+    stateMutability: 'pure',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
       {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
+        internalType: 'bytes',
+        name: '',
+        type: 'bytes',
+      },
     ],
-    "name": "onERC721Received",
-    "outputs": [
+    name: 'onERC721Received',
+    outputs: [
       {
-        "internalType": "bytes4",
-        "name": "",
-        "type": "bytes4"
-      }
+        internalType: 'bytes4',
+        name: '',
+        type: 'bytes4',
+      },
     ],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256[]",
-        "name": "_day",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_day',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_stepIndex",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_stepIndex',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint64[2]",
-        "name": "_data",
-        "type": "uint64[2]"
+        internalType: 'uint64[2]',
+        name: '_data',
+        type: 'uint64[2]',
       },
       {
-        "internalType": "bytes",
-        "name": "_signature",
-        "type": "bytes"
+        internalType: 'bytes',
+        name: '_signature',
+        type: 'bytes',
       },
       {
-        "internalType": "address[]",
-        "name": "_listGachaAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listGachaAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "address[]",
-        "name": "_listNFTAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listNFTAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[][]",
-        "name": "_listIndexNFT",
-        "type": "uint256[][]"
+        internalType: 'uint256[][]',
+        name: '_listIndexNFT',
+        type: 'uint256[][]',
       },
       {
-        "internalType": "address[][]",
-        "name": "_listSenderAddress",
-        "type": "address[][]"
+        internalType: 'address[][]',
+        name: '_listSenderAddress',
+        type: 'address[][]',
       },
       {
-        "internalType": "bool[]",
-        "name": "_statusTypeNft",
-        "type": "bool[]"
+        internalType: 'bool[]',
+        name: '_statusTypeNft',
+        type: 'bool[]',
       },
       {
-        "internalType": "uint64[2]",
-        "name": "_timeRange",
-        "type": "uint64[2]"
+        internalType: 'uint64[2]',
+        name: '_timeRange',
+        type: 'uint64[2]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_intervals",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_intervals',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_totalSeconds",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_totalSeconds',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_minutesAtTargetSpeed",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_minutesAtTargetSpeed',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_metsWalkingSpeed",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: '_metsWalkingSpeed',
+        type: 'uint256[]',
+      },
     ],
-    "name": "sendDailyResult",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'sendDailyResult',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "sponsor",
-    "outputs": [
+    inputs: [],
+    name: 'sponsor',
+    outputs: [
       {
-        "internalType": "address payable",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address payable',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "startTime",
-    "outputs": [
+    inputs: [],
+    name: 'startTime',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "totalBalanceBaseToken",
-    "outputs": [
+    inputs: [],
+    name: 'totalBalanceBaseToken',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "totalHighIntensityTime",
-    "outputs": [
+    inputs: [],
+    name: 'totalHighIntensityTime',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "totalReward",
-    "outputs": [
+    inputs: [],
+    name: 'totalReward',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "walkingSpeedData",
-    "outputs": [
+    name: 'walkingSpeedData',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address[]",
-        "name": "_listTokenErc20",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listTokenErc20',
+        type: 'address[]',
       },
       {
-        "internalType": "address[]",
-        "name": "_listNFTAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listNFTAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[][]",
-        "name": "_listIndexNFT",
-        "type": "uint256[][]"
+        internalType: 'uint256[][]',
+        name: '_listIndexNFT',
+        type: 'uint256[][]',
       },
       {
-        "internalType": "bool[]",
-        "name": "_statusTypeNft",
-        "type": "bool[]"
-      }
+        internalType: 'bool[]',
+        name: '_statusTypeNft',
+        type: 'bool[]',
+      },
     ],
-    "name": "withdrawTokensOnCompletion",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'withdrawTokensOnCompletion',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "stateMutability": "payable",
-    "type": "receive"
-  }
+    stateMutability: 'payable',
+    type: 'receive',
+  },
 ];
 const challengeHIITContractABI = [
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address payable[]",
-        "name": "_stakeHolders",
-        "type": "address[]"
+        internalType: 'address payable[]',
+        name: '_stakeHolders',
+        type: 'address[]',
       },
       {
-        "internalType": "address",
-        "name": "_createByToken",
-        "type": "address"
+        internalType: 'address',
+        name: '_createByToken',
+        type: 'address',
       },
       {
-        "internalType": "address[]",
-        "name": "_erc721Address",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_erc721Address',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_primaryRequired",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_primaryRequired',
+        type: 'uint256[]',
       },
       {
-        "internalType": "address payable[]",
-        "name": "_awardReceivers",
-        "type": "address[]"
+        internalType: 'address payable[]',
+        name: '_awardReceivers',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256",
-        "name": "_index",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '_index',
+        type: 'uint256',
       },
       {
-        "internalType": "bool[]",
-        "name": "_allowGiveUp",
-        "type": "bool[]"
+        internalType: 'bool[]',
+        name: '_allowGiveUp',
+        type: 'bool[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_gasData",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_gasData',
+        type: 'uint256[]',
       },
       {
-        "internalType": "bool",
-        "name": "_allAwardToSponsorWhenGiveUp",
-        "type": "bool"
+        internalType: 'bool',
+        name: '_allAwardToSponsorWhenGiveUp',
+        type: 'bool',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_awardReceiversPercent",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_awardReceiversPercent',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256",
-        "name": "_totalAmount",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '_totalAmount',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "payable",
-    "type": "constructor"
+    stateMutability: 'payable',
+    type: 'constructor',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "bool",
-        "name": "challengeStatus",
-        "type": "bool"
-      }
+        indexed: true,
+        internalType: 'bool',
+        name: 'challengeStatus',
+        type: 'bool',
+      },
     ],
-    "name": "CloseChallenge",
-    "type": "event"
+    name: 'CloseChallenge',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "to",
-        "type": "address"
+        indexed: true,
+        internalType: 'address',
+        name: 'to',
+        type: 'address',
       },
       {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "valueSend",
-        "type": "uint256"
-      }
+        indexed: true,
+        internalType: 'uint256',
+        name: 'valueSend',
+        type: 'uint256',
+      },
     ],
-    "name": "FundTransfer",
-    "type": "event"
+    name: 'FundTransfer',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "address",
-        "name": "from",
-        "type": "address"
-      }
+        indexed: true,
+        internalType: 'address',
+        name: 'from',
+        type: 'address',
+      },
     ],
-    "name": "GiveUp",
-    "type": "event"
+    name: 'GiveUp',
+    type: 'event',
   },
   {
-    "anonymous": false,
-    "inputs": [
+    anonymous: false,
+    inputs: [
       {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "currentStatus",
-        "type": "uint256"
-      }
+        indexed: true,
+        internalType: 'uint256',
+        name: 'currentStatus',
+        type: 'uint256',
+      },
     ],
-    "name": "SendDailyResult",
-    "type": "event"
+    name: 'SendDailyResult',
+    type: 'event',
   },
   {
-    "inputs": [],
-    "name": "allContractERC20",
-    "outputs": [
+    inputs: [],
+    name: 'allContractERC20',
+    outputs: [
       {
-        "internalType": "address[]",
-        "name": "",
-        "type": "address[]"
-      }
+        internalType: 'address[]',
+        name: '',
+        type: 'address[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "allowGiveUp",
-    "outputs": [
+    name: 'allowGiveUp',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "challenger",
-    "outputs": [
+    inputs: [],
+    name: 'challenger',
+    outputs: [
       {
-        "internalType": "address payable",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address payable',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address[]",
-        "name": "_listNFTAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listNFTAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[][]",
-        "name": "_listIndexNFT",
-        "type": "uint256[][]"
+        internalType: 'uint256[][]',
+        name: '_listIndexNFT',
+        type: 'uint256[][]',
       },
       {
-        "internalType": "address[][]",
-        "name": "_listSenderAddress",
-        "type": "address[][]"
+        internalType: 'address[][]',
+        name: '_listSenderAddress',
+        type: 'address[][]',
       },
       {
-        "internalType": "bool[]",
-        "name": "_statusTypeNft",
-        "type": "bool[]"
-      }
+        internalType: 'bool[]',
+        name: '_statusTypeNft',
+        type: 'bool[]',
+      },
     ],
-    "name": "closeChallenge",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'closeChallenge',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "createByToken",
-    "outputs": [
+    inputs: [],
+    name: 'createByToken',
+    outputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "currentStatus",
-    "outputs": [
+    inputs: [],
+    name: 'currentStatus',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "dayRequired",
-    "outputs": [
+    inputs: [],
+    name: 'dayRequired',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "duration",
-    "outputs": [
+    inputs: [],
+    name: 'duration',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "endTime",
-    "outputs": [
+    inputs: [],
+    name: 'endTime',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "name": "erc721Address",
-    "outputs": [
+    name: 'erc721Address',
+    outputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "_index",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '_index',
+        type: 'uint256',
       },
       {
-        "internalType": "bool",
-        "name": "_isAddressSuccess",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '_isAddressSuccess',
+        type: 'bool',
+      },
     ],
-    "name": "getAwardReceiversAtIndex",
-    "outputs": [
+    name: 'getAwardReceiversAtIndex',
+    outputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getAwardReceiversPercent",
-    "outputs": [
+    inputs: [],
+    name: 'getAwardReceiversPercent',
+    outputs: [
       {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: '',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getBalanceToken",
-    "outputs": [
+    inputs: [],
+    name: 'getBalanceToken',
+    outputs: [
       {
-        "internalType": "uint256[]",
-        "name": "",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: '',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getChallengeHistory",
-    "outputs": [
+    inputs: [],
+    name: 'getChallengeHistory',
+    outputs: [
       {
-        "internalType": "uint256[]",
-        "name": "date",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'date',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "data",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: 'data',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getChallengeInfo",
-    "outputs": [
+    inputs: [],
+    name: 'getChallengeInfo',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "challengeCleared",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'challengeCleared',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "challengeDayRequired",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: 'challengeDayRequired',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "daysRemained",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: 'daysRemained',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getContractBalance",
-    "outputs": [
+    inputs: [],
+    name: 'getContractBalance',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256",
-        "name": "_day",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '_day',
+        type: 'uint256',
+      },
     ],
-    "name": "getHIITAchievedOn",
-    "outputs": [
+    name: 'getHIITAchievedOn',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getHIITConfig",
-    "outputs": [
+    inputs: [],
+    name: 'getHIITConfig',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "_highIntensityIntervals",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '_highIntensityIntervals',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "_totalHighIntensityTime",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '_totalHighIntensityTime',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getHIITHistory",
-    "outputs": [
+    inputs: [],
+    name: 'getHIITHistory',
+    outputs: [
       {
-        "internalType": "uint256[]",
-        "name": "date",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'date',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "data",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'data',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "intervals",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: 'intervals',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "time",
-        "type": "uint256[]"
-      }
+        internalType: 'uint256[]',
+        name: 'time',
+        type: 'uint256[]',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "getState",
-    "outputs": [
+    inputs: [],
+    name: 'getState',
+    outputs: [
       {
-        "internalType": "enum ChallengeHIIT.ChallengeState",
-        "name": "",
-        "type": "uint8"
-      }
+        internalType: 'enum ChallengeHIIT.ChallengeState',
+        name: '',
+        type: 'uint8',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address[]",
-        "name": "_listNFTAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listNFTAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[][]",
-        "name": "_listIndexNFT",
-        "type": "uint256[][]"
+        internalType: 'uint256[][]',
+        name: '_listIndexNFT',
+        type: 'uint256[][]',
       },
       {
-        "internalType": "address[][]",
-        "name": "_listSenderAddress",
-        "type": "address[][]"
+        internalType: 'address[][]',
+        name: '_listSenderAddress',
+        type: 'address[][]',
       },
       {
-        "internalType": "bool[]",
-        "name": "_statusTypeNft",
-        "type": "bool[]"
-      }
+        internalType: 'bool[]',
+        name: '_statusTypeNft',
+        type: 'bool[]',
+      },
     ],
-    "name": "giveUp",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'giveUp',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "highIntensityIntervals",
-    "outputs": [
+    inputs: [],
+    name: 'highIntensityIntervals',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "indexNft",
-    "outputs": [
+    inputs: [],
+    name: 'indexNft',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "isFinished",
-    "outputs": [
+    inputs: [],
+    name: 'isFinished',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "isSuccess",
-    "outputs": [
+    inputs: [],
+    name: 'isSuccess',
+    outputs: [
       {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
+        internalType: 'bool',
+        name: '',
+        type: 'bool',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
       {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
+        internalType: 'bytes',
+        name: '',
+        type: 'bytes',
+      },
     ],
-    "name": "onERC1155Received",
-    "outputs": [
+    name: 'onERC1155Received',
+    outputs: [
       {
-        "internalType": "bytes4",
-        "name": "",
-        "type": "bytes4"
-      }
+        internalType: 'bytes4',
+        name: '',
+        type: 'bytes4',
+      },
     ],
-    "stateMutability": "pure",
-    "type": "function"
+    stateMutability: 'pure',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        internalType: 'address',
+        name: '',
+        type: 'address',
       },
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
       },
       {
-        "internalType": "bytes",
-        "name": "",
-        "type": "bytes"
-      }
+        internalType: 'bytes',
+        name: '',
+        type: 'bytes',
+      },
     ],
-    "name": "onERC721Received",
-    "outputs": [
+    name: 'onERC721Received',
+    outputs: [
       {
-        "internalType": "bytes4",
-        "name": "",
-        "type": "bytes4"
-      }
+        internalType: 'bytes4',
+        name: '',
+        type: 'bytes4',
+      },
     ],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "uint256[]",
-        "name": "_day",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_day',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_intervals",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_intervals',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint256[]",
-        "name": "_totalSeconds",
-        "type": "uint256[]"
+        internalType: 'uint256[]',
+        name: '_totalSeconds',
+        type: 'uint256[]',
       },
       {
-        "internalType": "uint64[2]",
-        "name": "_data",
-        "type": "uint64[2]"
+        internalType: 'uint64[2]',
+        name: '_data',
+        type: 'uint64[2]',
       },
       {
-        "internalType": "bytes",
-        "name": "_signature",
-        "type": "bytes"
+        internalType: 'bytes',
+        name: '_signature',
+        type: 'bytes',
       },
       {
-        "internalType": "address[]",
-        "name": "_listGachaAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listGachaAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "address[]",
-        "name": "_listNFTAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listNFTAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[][]",
-        "name": "_listIndexNFT",
-        "type": "uint256[][]"
+        internalType: 'uint256[][]',
+        name: '_listIndexNFT',
+        type: 'uint256[][]',
       },
       {
-        "internalType": "address[][]",
-        "name": "_listSenderAddress",
-        "type": "address[][]"
+        internalType: 'address[][]',
+        name: '_listSenderAddress',
+        type: 'address[][]',
       },
       {
-        "internalType": "bool[]",
-        "name": "_statusTypeNft",
-        "type": "bool[]"
+        internalType: 'bool[]',
+        name: '_statusTypeNft',
+        type: 'bool[]',
       },
       {
-        "internalType": "uint64[2]",
-        "name": "_timeRange",
-        "type": "uint64[2]"
-      }
+        internalType: 'uint64[2]',
+        name: '_timeRange',
+        type: 'uint64[2]',
+      },
     ],
-    "name": "sendDailyResult",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'sendDailyResult',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "sponsor",
-    "outputs": [
+    inputs: [],
+    name: 'sponsor',
+    outputs: [
       {
-        "internalType": "address payable",
-        "name": "",
-        "type": "address"
-      }
+        internalType: 'address payable',
+        name: '',
+        type: 'address',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "startTime",
-    "outputs": [
+    inputs: [],
+    name: 'startTime',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "totalBalanceBaseToken",
-    "outputs": [
+    inputs: [],
+    name: 'totalBalanceBaseToken',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "totalHighIntensityTime",
-    "outputs": [
+    inputs: [],
+    name: 'totalHighIntensityTime',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [],
-    "name": "totalReward",
-    "outputs": [
+    inputs: [],
+    name: 'totalReward',
+    outputs: [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+        internalType: 'uint256',
+        name: '',
+        type: 'uint256',
+      },
     ],
-    "stateMutability": "view",
-    "type": "function"
+    stateMutability: 'view',
+    type: 'function',
   },
   {
-    "inputs": [
+    inputs: [
       {
-        "internalType": "address[]",
-        "name": "_listTokenErc20",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listTokenErc20',
+        type: 'address[]',
       },
       {
-        "internalType": "address[]",
-        "name": "_listNFTAddress",
-        "type": "address[]"
+        internalType: 'address[]',
+        name: '_listNFTAddress',
+        type: 'address[]',
       },
       {
-        "internalType": "uint256[][]",
-        "name": "_listIndexNFT",
-        "type": "uint256[][]"
+        internalType: 'uint256[][]',
+        name: '_listIndexNFT',
+        type: 'uint256[][]',
       },
       {
-        "internalType": "bool[]",
-        "name": "_statusTypeNft",
-        "type": "bool[]"
-      }
+        internalType: 'bool[]',
+        name: '_statusTypeNft',
+        type: 'bool[]',
+      },
     ],
-    "name": "withdrawTokensOnCompletion",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
+    name: 'withdrawTokensOnCompletion',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
   },
   {
-    "stateMutability": "payable",
-    "type": "receive"
-  }
+    stateMutability: 'payable',
+    type: 'receive',
+  },
 ];
 
 const { ethers } = require('ethers');
@@ -1776,15 +1779,15 @@ const { ethers } = require('ethers');
 // Minimal ABI for origin ChallengeDetail contract (only has getChallengeHistory)
 const challengeABI = [
   {
-    "inputs": [],
-    "name": "getChallengeHistory",
-    "outputs": [
-      { "internalType": "uint256[]", "name": "date", "type": "uint256[]" },
-      { "internalType": "uint256[]", "name": "data", "type": "uint256[]" }
+    inputs: [],
+    name: 'getChallengeHistory',
+    outputs: [
+      { internalType: 'uint256[]', name: 'date', type: 'uint256[]' },
+      { internalType: 'uint256[]', name: 'data', type: 'uint256[]' },
     ],
-    "stateMutability": "view",
-    "type": "function"
-  }
+    stateMutability: 'view',
+    type: 'function',
+  },
 ];
 
 function getRpcUrl() {
@@ -1861,12 +1864,13 @@ async function readOrigin(contract) {
     return Number(BigInt(a) - BigInt(b));
   });
 
-  const historyStepData = historyDate.length > 0
-    ? historyDate.map((d, i) => ({
-        day: toStringSafe(d),
-        steps: toStringSafe(historyData[i])
-      }))
-    : null;
+  const historyStepData =
+    historyDate.length > 0
+      ? historyDate.map((d, i) => ({
+          day: toStringSafe(d),
+          steps: toStringSafe(historyData[i]),
+        }))
+      : null;
 
   return {
     challengeType: 'ONLY BASE STEP',
@@ -1875,7 +1879,7 @@ async function readOrigin(contract) {
     historyDataDate,
     historyStepData,
     historyHiitData: null,
-    historyWorkingSpeedData: null
+    historyWorkingSpeedData: null,
   };
 }
 
@@ -1898,11 +1902,7 @@ async function detectChallengeType(address) {
     // not BaseStep, try HIIT
   }
 
-  const hiit = new ethers.Contract(
-    address,
-    challengeHIITContractABI,
-    provider
-  );
+  const hiit = new ethers.Contract(address, challengeHIITContractABI, provider);
   try {
     await hiit.getHIITConfig();
     return { kind: 'HIIT', contract: hiit };
@@ -1910,11 +1910,7 @@ async function detectChallengeType(address) {
     // not HIIT, try origin ChallengeDetail
   }
 
-  const origin = new ethers.Contract(
-    address,
-    challengeABI,
-    provider
-  );
+  const origin = new ethers.Contract(address, challengeABI, provider);
   try {
     await origin.getChallengeHistory();
     return { kind: 'Origin', contract: origin };
@@ -1936,7 +1932,7 @@ async function readBaseStep(contract) {
     historyWalkingMinutes,
     historyWalkingMets,
     historyHiitIntervals,
-    historyHiitTime
+    historyHiitTime,
   ] = await contract.getChallengeTypeAndHistory();
 
   const hasWalking = hasNonZero(walkingSpeedDataConfig);
@@ -1959,14 +1955,14 @@ async function readBaseStep(contract) {
     ? {
         targetSpeed: toStringSafe(walkingSpeedDataConfig[0]),
         requiredMinutesPerDay: toStringSafe(walkingSpeedDataConfig[1]),
-        minAchievementDays: toStringSafe(walkingSpeedDataConfig[2])
+        minAchievementDays: toStringSafe(walkingSpeedDataConfig[2]),
       }
     : null;
 
   const hiitConfigData = hasHiit
     ? {
         highIntensityIntervals: toStringSafe(highIntensityIntervalsConfig),
-        totalHighIntensityTime: toStringSafe(totalHighIntensityTimeConfig)
+        totalHighIntensityTime: toStringSafe(totalHighIntensityTimeConfig),
       }
     : null;
 
@@ -1974,7 +1970,7 @@ async function readBaseStep(contract) {
     Array.isArray(historyDateStep) && historyDateStep.length > 0
       ? buildHistory(historyDateStep, historyDataStep).map(row => ({
           day: row.day,
-          steps: row.v1
+          steps: row.v1,
         }))
       : null;
 
@@ -1989,7 +1985,7 @@ async function readBaseStep(contract) {
         ).map(row => ({
           day: row.day,
           minutesAtTargetSpeed: row.v1,
-          metsWalkingSpeed: row.v2
+          metsWalkingSpeed: row.v2,
         }))
       : null;
 
@@ -2004,7 +2000,7 @@ async function readBaseStep(contract) {
         ).map(row => ({
           day: row.day,
           intervals: row.v1,
-          totalSeconds: row.v2
+          totalSeconds: row.v2,
         }))
       : null;
 
@@ -2018,7 +2014,7 @@ async function readBaseStep(contract) {
         : null,
     historyStepData,
     historyHiitData,
-    historyWorkingSpeedData
+    historyWorkingSpeedData,
   };
 }
 
@@ -2031,7 +2027,7 @@ async function readHiit(contract) {
 
   const hiitConfigData = {
     highIntensityIntervals: toStringSafe(highIntensityIntervals),
-    totalHighIntensityTime: toStringSafe(totalHighIntensityTime)
+    totalHighIntensityTime: toStringSafe(totalHighIntensityTime),
   };
 
   const historyHiitData =
@@ -2045,7 +2041,7 @@ async function readHiit(contract) {
           day: row.day,
           achievedFlag: row.v1,
           intervals: row.v2,
-          totalSeconds: row.v3
+          totalSeconds: row.v3,
         }))
       : null;
 
@@ -2059,7 +2055,7 @@ async function readHiit(contract) {
     workingConfigData: null,
     historyStepData: null,
     historyHiitData,
-    historyWorkingSpeedData: null
+    historyWorkingSpeedData: null,
   };
 }
 
@@ -2092,9 +2088,11 @@ async function getOnchainChallengeData(address) {
     workingConfigData: data.workingConfigData,
     historyStepData: data.historyStepData,
     historyHiitData: data.historyHiitData,
-    historyWorkingSpeedData: data.historyWorkingSpeedData
+    historyWorkingSpeedData: data.historyWorkingSpeedData,
   };
 }
 
 // getOnchainChallengeData(challengeBaseStepContractAddress).then(console.log).catch(console.error);
-getOnchainChallengeData("0x959541f8652704747e92c13b2e7f2b182035942c").then(console.log).catch(console.error);
+getOnchainChallengeData('0x959541f8652704747e92c13b2e7f2b182035942c')
+  .then(console.log)
+  .catch(console.error);
