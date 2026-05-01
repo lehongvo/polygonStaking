@@ -7,4 +7,10 @@ dist/
 .env
 *.log
 yarn.lock
-package-lock.json 
+package-lock.json
+
+# Auto-generated flattened contracts (multiple pragmas confuse parser)
+flattened/
+
+# Raw data dump, not valid JS
+scripts/legacy/index.js
