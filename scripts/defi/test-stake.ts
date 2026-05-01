@@ -20,7 +20,7 @@ async function main() {
     'deployInfo',
     'polygon-defi-deployment.json'
   );
-  
+
   if (!fs.existsSync(deploymentPath)) {
     console.error('❌ Deployment file not found!');
     console.log('💡 Please deploy the contract first');
@@ -37,8 +37,11 @@ async function main() {
   console.log(`🪙 POL Token: ${polAddress}`);
 
   // Get contract instance
-  const DeFiAggregatorFactory = await hre.ethers.getContractFactory('PolygonDeFiAggregator');
-  const defiAggregator = DeFiAggregatorFactory.attach(contractAddress).connect(signer);
+  const DeFiAggregatorFactory = await hre.ethers.getContractFactory(
+    'PolygonDeFiAggregator'
+  );
+  const defiAggregator =
+    DeFiAggregatorFactory.attach(contractAddress).connect(signer);
 
   // Get staking parameters from env
   const testStakingAmount = process.env.TEST_STAKING_AMOUNT || '0.001';
@@ -46,14 +49,18 @@ async function main() {
 
   console.log(`\n⚙️ Staking Parameters:`);
   console.log(`💰 Amount: ${testStakingAmount} MATIC`);
-  console.log(`⏰ Lock Duration: ${lockDuration} seconds (${lockDuration / 3600} hours)`);
+  console.log(
+    `⏰ Lock Duration: ${lockDuration} seconds (${lockDuration / 3600} hours)`
+  );
 
   const stakeAmount = hre.ethers.parseEther(testStakingAmount);
 
   // Check balance
   const balance = await hre.ethers.provider.getBalance(signer.address);
   if (balance < stakeAmount) {
-    console.error(`❌ Insufficient balance. Need at least ${testStakingAmount} MATIC`);
+    console.error(
+      `❌ Insufficient balance. Need at least ${testStakingAmount} MATIC`
+    );
     process.exit(1);
   }
 
@@ -69,7 +76,9 @@ async function main() {
     console.log('\n🔒 Step 1: Creating time-locked stake with native MATIC...');
     console.log('💡 Contract will automatically wrap MATIC to WMATIC');
 
-    const WMATIC_ADDRESS = process.env.WMATIC_ADDRESS || '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
+    const WMATIC_ADDRESS =
+      process.env.WMATIC_ADDRESS ||
+      '0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270';
 
     console.log(`🔧 Parameters:`);
     console.log(`   Token: ${WMATIC_ADDRESS}`);
@@ -99,7 +108,9 @@ async function main() {
 
     console.log(`\n📊 Native MATIC Time-Locked Stake Created:`);
     console.log(`🆔 Stake ID: ${latestStakeId}`);
-    console.log(`💰 Amount: ${hre.ethers.formatEther(stakeInfo.amount)} MATIC (wrapped to WMATIC)`);
+    console.log(
+      `💰 Amount: ${hre.ethers.formatEther(stakeInfo.amount)} MATIC (wrapped to WMATIC)`
+    );
     console.log(
       `⏰ Start: ${new Date(Number(stakeInfo.startTime) * 1000).toLocaleString()}`
     );
@@ -107,7 +118,9 @@ async function main() {
       `⏰ End: ${new Date(Number(stakeInfo.endTime) * 1000).toLocaleString()}`
     );
     console.log(`🔒 Active: ${stakeInfo.isActive}`);
-    console.log(`📅 Is Scheduled: ${stakeInfo.isScheduled} (Always false - immediate execution)`);
+    console.log(
+      `📅 Is Scheduled: ${stakeInfo.isScheduled} (Always false - immediate execution)`
+    );
 
     console.log('\n🎉 NATIVE MATIC TIME-LOCKED STAKING SUCCESS!');
     console.log('✅ Native MATIC was automatically wrapped and staked to Aave');
@@ -124,8 +137,9 @@ async function main() {
 
     console.log('\n🔗 View on Polygonscan:');
     console.log(`📋 Transaction: https://polygonscan.com/tx/${stakeTx.hash}`);
-    console.log(`📋 Contract: https://polygonscan.com/address/${contractAddress}`);
-
+    console.log(
+      `📋 Contract: https://polygonscan.com/address/${contractAddress}`
+    );
   } catch (error: any) {
     console.log('❌ Staking failed:', error.message);
     console.log('💡 This might be expected if:');

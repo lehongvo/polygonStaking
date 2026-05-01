@@ -17,27 +17,32 @@ async function main() {
     'deployInfo',
     'polygon-defi-deployment.json'
   );
-  
+
   const deployment = JSON.parse(fs.readFileSync(deploymentPath, 'utf8'));
   const contractAddress = deployment.contractAddress;
 
   console.log(`📋 Contract: ${contractAddress}`);
 
   // Get contract instance
-  const DeFiAggregatorFactory = await hre.ethers.getContractFactory('PolygonDeFiAggregator');
-  const defiAggregator = DeFiAggregatorFactory.attach(contractAddress).connect(signer);
+  const DeFiAggregatorFactory = await hre.ethers.getContractFactory(
+    'PolygonDeFiAggregator'
+  );
+  const defiAggregator =
+    DeFiAggregatorFactory.attach(contractAddress).connect(signer);
 
   try {
     // Check if aave_lending protocol exists
     console.log('\n🔍 Checking aave_lending protocol...');
-    
+
     const protocolInfo = await defiAggregator.protocols('aave_lending');
     console.log(`📋 Protocol Info:`);
     console.log(`   Contract Address: ${protocolInfo.contractAddress}`);
     console.log(`   Protocol Type: ${protocolInfo.protocolType}`);
     console.log(`   Initial APY: ${protocolInfo.initialAPY}`);
     console.log(`   Is Active: ${protocolInfo.isActive}`);
-    console.log(`   Total Deposited: ${hre.ethers.formatEther(protocolInfo.totalDeposited)} ETH`);
+    console.log(
+      `   Total Deposited: ${hre.ethers.formatEther(protocolInfo.totalDeposited)} ETH`
+    );
 
     // Check all protocols
     console.log('\n📋 All Protocols:');
@@ -63,19 +68,24 @@ async function main() {
     // Check if we can call Aave Pool directly
     console.log('\n🔍 Testing Aave Pool directly...');
     const aavePoolAddress = protocolInfo.contractAddress;
-    
-    if (aavePoolAddress && aavePoolAddress !== '0x0000000000000000000000000000000000000000') {
+
+    if (
+      aavePoolAddress &&
+      aavePoolAddress !== '0x0000000000000000000000000000000000000000'
+    ) {
       try {
         // Try to get pool info
-        const aavePool = await hre.ethers.getContractAt('IAavePool', aavePoolAddress);
-        
+        const aavePool = await hre.ethers.getContractAt(
+          'IAavePool',
+          aavePoolAddress
+        );
+
         // This might fail if interface is wrong
         console.log(`✅ Aave Pool contract found at: ${aavePoolAddress}`);
-        
+
         // Try to check if WMATIC is supported
         // const reserveData = await aavePool.getReserveData(WMATIC_ADDRESS);
         // console.log(`WMATIC Reserve Data: ${reserveData}`);
-        
       } catch (error) {
         console.log(`❌ Failed to interact with Aave Pool: ${error.message}`);
       }
@@ -87,7 +97,7 @@ async function main() {
     console.log('\n📊 Recent Activity:');
     const filter = defiAggregator.filters.TimeLockedStakeCreated();
     const events = await defiAggregator.queryFilter(filter, -100); // Last 100 blocks
-    
+
     console.log(`Found ${events.length} TimeLockedStakeCreated events:`);
     events.forEach((event, i) => {
       console.log(`Event ${i}:`);
@@ -96,7 +106,6 @@ async function main() {
       console.log(`  Protocol: ${event.args.protocol}`);
       console.log(`  Amount: ${hre.ethers.formatEther(event.args.amount)} ETH`);
     });
-
   } catch (error) {
     console.log('❌ Debug failed:', error.message);
   }

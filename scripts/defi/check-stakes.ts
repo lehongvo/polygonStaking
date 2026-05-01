@@ -20,7 +20,7 @@ async function main() {
     'deployInfo',
     'polygon-defi-deployment.json'
   );
-  
+
   if (!fs.existsSync(deploymentPath)) {
     console.error('❌ Deployment file not found!');
     console.log('💡 Please deploy the contract first');
@@ -61,13 +61,17 @@ async function main() {
     // Display all stakes with detailed info
     for (let i = 0; i < timeLockedStakes.length; i++) {
       const stake = timeLockedStakes[i];
-      
+
       console.log(`\n🆔 Stake #${i}:`);
       console.log(`💰 Amount: ${hre.ethers.formatEther(stake.amount)} WMATIC`);
       console.log(`🪙 Token: ${stake.stakingToken}`);
       console.log(`📋 Protocol: ${stake.protocol}`);
-      console.log(`⏰ Start: ${new Date(Number(stake.startTime) * 1000).toLocaleString()}`);
-      console.log(`⏰ End: ${new Date(Number(stake.endTime) * 1000).toLocaleString()}`);
+      console.log(
+        `⏰ Start: ${new Date(Number(stake.startTime) * 1000).toLocaleString()}`
+      );
+      console.log(
+        `⏰ End: ${new Date(Number(stake.endTime) * 1000).toLocaleString()}`
+      );
       console.log(`🔒 Active: ${stake.isActive}`);
       console.log(`📅 Scheduled: ${stake.isScheduled}`);
 
@@ -81,7 +85,7 @@ async function main() {
           i
         );
         console.log(`✅ Matured: ${isMatured}`);
-        
+
         if (isMatured) {
           maturedStakes++;
         }
@@ -114,12 +118,14 @@ async function main() {
     console.log(`📈 Total Stakes: ${timeLockedStakes.length}`);
     console.log(`🔒 Active Stakes: ${activeStakes}`);
     console.log(`✅ Matured Stakes: ${maturedStakes}`);
-    console.log(`💰 Total Staked: ${hre.ethers.formatEther(totalStaked)} WMATIC`);
+    console.log(
+      `💰 Total Staked: ${hre.ethers.formatEther(totalStaked)} WMATIC`
+    );
 
     // Withdrawal options
     if (activeStakes > 0) {
       console.log('\n💸 Withdrawal Options:');
-      
+
       for (let i = 0; i < timeLockedStakes.length; i++) {
         const stake = timeLockedStakes[i];
         if (!stake.isActive) continue;
@@ -149,9 +155,12 @@ async function main() {
     console.log('✅ Flexible withdrawal anytime with full rewards');
 
     console.log('\n🔗 View on Polygonscan:');
-    console.log(`📋 Contract: https://polygonscan.com/address/${contractAddress}`);
-    console.log(`📋 Read Contract: https://polygonscan.com/address/${contractAddress}#readContract`);
-
+    console.log(
+      `📋 Contract: https://polygonscan.com/address/${contractAddress}`
+    );
+    console.log(
+      `📋 Read Contract: https://polygonscan.com/address/${contractAddress}#readContract`
+    );
   } catch (error: any) {
     console.log('❌ Failed to fetch stakes:', error.message);
     console.log('💡 This might be expected if:');

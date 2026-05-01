@@ -20,7 +20,7 @@ async function main() {
     'deployInfo',
     'polygon-defi-deployment.json'
   );
-  
+
   if (!fs.existsSync(deploymentPath)) {
     console.error('❌ Deployment file not found!');
     console.log('💡 Please deploy the contract first');
@@ -65,8 +65,12 @@ async function main() {
 
       console.log(`\n🆔 Stake #${i}:`);
       console.log(`💰 Amount: ${hre.ethers.formatEther(stake.amount)} WMATIC`);
-      console.log(`⏰ Start: ${new Date(Number(stake.startTime) * 1000).toLocaleString()}`);
-      console.log(`⏰ End: ${new Date(Number(stake.endTime) * 1000).toLocaleString()}`);
+      console.log(
+        `⏰ Start: ${new Date(Number(stake.startTime) * 1000).toLocaleString()}`
+      );
+      console.log(
+        `⏰ End: ${new Date(Number(stake.endTime) * 1000).toLocaleString()}`
+      );
       console.log(`🔒 Active: ${stake.isActive}`);
       console.log(`✅ Matured: ${isMatured}`);
       console.log(`📋 Protocol: ${stake.protocol}`);
@@ -93,7 +97,9 @@ async function main() {
     );
 
     console.log(`\n💸 Withdrawing Stake #${stakeToWithdraw}...`);
-    console.log(`💰 Amount: ${hre.ethers.formatEther(stakeInfo.amount)} WMATIC`);
+    console.log(
+      `💰 Amount: ${hre.ethers.formatEther(stakeInfo.amount)} WMATIC`
+    );
     console.log(`✅ Matured: ${isMatured}`);
     console.log(`💡 Will receive 100% of principal + rewards (no penalties)`);
 
@@ -101,24 +107,34 @@ async function main() {
     const balanceBefore = await hre.ethers.provider.getBalance(signer.address);
 
     // Withdraw the stake
-    const withdrawTx = await defiAggregator.withdrawTimeLockedStake(stakeToWithdraw);
+    const withdrawTx =
+      await defiAggregator.withdrawTimeLockedStake(stakeToWithdraw);
     console.log(`⏳ Transaction: ${withdrawTx.hash}`);
-    
+
     const receipt = await withdrawTx.wait();
     console.log(`✅ Confirmed in block: ${receipt.blockNumber}`);
 
     // Get balance after withdrawal
     const balanceAfter = await hre.ethers.provider.getBalance(signer.address);
-    const received = balanceAfter - balanceBefore + receipt.gasUsed * receipt.gasPrice;
+    const received =
+      balanceAfter - balanceBefore + receipt.gasUsed * receipt.gasPrice;
 
     console.log(`\n💰 Withdrawal Results:`);
-    console.log(`📈 Balance Before: ${hre.ethers.formatEther(balanceBefore)} MATIC`);
-    console.log(`📈 Balance After: ${hre.ethers.formatEther(balanceAfter)} MATIC`);
-    console.log(`💎 Net Received: ${hre.ethers.formatEther(received)} MATIC (excluding gas)`);
+    console.log(
+      `📈 Balance Before: ${hre.ethers.formatEther(balanceBefore)} MATIC`
+    );
+    console.log(
+      `📈 Balance After: ${hre.ethers.formatEther(balanceAfter)} MATIC`
+    );
+    console.log(
+      `💎 Net Received: ${hre.ethers.formatEther(received)} MATIC (excluding gas)`
+    );
     console.log(`⛽ Gas Used: ${receipt.gasUsed.toString()}`);
 
     // Check stake status after withdrawal
-    const updatedStakes = await defiAggregator.getUserTimeLockedStakes(signer.address);
+    const updatedStakes = await defiAggregator.getUserTimeLockedStakes(
+      signer.address
+    );
     const updatedStakeInfo = updatedStakes[stakeToWithdraw];
 
     console.log(`\n📊 Updated Stake Info:`);
@@ -130,9 +146,12 @@ async function main() {
     console.log('✅ WMATIC was automatically unwrapped to MATIC');
 
     console.log('\n🔗 View on Polygonscan:');
-    console.log(`📋 Transaction: https://polygonscan.com/tx/${withdrawTx.hash}`);
-    console.log(`📋 Contract: https://polygonscan.com/address/${contractAddress}`);
-
+    console.log(
+      `📋 Transaction: https://polygonscan.com/tx/${withdrawTx.hash}`
+    );
+    console.log(
+      `📋 Contract: https://polygonscan.com/address/${contractAddress}`
+    );
   } catch (error: any) {
     console.log('❌ Withdrawal failed:', error.message);
     console.log('💡 This might be expected if:');
