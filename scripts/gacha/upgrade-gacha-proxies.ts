@@ -11,9 +11,7 @@ const MIN_BALANCE_MATIC = '0.3';
 const GAS_BUFFER_PERCENT = 20;
 const GRACE_PERIOD_SECONDS = 15;
 
-const UPGRADE_ABI = [
-  'function upgradeTo(address newImplementation) external',
-];
+const UPGRADE_ABI = ['function upgradeTo(address newImplementation) external'];
 const ACCESS_CONTROL_ABI = [
   'function hasRole(bytes32 role, address account) view returns (bool)',
 ];
@@ -49,11 +47,7 @@ async function hasUpgraderRole(
   proxyAddr: string,
   deployerAddr: string
 ): Promise<boolean> {
-  const c = new ethers.Contract(
-    proxyAddr,
-    ACCESS_CONTROL_ABI,
-    ethers.provider
-  );
+  const c = new ethers.Contract(proxyAddr, ACCESS_CONTROL_ABI, ethers.provider);
   return c.hasRole(UPGRADER_ROLE, deployerAddr);
 }
 
@@ -126,8 +120,7 @@ async function main() {
     newImplDeployAt = implInfo.deploymentTime ?? '';
     if (
       implInfo.contractAddress &&
-      implInfo.contractAddress.toLowerCase() !==
-        NEW_IMPL_ADDRESS.toLowerCase()
+      implInfo.contractAddress.toLowerCase() !== NEW_IMPL_ADDRESS.toLowerCase()
     ) {
       console.warn(
         `⚠️  deployInfo address (${implInfo.contractAddress}) != hardcoded NEW_IMPL_ADDRESS. Hardcoded takes precedence.`
@@ -259,8 +252,7 @@ async function main() {
 
   let estimatedGas: bigint;
   try {
-    estimatedGas =
-      await sampleContract.upgradeTo.estimateGas(NEW_IMPL_ADDRESS);
+    estimatedGas = await sampleContract.upgradeTo.estimateGas(NEW_IMPL_ADDRESS);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(

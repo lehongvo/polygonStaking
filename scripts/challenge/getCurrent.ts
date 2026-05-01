@@ -154,7 +154,8 @@ async function main() {
   const apySecondEnv = process.env.APY_SECOND || 8.292630650760506e-11;
   const feeEnv = process.env.FEE || 20;
   const addr = process.env.ADDR || '0xFe7d8E5A02107cF96C3720461c23E1DB711a58E0';
-  const rpc = process.env.RPC || process.env.POLYGON_RPC || process.env.JSON_RPC;
+  const rpc =
+    process.env.RPC || process.env.POLYGON_RPC || process.env.JSON_RPC;
   if (!rpc) {
     throw new Error('Missing RPC env: set RPC, POLYGON_RPC, or JSON_RPC');
   }

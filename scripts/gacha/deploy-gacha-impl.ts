@@ -70,9 +70,7 @@ async function main() {
   const estCostWei = estimatedGas * gasPrice;
 
   console.log(`Estimated gas:    ${estimatedGas.toString()}`);
-  console.log(
-    `Gas price:        ${ethers.formatUnits(gasPrice, 'gwei')} gwei`
-  );
+  console.log(`Gas price:        ${ethers.formatUnits(gasPrice, 'gwei')} gwei`);
   console.log(`Estimated cost:   ${ethers.formatEther(estCostWei)} MATIC`);
 
   if (balance < estCostWei * 2n) {
@@ -86,9 +84,7 @@ async function main() {
   );
   console.log(`Gas limit (+${GAS_BUFFER_PERCENT}% buffer): ${gasLimit}`);
 
-  console.log(
-    '\n⏸  Sleeping 10s before broadcasting — Ctrl+C now to abort.'
-  );
+  console.log('\n⏸  Sleeping 10s before broadcasting — Ctrl+C now to abort.');
   await new Promise(resolve => setTimeout(resolve, 10_000));
 
   // ---------------------------------------------------------------------
@@ -221,7 +217,9 @@ async function main() {
   console.log(
     `  3. Grant CLOSE_GACHA_ROLE to keeper/BACKEND wallet if it differs from`
   );
-  console.log(`     ${deployer.address}, otherwise withdrawBalances will revert.`);
+  console.log(
+    `     ${deployer.address}, otherwise withdrawBalances will revert.`
+  );
 }
 
 main()

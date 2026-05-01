@@ -104,5 +104,4 @@ describe('Gacha — Critical fixes', function () {
       expect(list[0]).to.equal(2n);
     });
   });
-
 });
