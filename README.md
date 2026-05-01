@@ -80,12 +80,12 @@ polygonStaking/
 
 ## Networks
 
-| Network | Chain ID | RPC env var |
-|---|---|---|
-| `localhost` | 1337 | `http://127.0.0.1:8545` |
-| `hardhat` | 1337 | in-memory |
-| `polygon` (mainnet) | 137 | `POLYGON_RPC_URL` |
-| `amoy` (Polygon testnet) | 80002 | `AMOY_RPC_URL` |
+| Network                  | Chain ID | RPC env var             |
+| ------------------------ | -------- | ----------------------- |
+| `localhost`              | 1337     | `http://127.0.0.1:8545` |
+| `hardhat`                | 1337     | in-memory               |
+| `polygon` (mainnet)      | 137      | `POLYGON_RPC_URL`       |
+| `amoy` (Polygon testnet) | 80002    | `AMOY_RPC_URL`          |
 
 Setup `.env` from `.env.example`:
 
@@ -98,16 +98,16 @@ cp .env.example .env
 
 ## Yarn scripts
 
-| Script | Purpose |
-|---|---|
-| `yarn compile` | `hardhat compile` |
-| `yarn test` | Run all tests recursively (`find` + `hardhat test`) |
-| `yarn test:coverage` | Solidity coverage (currently broken — tooling) |
-| `yarn flatten` | Regenerate `flattened/*.flat.sol` for Polygonscan verify |
-| `yarn lint` / `yarn lint:fix` | ESLint |
-| `yarn format` / `yarn format:check` | Prettier (sol + ts + json + md) |
-| `yarn deploy:amoy` / `yarn deploy:polygon` | Deploy DeFi aggregator |
-| `yarn withdraw` / `yarn withdraw:amoy` | Test DeFi withdraw |
+| Script                                     | Purpose                                                  |
+| ------------------------------------------ | -------------------------------------------------------- |
+| `yarn compile`                             | `hardhat compile`                                        |
+| `yarn test`                                | Run all tests recursively (`find` + `hardhat test`)      |
+| `yarn test:coverage`                       | Solidity coverage (currently broken — tooling)           |
+| `yarn flatten`                             | Regenerate `flattened/*.flat.sol` for Polygonscan verify |
+| `yarn lint` / `yarn lint:fix`              | ESLint                                                   |
+| `yarn format` / `yarn format:check`        | Prettier (sol + ts + json + md)                          |
+| `yarn deploy:amoy` / `yarn deploy:polygon` | Deploy DeFi aggregator                                   |
+| `yarn withdraw` / `yarn withdraw:amoy`     | Test DeFi withdraw                                       |
 
 ---
 
@@ -115,15 +115,15 @@ cp .env.example .env
 
 3 challenge contracts (`ChallengeBaseStep`, `ChallengeDetail`, `ChallengeHIIT`) have applied **8 security patches** per third-party AI review (`sun2642026.txt`):
 
-| ID | Description |
-|---|---|
-| **F1** | `updateRewardSuccessAndfail` — fix loop range (`0..index`) and `+=` accumulator |
-| **F2** | `sendDailyResult` — fix `isSendFailWithSameDay` inverted bool + `length>1` guard (C1/C2 only; C3 already correct) |
-| **F3** | Inline `ReentrancyGuard` + `nonReentrant` on `giveUp/sendDailyResult/closeChallenge/withdrawTokensOnCompletion` + CEI state writes before external calls |
-| **F4** | `tranferCoinNative` reverts on insufficient balance instead of silent skip |
-| **F6** | `onTimeSendResult` enforces `endTime + 2 days` upper bound |
-| **N1** | Constructor enforces `sum(awardReceiversPercent) <= 100` |
-| **F-A10** | `receive()` guard `_reentrancyStatus != 2` to prevent CEI+receive() infinite-loop DoS |
+| ID        | Description                                                                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **F1**    | `updateRewardSuccessAndfail` — fix loop range (`0..index`) and `+=` accumulator                                                                          |
+| **F2**    | `sendDailyResult` — fix `isSendFailWithSameDay` inverted bool + `length>1` guard (C1/C2 only; C3 already correct)                                        |
+| **F3**    | Inline `ReentrancyGuard` + `nonReentrant` on `giveUp/sendDailyResult/closeChallenge/withdrawTokensOnCompletion` + CEI state writes before external calls |
+| **F4**    | `tranferCoinNative` reverts on insufficient balance instead of silent skip                                                                               |
+| **F6**    | `onTimeSendResult` enforces `endTime + 2 days` upper bound                                                                                               |
+| **N1**    | Constructor enforces `sum(awardReceiversPercent) <= 100`                                                                                                 |
+| **F-A10** | `receive()` guard `_reentrancyStatus != 2` to prevent CEI+receive() infinite-loop DoS                                                                    |
 
 Verified by **84 unit tests** (28 test files across 7 categories).
 

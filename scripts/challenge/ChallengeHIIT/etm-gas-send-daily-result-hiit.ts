@@ -34,7 +34,9 @@ function serializeSendArgs(sendArgs: any[], dayTs?: number): object {
   ] = sendArgs;
   const toStr = (b: bigint) => (typeof b === 'bigint' ? b.toString() : b);
   const arrToStr = (arr: bigint[] | number[]) =>
-    Array.isArray(arr) ? arr.map((x: any) => (typeof x === 'bigint' ? x.toString() : x)) : arr;
+    Array.isArray(arr)
+      ? arr.map((x: any) => (typeof x === 'bigint' ? x.toString() : x))
+      : arr;
   return {
     _day: arrToStr(_day as bigint[]),
     _intervals: arrToStr(_intervals as bigint[]),
@@ -46,7 +48,9 @@ function serializeSendArgs(sendArgs: any[], dayTs?: number): object {
     _listIndexNFT: (_listIndexNFT as bigint[][]).map(row => row.map(toStr)),
     _listSenderAddress: _listSenderAddress,
     _statusTypeNft: _statusTypeNft,
-    _timeRange: Array.isArray(_timeRange) ? (_timeRange as bigint[]).map(toStr) : _timeRange,
+    _timeRange: Array.isArray(_timeRange)
+      ? (_timeRange as bigint[]).map(toStr)
+      : _timeRange,
     ...(dayTs !== undefined ? { _dayTimestamp: dayTs } : {}),
   };
 }
@@ -60,7 +64,9 @@ async function main() {
 
   if (!fs.existsSync(deployInfoPath)) {
     console.error('❌ Deploy info not found:', deployInfoPath);
-    console.error('   Run with --network polygon (or the network you deployed to).');
+    console.error(
+      '   Run with --network polygon (or the network you deployed to).'
+    );
     process.exit(1);
   }
 
@@ -74,7 +80,9 @@ async function main() {
   }
 
   if (!primaryRequired || primaryRequired.length < 6) {
-    console.error('❌ deployInfo.constructorArgs.primaryRequired must have 6 elements');
+    console.error(
+      '❌ deployInfo.constructorArgs.primaryRequired must have 6 elements'
+    );
     process.exit(1);
   }
 
@@ -112,7 +120,12 @@ async function main() {
   const provider = hre.ethers.provider;
   const timeRelease = 600;
 
-  const results: { dayIndex: number; dayTs: number; gasEstimate: string; inputData: object }[] = [];
+  const results: {
+    dayIndex: number;
+    dayTs: number;
+    gasEstimate: string;
+    inputData: object;
+  }[] = [];
 
   for (let i = 0; i < dayRequiredCount; i++) {
     const dayTs = startTimeC + (i + 1) * 86400 * 2;
@@ -169,9 +182,16 @@ async function main() {
       testTimeRange,
     ];
 
-    const data = contract.interface.encodeFunctionData('sendDailyResult', sendArgs);
+    const data = contract.interface.encodeFunctionData(
+      'sendDailyResult',
+      sendArgs
+    );
     const gasEstimate = challengerAddress
-      ? await hre.ethers.provider.estimateGas({ to: contractAddress, from: challengerAddress, data })
+      ? await hre.ethers.provider.estimateGas({
+          to: contractAddress,
+          from: challengerAddress,
+          data,
+        })
       : await contract.sendDailyResult.estimateGas(...sendArgs);
     const inputData = serializeSendArgs(sendArgs, dayTs);
 
@@ -182,19 +202,23 @@ async function main() {
       inputData,
     });
 
-    console.log(`Day ${i + 1}/${dayRequiredCount} (dayTs=${dayTs}): gas = ${gasEstimate.toString()}`);
+    console.log(
+      `Day ${i + 1}/${dayRequiredCount} (dayTs=${dayTs}): gas = ${gasEstimate.toString()}`
+    );
     console.log('sendArgs (inputData):', JSON.stringify(inputData, null, 2));
   }
 
   console.log('');
   console.log('📊 OUTPUT: Gas estimates and input data');
   console.log('======================================');
-  console.log(JSON.stringify({ contractAddress, network: networkName, results }, null, 2));
+  console.log(
+    JSON.stringify({ contractAddress, network: networkName, results }, null, 2)
+  );
 }
 
 main()
   .then(() => process.exit(0))
-  .catch((err) => {
+  .catch(err => {
     console.error('💥 Error:', err);
     process.exit(1);
   });

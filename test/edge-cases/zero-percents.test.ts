@@ -2,7 +2,11 @@
 // 0% を許容するか / どのインデックスでエラーとなるかを境界値として検証する。
 import { expect } from 'chai';
 import hre from 'hardhat';
-import { deployChallenge, moveToStart, sendStep } from '../helpers/deployHelpers.ts';
+import {
+  deployChallenge,
+  moveToStart,
+  sendStep,
+} from '../helpers/deployHelpers.ts';
 
 describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
   const GOAL = 1000;
@@ -14,9 +18,12 @@ describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
     await expect(
       deployChallenge('ChallengeBaseStep', {
         awardReceiversPercent: [0, 0],
-        index: 1, totalAmount: hre.ethers.parseEther('1'),
-        goal: GOAL, dayRequired: DAY_REQUIRED, duration: DURATION,
-      }),
+        index: 1,
+        totalAmount: hre.ethers.parseEther('1'),
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      })
     ).to.be.revertedWith('Invalid value0');
   });
 
@@ -25,9 +32,12 @@ describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
     await expect(
       deployChallenge('ChallengeBaseStep', {
         awardReceiversPercent: [0, 50],
-        index: 1, totalAmount: hre.ethers.parseEther('1'),
-        goal: GOAL, dayRequired: DAY_REQUIRED, duration: DURATION,
-      }),
+        index: 1,
+        totalAmount: hre.ethers.parseEther('1'),
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      })
     ).to.be.revertedWith('Invalid value0');
   });
 
@@ -36,9 +46,12 @@ describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
     await expect(
       deployChallenge('ChallengeBaseStep', {
         awardReceiversPercent: [50, 0],
-        index: 1, totalAmount: hre.ethers.parseEther('1'),
-        goal: GOAL, dayRequired: DAY_REQUIRED, duration: DURATION,
-      }),
+        index: 1,
+        totalAmount: hre.ethers.parseEther('1'),
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      })
     ).to.be.revertedWith('Invalid value1');
   });
 
@@ -50,19 +63,29 @@ describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
     const challenger = signers[1];
     const TINY = 10_000n;
 
-    const { challenge, startTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [1, 1],
-      receivers: [recv0.address, recv1.address],
-      index: 1,
-      totalAmount: TINY,
-      msgValue: TINY,
-      goal: GOAL, dayRequired: DAY_REQUIRED, duration: DURATION,
-    });
+    const { challenge, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [1, 1],
+        receivers: [recv0.address, recv1.address],
+        index: 1,
+        totalAmount: TINY,
+        msgValue: TINY,
+        goal: GOAL,
+        dayRequired: DAY_REQUIRED,
+        duration: DURATION,
+      }
+    );
 
     await moveToStart(startTime);
     const balBefore = await hre.ethers.provider.getBalance(recv0.address);
-    await sendStep(challenge, 'ChallengeBaseStep', challenger, { day: startTime + 200, steps: GOAL });
+    await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+      day: startTime + 200,
+      steps: GOAL,
+    });
     expect(await challenge.isSuccess()).to.equal(true);
-    expect(await hre.ethers.provider.getBalance(recv0.address)).to.be.gt(balBefore);
+    expect(await hre.ethers.provider.getBalance(recv0.address)).to.be.gt(
+      balBefore
+    );
   });
 });

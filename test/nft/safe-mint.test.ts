@@ -12,25 +12,45 @@ describe('T15 – safeMintNFT callback stores address and tokenId on success', f
     const signers = await hre.ethers.getSigners();
     const [, challenger] = signers;
 
-    const { challenge, nft, startTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [50],
-      index: 1,
-      goal: 1000,
-      dayRequired: 1,
-      duration: 30,
-      allowGiveUp: [true, true, true],
-    });
+    const { challenge, nft, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [50],
+        index: 1,
+        goal: 1000,
+        dayRequired: 1,
+        duration: 30,
+        allowGiveUp: [true, true, true],
+      }
+    );
 
     return { challenge, nft, challenger, startTime };
   }
 
-  async function triggerSuccess(challenge: any, challenger: any, startTime: number) {
+  async function triggerSuccess(
+    challenge: any,
+    challenger: any,
+    startTime: number
+  ) {
     await moveToStart(startTime);
-    return challenge.connect(challenger).sendDailyResult(
-      [startTime + 300], [1001], [0, 0], '0x',
-      [], [], [], [], [],
-      [0, MAX64], [], [], [], [],
-    );
+    return challenge
+      .connect(challenger)
+      .sendDailyResult(
+        [startTime + 300],
+        [1001],
+        [0, 0],
+        '0x',
+        [],
+        [],
+        [],
+        [],
+        [],
+        [0, MAX64],
+        [],
+        [],
+        [],
+        []
+      );
   }
 
   // モックが返した NFT アドレスが erc721Address[1] に格納される

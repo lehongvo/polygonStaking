@@ -13,8 +13,14 @@ async function deployHIIT() {
   const [, challenger, feeAddr, returnedNFTWallet, sponsor, recv1, recv2] =
     await hre.ethers.getSigners();
 
-  const MockNFT = await hre.ethers.getContractFactory('MockExerciseSupplementNFT');
-  const nft = await MockNFT.deploy(returnedNFTWallet.address, SUCCESS_FEE, FAIL_FEE);
+  const MockNFT = await hre.ethers.getContractFactory(
+    'MockExerciseSupplementNFT'
+  );
+  const nft = await MockNFT.deploy(
+    returnedNFTWallet.address,
+    SUCCESS_FEE,
+    FAIL_FEE
+  );
 
   const Factory = await hre.ethers.getContractFactory('ChallengeHIIT');
   const block = await hre.ethers.provider.getBlock('latest');
@@ -38,7 +44,16 @@ async function deployHIIT() {
     { value: hre.ethers.parseEther('10') }
   );
 
-  return { challenger, sponsor, feeAddr, recv1, recv2, challenge, startTime, endTime };
+  return {
+    challenger,
+    sponsor,
+    feeAddr,
+    recv1,
+    recv2,
+    challenge,
+    startTime,
+    endTime,
+  };
 }
 
 describe('T5-C3 — closeChallenge + fail trigger (ChallengeHIIT)', function () {
@@ -66,12 +81,14 @@ describe('T5-C3 — closeChallenge + fail trigger (ChallengeHIIT)', function () 
       (await hre.ethers.provider.getBalance(feeAddr.address)) - feeBefore
     ).to.equal(hre.ethers.parseEther('1'));
 
-    await expect(challenge.connect(sponsor).closeChallenge([], [], [], [])).to.be.reverted;
+    await expect(challenge.connect(sponsor).closeChallenge([], [], [], [])).to
+      .be.reverted;
   });
 
   // (b) HIIT 失敗 4 日 + 達成 1 日 → sendDailyResult 内で FAILED(2) へ遷移
   it('(b) Fail triggers from sendDailyResult: 4 failing HIIT days + 1 passing day', async function () {
-    const { challenger, feeAddr, recv2, challenge, startTime, endTime } = await deployHIIT();
+    const { challenger, feeAddr, recv2, challenge, startTime, endTime } =
+      await deployHIIT();
 
     await time.increaseTo(startTime + 100);
 
@@ -80,9 +97,21 @@ describe('T5-C3 — closeChallenge + fail trigger (ChallengeHIIT)', function () 
     const range: [number, number] = [0, endTime];
 
     for (let i = 0; i < 4; i++) {
-      await challenge.connect(challenger).sendDailyResult(
-        [startTime + 200 + i * 86400], [1], [10], data, sig, [], [], [], [], [], range
-      );
+      await challenge
+        .connect(challenger)
+        .sendDailyResult(
+          [startTime + 200 + i * 86400],
+          [1],
+          [10],
+          data,
+          sig,
+          [],
+          [],
+          [],
+          [],
+          [],
+          range
+        );
       await time.increase(86400);
     }
 
@@ -92,9 +121,21 @@ describe('T5-C3 — closeChallenge + fail trigger (ChallengeHIIT)', function () 
     const recv2Before = await hre.ethers.provider.getBalance(recv2.address);
     const feeBefore = await hre.ethers.provider.getBalance(feeAddr.address);
 
-    await challenge.connect(challenger).sendDailyResult(
-      [startTime + 200 + 4 * 86400], [5], [60], data, sig, [], [], [], [], [], range
-    );
+    await challenge
+      .connect(challenger)
+      .sendDailyResult(
+        [startTime + 200 + 4 * 86400],
+        [5],
+        [60],
+        data,
+        sig,
+        [],
+        [],
+        [],
+        [],
+        [],
+        range
+      );
 
     expect(await challenge.isFinished()).to.be.true;
     expect(await challenge.isSuccess()).to.be.false;

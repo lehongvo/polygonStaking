@@ -1154,15 +1154,15 @@ contract ChallengeHIIT is IERC721Receiver {
 
             for (uint256 i = 0; i < erc20ListAddress.length; i++) {
                 uint256 amountTokenToReceiver;
-                uint256 totalTokenRewardSubtractFee = (listBalanceAllToken[i] *
-                    remainningAmountFee) / 100;
+                uint256 totalTokenRewardSubtractFee =
+                    (listBalanceAllToken[i] * remainningAmountFee) / 100;
 
                 if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
                     amountTokenToReceiver =
                         (totalTokenRewardSubtractFee * currentStatus) / dayRequired;
 
-                    uint256 amountNativeToSponsor = totalTokenRewardSubtractFee -
-                        amountTokenToReceiver;
+                    uint256 amountNativeToSponsor =
+                        totalTokenRewardSubtractFee - amountTokenToReceiver;
 
                     TransferHelper.safeTransfer(
                         erc20ListAddress[i],
@@ -1184,9 +1184,10 @@ contract ChallengeHIIT is IERC721Receiver {
 
                 for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                     if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
-                        uint256 amountTokenTmp = (awardTokenReceivers[erc20ListAddress[j]][i] *
-                            amountTokenToReceiverList[j]) /
-                            ((listBalanceAllToken[j] * remainningAmountFee) / 100);
+                        uint256 amountTokenTmp =
+                            (awardTokenReceivers[erc20ListAddress[j]][i] *
+                                amountTokenToReceiverList[j]) /
+                                ((listBalanceAllToken[j] * remainningAmountFee) / 100);
 
                         TransferHelper.safeTransfer(
                             erc20ListAddress[j],
@@ -1490,8 +1491,9 @@ contract ChallengeHIIT is IERC721Receiver {
 
             if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
                 for (uint256 j = 0; j < awardReceiversPercent.length; j++) {
-                    uint256 awardAmount = (awardReceiversPercent[j] *
-                        IERC20(erc20ListAddress[i]).balanceOf(address(this))) / 100;
+                    uint256 awardAmount =
+                        (awardReceiversPercent[j] *
+                            IERC20(erc20ListAddress[i]).balanceOf(address(this))) / 100;
                     awardTokenReceivers[erc20ListAddress[i]].push(awardAmount);
                 }
 

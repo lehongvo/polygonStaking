@@ -4,11 +4,11 @@ Single-file output cho 3 challenge contract đã patched. Dùng để verify on 
 
 ## Files
 
-| File | Lines | Source |
-|---|---|---|
+| File                         | Lines | Source                                            |
+| ---------------------------- | ----- | ------------------------------------------------- |
 | `ChallengeBaseStep.flat.sol` | ~1924 | `contracts/ChallengeDetail/ChallengeBaseStep.sol` |
-| `ChallengeDetail.flat.sol` | ~1622 | `contracts/ChallengeDetail/ChallengeDetail.sol` |
-| `ChallengeHIIT.flat.sol` | ~1636 | `contracts/ChallengeDetail/ChallengeHIIT.sol` |
+| `ChallengeDetail.flat.sol`   | ~1622 | `contracts/ChallengeDetail/ChallengeDetail.sol`   |
+| `ChallengeHIIT.flat.sol`     | ~1636 | `contracts/ChallengeDetail/ChallengeHIIT.sol`     |
 
 ## Properties
 
@@ -47,15 +47,15 @@ PRIVATE_KEY="" npx hardhat flatten contracts/ChallengeDetail/ChallengeBaseStep.s
 
 3 contract đã apply 10 fix theo `newRequirement/sun2642026.txt` review:
 
-| ID | Fix | Location |
-|---|---|---|
-| F1-A | `sumAward` dùng `+=` thay `=` | `updateRewardSuccessAndfail` |
-| F1-B | Success loop `0..index` thay `0..length` | `updateRewardSuccessAndfail` |
-| F2 | `isSendFailWithSameDay` inverted bool + length>1 guard (chỉ C1/C2; C3 đã đúng) | `sendDailyResult` |
-| F3 | `nonReentrant` modifier + CEI state writes | 4 entry points |
-| F4 | `tranferCoinNative` revert thay silent skip | `tranferCoinNative` |
-| F6 | `onTimeSendResult` upper bound `endTime + 2 days` | modifier |
-| N1 | Constructor enforce `sum(percent) <= 100` | constructor |
-| F-A10 | `receive()` guard `_reentrancyStatus != 2` | `receive()` |
+| ID    | Fix                                                                            | Location                     |
+| ----- | ------------------------------------------------------------------------------ | ---------------------------- |
+| F1-A  | `sumAward` dùng `+=` thay `=`                                                  | `updateRewardSuccessAndfail` |
+| F1-B  | Success loop `0..index` thay `0..length`                                       | `updateRewardSuccessAndfail` |
+| F2    | `isSendFailWithSameDay` inverted bool + length>1 guard (chỉ C1/C2; C3 đã đúng) | `sendDailyResult`            |
+| F3    | `nonReentrant` modifier + CEI state writes                                     | 4 entry points               |
+| F4    | `tranferCoinNative` revert thay silent skip                                    | `tranferCoinNative`          |
+| F6    | `onTimeSendResult` upper bound `endTime + 2 days`                              | modifier                     |
+| N1    | Constructor enforce `sum(percent) <= 100`                                      | constructor                  |
+| F-A10 | `receive()` guard `_reentrancyStatus != 2`                                     | `receive()`                  |
 
 Chi tiết xem `newRequirement/review_output/REVIEW_REPORT_sun2642026.md`.

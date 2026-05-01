@@ -31,7 +31,11 @@ async function deploy(allAwardToSponsor: boolean) {
   const MockNFT = await hre.ethers.getContractFactory(
     'MockExerciseSupplementNFT'
   );
-  const nft = await MockNFT.deploy(returnedNFTWallet.address, SUCCESS_FEE, FAIL_FEE);
+  const nft = await MockNFT.deploy(
+    returnedNFTWallet.address,
+    SUCCESS_FEE,
+    FAIL_FEE
+  );
   const Factory = await hre.ethers.getContractFactory('ChallengeBaseStep');
 
   const block = await hre.ethers.provider.getBlock('latest');
@@ -62,7 +66,8 @@ describe('T4 — giveUp flow', function () {
   // (a) 全額スポンサー返還モード: スポンサー +9 ETH / feeAddr +1 ETH、
   //     残高 0、二度目の giveUp は revert（GAVE_UP=3 状態）
   it('(a) choiceAwardToSponsor=true: sponsor gets all (minus fee), CEI applied, second giveUp blocked', async function () {
-    const { challenger, sponsor, feeAddr, challenge, startTime } = await deploy(true);
+    const { challenger, sponsor, feeAddr, challenge, startTime } =
+      await deploy(true);
 
     await time.increaseTo(startTime + 100);
 
@@ -106,9 +111,8 @@ describe('T4 — giveUp flow', function () {
     ).to.equal(0n, 'no funds stranded');
 
     // Second giveUp should revert (notSelectGiveUp + available)
-    await expect(
-      challenge.connect(challenger).giveUp([], [], [], [])
-    ).to.be.reverted;
+    await expect(challenge.connect(challenger).giveUp([], [], [], [])).to.be
+      .reverted;
   });
 
   // (b) 按分モード: 1日達成（cs=1）/ 必要4日 → スポンサー 6.75 / recv1 1.25 / fee 1

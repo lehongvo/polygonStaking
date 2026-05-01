@@ -33,10 +33,7 @@ contract MockERC1155 {
         uint256 amount,
         bytes calldata
     ) external {
-        require(
-            from == msg.sender || isApprovedForAll[from][msg.sender],
-            "not authorized"
-        );
+        require(from == msg.sender || isApprovedForAll[from][msg.sender], "not authorized");
         require(balanceOf[id][from] >= amount, "insufficient");
         balanceOf[id][from] -= amount;
         balanceOf[id][to] += amount;

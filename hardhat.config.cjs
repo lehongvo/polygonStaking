@@ -37,7 +37,8 @@ const config = {
   },
   etherscan: {
     // Single string = Etherscan API V2 (one key for all chains, chainid from network)
-    apiKey: process.env.ETHERSCAN_API_KEY || process.env.POLYGONSCAN_API_KEY || '',
+    apiKey:
+      process.env.ETHERSCAN_API_KEY || process.env.POLYGONSCAN_API_KEY || '',
     customChains: [
       {
         network: 'polygon',

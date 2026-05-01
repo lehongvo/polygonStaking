@@ -2,7 +2,11 @@
 // 歩数（GOAL）に到達しても、歩行分数が requiredMinutes 未満であれば
 // 成功扱いにならず、両条件を満たした場合のみ isSuccess=true となる。
 import { expect } from 'chai';
-import { deployChallenge, sendStep, moveToStart } from '../helpers/deployHelpers.ts';
+import {
+  deployChallenge,
+  sendStep,
+  moveToStart,
+} from '../helpers/deployHelpers.ts';
 
 describe('T17 – ChallengeBaseStep: isPassWalkingSpeed blocks and gates success', function () {
   const GOAL = 1000;
@@ -28,10 +32,16 @@ describe('T17 – ChallengeBaseStep: isPassWalkingSpeed blocks and gates success
     const challenger = signers[1];
 
     await sendStep(challenge, 'ChallengeBaseStep', challenger, {
-      day: startTime + 86400 * 1, steps: GOAL, minutes: 0, mets: 100,
+      day: startTime + 86400 * 1,
+      steps: GOAL,
+      minutes: 0,
+      mets: 100,
     });
     await sendStep(challenge, 'ChallengeBaseStep', challenger, {
-      day: startTime + 86400 * 2, steps: GOAL, minutes: 0, mets: 100,
+      day: startTime + 86400 * 2,
+      steps: GOAL,
+      minutes: 0,
+      mets: 100,
     });
 
     expect(await challenge.currentStatus()).to.equal(2n);
@@ -45,10 +55,16 @@ describe('T17 – ChallengeBaseStep: isPassWalkingSpeed blocks and gates success
     const challenger = signers[1];
 
     await sendStep(challenge, 'ChallengeBaseStep', challenger, {
-      day: startTime + 86400 * 1, steps: GOAL, minutes: REQUIRED_MINUTES, mets: 100,
+      day: startTime + 86400 * 1,
+      steps: GOAL,
+      minutes: REQUIRED_MINUTES,
+      mets: 100,
     });
     await sendStep(challenge, 'ChallengeBaseStep', challenger, {
-      day: startTime + 86400 * 2, steps: GOAL, minutes: REQUIRED_MINUTES + 5, mets: 100,
+      day: startTime + 86400 * 2,
+      steps: GOAL,
+      minutes: REQUIRED_MINUTES + 5,
+      mets: 100,
     });
 
     expect(await challenge.currentStatus()).to.equal(2n);

@@ -12,37 +12,17 @@
       "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9"
     ],
     "createByToken": "0x0000000000000000000000000000000000000000",
-    "erc721Addresses": [
-      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
-    ],
-    "primaryRequired": [
-      3,
-      1771368487,
-      1967062887,
-      2,
-      60,
-      3
-    ],
+    "erc721Addresses": ["0x55285EcCef5487E87C5980C880131aCadDE7767C"],
+    "primaryRequired": [3, 1771368487, 1967062887, 2, 60, 3],
     "awardReceivers": [
       "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9",
       "0x3ffe910Ad8Bc71F78d12f5B8Fb244c655a91A7c9"
     ],
     "index": 1,
-    "allowGiveUp": [
-      true,
-      true,
-      true
-    ],
-    "gasData": [
-      "200000000000000000",
-      "200000000000000000",
-      "0"
-    ],
+    "allowGiveUp": [true, true, true],
+    "gasData": ["200000000000000000", "200000000000000000", "0"],
     "allAwardToSponsorWhenGiveUp": true,
-    "awardReceiversPercent": [
-      100,
-      100
-    ],
+    "awardReceiversPercent": [100, 100],
     "totalAmount": "1000000000000"
   },
   "contractDetails": {

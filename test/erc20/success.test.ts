@@ -3,7 +3,11 @@
 // スナップショット値が想定通りかを確認する。
 import { expect } from 'chai';
 import hre from 'hardhat';
-import { deployChallenge, moveToStart, sendStep } from '../helpers/deployHelpers.ts';
+import {
+  deployChallenge,
+  moveToStart,
+  sendStep,
+} from '../helpers/deployHelpers.ts';
 
 describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
   async function setup() {
@@ -11,17 +15,28 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
     const tkn1 = await MockERC20.deploy('Token1', 'TKN1');
     const tknAddr = await tkn1.getAddress();
 
-    const { challenge, signers, startTime, endTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [50, 40],
-      index: 1,
-      dayRequired: 3,
-      erc20List: [tknAddr],
-    });
+    const { challenge, signers, startTime, endTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [50, 40],
+        index: 1,
+        dayRequired: 3,
+        erc20List: [tknAddr],
+      }
+    );
 
     const challengeAddr = await challenge.getAddress();
     await tkn1.mint(challengeAddr, hre.ethers.parseEther('1000'));
 
-    return { tkn1, tknAddr, challenge, challengeAddr, signers, startTime, endTime };
+    return {
+      tkn1,
+      tknAddr,
+      challenge,
+      challengeAddr,
+      signers,
+      startTime,
+      endTime,
+    };
   }
 
   // 成功時、feeAddr へ 10% の手数料（100 TKN1）が送られる
@@ -32,9 +47,14 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
 
     await moveToStart(startTime);
     for (let day = 1; day <= 3; day++) {
-      await sendStep(challenge, 'ChallengeBaseStep', challenger, { day, steps: 1000 });
+      await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+        day,
+        steps: 1000,
+      });
     }
-    expect(await tkn1.balanceOf(feeAddr.address)).to.equal(hre.ethers.parseEther('100'));
+    expect(await tkn1.balanceOf(feeAddr.address)).to.equal(
+      hre.ethers.parseEther('100')
+    );
   });
 
   // 成功時、成功側受取人 recv0 へ 50% 配分（500 TKN1）が送られる
@@ -45,9 +65,14 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
 
     await moveToStart(startTime);
     for (let day = 1; day <= 3; day++) {
-      await sendStep(challenge, 'ChallengeBaseStep', challenger, { day, steps: 1000 });
+      await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+        day,
+        steps: 1000,
+      });
     }
-    expect(await tkn1.balanceOf(recv0.address)).to.equal(hre.ethers.parseEther('500'));
+    expect(await tkn1.balanceOf(recv0.address)).to.equal(
+      hre.ethers.parseEther('500')
+    );
   });
 
   // getBalanceToken() は手数料控除前の元残高（1000 TKN1）を返すスナップショット
@@ -57,7 +82,10 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
 
     await moveToStart(startTime);
     for (let day = 1; day <= 3; day++) {
-      await sendStep(challenge, 'ChallengeBaseStep', challenger, { day, steps: 1000 });
+      await sendStep(challenge, 'ChallengeBaseStep', challenger, {
+        day,
+        steps: 1000,
+      });
     }
     const balances = await challenge.getBalanceToken();
     expect(balances.length).to.equal(1);

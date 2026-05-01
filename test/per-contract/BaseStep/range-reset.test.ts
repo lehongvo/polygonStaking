@@ -30,13 +30,25 @@ const FAIL_FEE = 10;
 describe('T6 — F1-B range + N2 reset', function () {
   // F1-B: 成功時送金は receivers[0..index-1] のみ。失敗側 recv2 には支払われない
   it('F1-B: success loop only pays receivers[0..index-1], skips fail-side', async function () {
-    const [, challenger, feeAddr, returnedNFTWallet, sponsor, recv0, recv1, recv2] =
-      await hre.ethers.getSigners();
+    const [
+      ,
+      challenger,
+      feeAddr,
+      returnedNFTWallet,
+      sponsor,
+      recv0,
+      recv1,
+      recv2,
+    ] = await hre.ethers.getSigners();
 
     const MockNFT = await hre.ethers.getContractFactory(
       'MockExerciseSupplementNFT'
     );
-    const nft = await MockNFT.deploy(returnedNFTWallet.address, SUCCESS_FEE, FAIL_FEE);
+    const nft = await MockNFT.deploy(
+      returnedNFTWallet.address,
+      SUCCESS_FEE,
+      FAIL_FEE
+    );
     const Factory = await hre.ethers.getContractFactory('ChallengeBaseStep');
 
     const block = await hre.ethers.provider.getBlock('latest');
@@ -145,7 +157,11 @@ describe('T6 — F1-B range + N2 reset', function () {
     const MockNFT = await hre.ethers.getContractFactory(
       'MockExerciseSupplementNFT'
     );
-    const nft = await MockNFT.deploy(returnedNFTWallet.address, SUCCESS_FEE, FAIL_FEE);
+    const nft = await MockNFT.deploy(
+      returnedNFTWallet.address,
+      SUCCESS_FEE,
+      FAIL_FEE
+    );
     const Factory = await hre.ethers.getContractFactory('ChallengeBaseStep');
 
     const block = await hre.ethers.provider.getBlock('latest');
@@ -171,7 +187,10 @@ describe('T6 — F1-B range + N2 reset', function () {
 
     // Pre-giveUp: listBalanceAllToken empty (no ERC20 in registry)
     const balBefore = await challenge.getBalanceToken();
-    expect(balBefore.length).to.equal(0n, 'pre-giveUp: empty listBalanceAllToken');
+    expect(balBefore.length).to.equal(
+      0n,
+      'pre-giveUp: empty listBalanceAllToken'
+    );
 
     // giveUp triggers updateRewardSuccessAndfail (the function we patched).
     // F-A9 deletes listBalanceAllToken at top + erc20 loop pushes nothing

@@ -504,9 +504,9 @@ contract PolygonDeFiAggregator is
                     estimatedValue += balance;
                     // Add estimated interest
                     uint256 timeElapsed = block.timestamp - protocolLastUpdate[protocolName];
-                    uint256 interest = (balance *
-                        protocols[protocolName].currentAPY *
-                        timeElapsed) / (365 days * 10000);
+                    uint256 interest =
+                        (balance * protocols[protocolName].currentAPY * timeElapsed) /
+                            (365 days * 10000);
                     totalRewards += interest;
                 }
             }

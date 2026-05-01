@@ -3196,7 +3196,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
                 if (
                     rewardTokens[randomIndexReward].rewardActivationCount <
-                    rewardTokens[randomIndexReward].maxNumberAllowed &&
+                        rewardTokens[randomIndexReward].maxNumberAllowed &&
                     checkBalanceOfReward(currentRewardToken)
                 ) {
                     // Get the address of the selected reward token
@@ -3867,8 +3867,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
             } else {
                 // If not, generate a random number using VRFConsumerBase and the total unlock reward
                 randomNumber =
-                    IVRFConsumerBase(VRFConsumerBaseOnlyTime).randomResult() %
-                    totalUnlockReward;
+                    IVRFConsumerBase(VRFConsumerBaseOnlyTime).randomResult() % totalUnlockReward;
 
                 // Call the getRandomNumber function on the VRFConsumerBase contract
                 IVRFConsumerBase(VRFConsumerBaseOnlyTime).getRandomNumber();

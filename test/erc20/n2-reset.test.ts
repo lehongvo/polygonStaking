@@ -10,13 +10,16 @@ describe('T12 – N2 fix: listBalanceAllToken not doubled with real ERC20', func
     const tkn1 = await MockERC20.deploy('Token1', 'TKN1');
     const tknAddr = await tkn1.getAddress();
 
-    const { challenge, signers, startTime } = await deployChallenge('ChallengeBaseStep', {
-      awardReceiversPercent: [50, 40],
-      index: 1,
-      dayRequired: 20,
-      allAwardToSponsor: true,
-      erc20List: [tknAddr],
-    });
+    const { challenge, signers, startTime } = await deployChallenge(
+      'ChallengeBaseStep',
+      {
+        awardReceiversPercent: [50, 40],
+        index: 1,
+        dayRequired: 20,
+        allAwardToSponsor: true,
+        erc20List: [tknAddr],
+      }
+    );
 
     const challengeAddr = await challenge.getAddress();
     await tkn1.mint(challengeAddr, hre.ethers.parseEther('100'));
