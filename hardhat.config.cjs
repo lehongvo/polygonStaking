@@ -19,6 +19,7 @@ const config = {
   networks: {
     hardhat: {
       chainId: 1337,
+      allowUnlimitedContractSize: true,
     },
     polygon: {
       url: process.env.POLYGON_RPC_URL || 'https://polygon-rpc.com',
