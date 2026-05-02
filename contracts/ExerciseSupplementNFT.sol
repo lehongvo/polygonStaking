@@ -4012,7 +4012,7 @@ contract ExerciseSupplementNFT is
      * @dev Mint a new NFT to the specified address.
      * @param to The address to receive the newly minted NFT.
      */
-    function safeMint(address to) public payable onlyRole(MINTER_ROLE) {
+    function safeMint(address to) public onlyRole(MINTER_ROLE) {
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
@@ -4045,6 +4045,10 @@ contract ExerciseSupplementNFT is
         uint256 _toleranceAmountSuccess,
         uint256 _toleranceAmountFailed
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
+        require(
+            _toleranceAmountSuccess > 0 && _toleranceAmountFailed > 0,
+            "INVALID TOLERANCE"
+        );
         listToleranceAmount[0] = _toleranceAmountSuccess;
         listToleranceAmount[1] = _toleranceAmountFailed;
     }
@@ -4060,12 +4064,14 @@ contract ExerciseSupplementNFT is
         bool _flag,
         bool _isTypeErc721
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
+        require(_nftAddress != address(0), "INVALID NFT ADDRESS");
         if (_flag) {
             listNftAddress.add(_nftAddress);
+            typeNfts[_nftAddress] = _isTypeErc721;
         } else {
             listNftAddress.remove(_nftAddress);
+            delete typeNfts[_nftAddress];
         }
-        typeNfts[_nftAddress] = _isTypeErc721;
     }
 
     /**
@@ -4077,20 +4083,21 @@ contract ExerciseSupplementNFT is
         address _erc20Address,
         bool _flag
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
+        require(_erc20Address != address(0), "INVALID ERC20 ADDRESS");
         if (_flag) {
             listERC20Address.add(_erc20Address);
+            if (compareStrings(ERC721Upgradeable(_erc20Address).symbol(), "TTJP")) {
+                typeTokenErc20[_erc20Address] = 1;
+            } else {
+                if (compareStrings(ERC721Upgradeable(_erc20Address).symbol(), "JPYC")) {
+                    typeTokenErc20[_erc20Address] = 2;
+                } else {
+                    typeTokenErc20[_erc20Address] = 3;
+                }
+            }
         } else {
             listERC20Address.remove(_erc20Address);
-        }
-
-        if (compareStrings(ERC721Upgradeable(_erc20Address).symbol(), "TTJP")) {
-            typeTokenErc20[_erc20Address] = 1;
-        } else {
-            if (compareStrings(ERC721Upgradeable(_erc20Address).symbol(), "JPYC")) {
-                typeTokenErc20[_erc20Address] = 2;
-            } else {
-                typeTokenErc20[_erc20Address] = 3;
-            }
+            delete typeTokenErc20[_erc20Address];
         }
     }
 
@@ -4104,6 +4111,7 @@ contract ExerciseSupplementNFT is
         bool _flag
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
         if (_flag) {
+            require(_nftAddress != address(0), "INVALID SPECIAL NFT ADDRESS");
             listSpecialNftAddress.add(_nftAddress);
         } else {
             listSpecialNftAddress.remove(_nftAddress);
@@ -4117,6 +4125,7 @@ contract ExerciseSupplementNFT is
     function updateDonationWalletAddress(
         address _donationWalletAddress
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_donationWalletAddress != address(0), "INVALID DONATION WALLET");
         donationWalletAddress = _donationWalletAddress;
     }
 
@@ -4127,6 +4136,7 @@ contract ExerciseSupplementNFT is
     function updateFeeSettingAddress(
         address _feeSettingAddress
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_feeSettingAddress != address(0), "INVALID FEE SETTING");
         feeSettingAddress = _feeSettingAddress;
     }
 
@@ -4137,7 +4147,19 @@ contract ExerciseSupplementNFT is
     function updateReturnedNFTWallet(
         address _returnedNFTWallet
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_returnedNFTWallet != address(0), "INVALID RETURNED NFT WALLET");
         returnedNFTWallet = _returnedNFTWallet;
+    }
+
+    /**
+     * @dev Update the security address used to verify backend-signed step data.
+     * @param _securityAddress The new security signer address.
+     */
+    function updateSecurityAddress(
+        address _securityAddress
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_securityAddress != address(0), "INVALID SECURITY ADDRESS");
+        securityAddress = _securityAddress;
     }
 
     /**
@@ -4236,11 +4258,13 @@ contract ExerciseSupplementNFT is
         bool hasSoulBoundMinted = false;
 
         if (soulBoundNftAddress != address(0) && requiredNftAddressesForSoulBound.length() > 0) {
-            for (uint256 i = 0; i < requiredNftAddressesForSoulBound.length(); i++) {
+            uint256 reqLen = requiredNftAddressesForSoulBound.length();
+            for (uint256 i = 0; i < reqLen; i++) {
                 address requiredNftAddress = requiredNftAddressesForSoulBound.at(i);
-                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(msg.sender) > 0) {
+                if (ExerciseSupplementNFT(requiredNftAddress).balanceOf(_challenger) > 0) {
                     TransferHelper.safeMintNFT(soulBoundNftAddress, _challenger);
                     hasSoulBoundMinted = true;
+                    break;
                 }
             }
         }
@@ -4255,12 +4279,14 @@ contract ExerciseSupplementNFT is
                 _awardReceivers == donationWalletAddress &&
                 _dayRequired >= _duration - (_duration / listToleranceAmount[1])
             ) {
+                require(listSpecialNftAddress.length() >= 2, "MISSING SPECIAL NFT");
                 TransferHelper.safeMintNFT(listSpecialNftAddress.at(1), _challenger);
                 curentAddressNftUse = listSpecialNftAddress.at(1);
                 indexNftAfterMint = ExerciseSupplementNFT(listSpecialNftAddress.at(1))
                     .nextTokenIdToMint();
             } else {
                 if (_dayRequired >= _duration - (_duration / (listToleranceAmount[0]))) {
+                    require(listSpecialNftAddress.length() >= 1, "MISSING SPECIAL NFT");
                     TransferHelper.safeMintNFT(listSpecialNftAddress.at(0), _challenger);
                     curentAddressNftUse = listSpecialNftAddress.at(0);
                     indexNftAfterMint = ExerciseSupplementNFT(listSpecialNftAddress.at(0))
@@ -4269,6 +4295,7 @@ contract ExerciseSupplementNFT is
             }
         } else {
             if (soulBoundNftAddress == address(0) || !hasSoulBoundMinted) {
+                require(listNftAddress.length() >= 1, "MISSING NFT ADDRESS");
                 TransferHelper.safeMintNFT(listNftAddress.at(0), _challenger);
                 curentAddressNftUse = listNftAddress.at(0);
                 indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0)).nextTokenIdToMint();
@@ -4291,6 +4318,7 @@ contract ExerciseSupplementNFT is
         uint64[2] memory _data,
         bytes memory _signature
     ) public onlyRole(ALLOWED_CONTRACTS_CHALLENGE) {
+        require(securityAddress != address(0), "SECURITY ADDR NOT SET");
         require(!verifyHash[_signature], "Hash was used");
         require(
             block.timestamp <= _data[1] && _data[1] - block.timestamp <= 10 minutes,
@@ -4320,7 +4348,8 @@ contract ExerciseSupplementNFT is
         address _gachaAddress,
         GachaRewardDestination _gachaRewardDestination,
         bool _flag
-    ) external {
+    ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
+        require(_gachaAddress != address(0), "INVALID GACHA ADDRESS");
         GachaInfos storage gachaInfosCus = gachaInfos;
         uint256 lengthCur = gachaInfosCus.gachaAddress.length;
         bool isGachaExist;
@@ -4368,7 +4397,10 @@ contract ExerciseSupplementNFT is
         if (_role != ALLOWED_CONTRACTS_CHALLENGE) {
             revert("DO NOT HAVE PERMISSION TO GRANT THIS ROLE");
         }
+        require(_accounts.length > 0, "EMPTY ACCOUNTS");
+        require(_accounts.length <= 50, "TOO MANY ACCOUNTS");
         for (uint256 index = 0; index < _accounts.length; index++) {
+            require(_accounts[index] != address(0), "INVALID ACCOUNT");
             _grantRole(_role, _accounts[index]);
         }
     }
