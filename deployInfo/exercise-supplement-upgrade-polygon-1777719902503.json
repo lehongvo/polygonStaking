@@ -1,0 +1,26 @@
+{
+  "network": "polygon",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "newImplAddress": "0x86260443f2b8b2ea7637B67f3841E45B2A1e4c10",
+  "newImplDeployAt": "2026-05-02T10:55:09.552Z",
+  "timestamp": "2026-05-02T11:05:02.503Z",
+  "summary": {
+    "total": 1,
+    "ready": 1,
+    "success": 1,
+    "failed": 0,
+    "skipped": 0,
+    "noRole": 0,
+    "invalid": 0
+  },
+  "results": [
+    {
+      "name": "Default",
+      "proxy": "0x55285EcCef5487E87C5980C880131aCadDE7767C",
+      "status": "success",
+      "tx": "0x3ff3600e36d83ec2b9d7fd2e8c70eac093563a867f976172defac8870d497b4b",
+      "gas": "39967",
+      "securityAddress": ""
+    }
+  ]
+}

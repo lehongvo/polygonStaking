@@ -1,0 +1,19 @@
+{
+  "network": "polygon",
+  "contractName": "ExerciseSupplementNFT",
+  "role": "implementation",
+  "contractAddress": "0x86260443f2b8b2ea7637B67f3841E45B2A1e4c10",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2026-05-02T10:55:09.552Z",
+  "blockNumber": 86299631,
+  "transactionHash": "0x483dce08c19debd3ec6891ec442e196d1dae3bb93028e09d9a35caebc518dc41",
+  "gasUsed": "5552481",
+  "gasLimit": 6717260,
+  "estimatedGas": "5597716",
+  "gasPriceGwei": "125.66943257",
+  "estimatedCostMatic": "0.70346179340801012",
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://polygonscan.com/address/0x86260443f2b8b2ea7637B67f3841E45B2A1e4c10"
+  }
+}

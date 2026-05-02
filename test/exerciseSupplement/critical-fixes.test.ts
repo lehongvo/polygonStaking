@@ -35,11 +35,10 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
     });
   });
 
-  describe('C2 — SoulBound mint uses _challenger and breaks after first match', function () {
+  describe('SoulBound mint (V1 logic — balanceOf(msg.sender) check)', function () {
     async function setupSoulBound() {
       const ctx = await loadFixture(deployExerciseSupplementFixture);
-      const { nft, owner, soulBoundNft, requiredNft, normalNft, challenger } =
-        ctx;
+      const { nft, owner, soulBoundNft, requiredNft, normalNft } = ctx;
       await nft
         .connect(owner)
         .updateSoulBoundAddress(await soulBoundNft.getAddress(), true);
@@ -59,15 +58,14 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       return ctx;
     }
 
-    it('mints SoulBound when _challenger holds required NFT', async function () {
+    it('mints SoulBound when msg.sender holds required NFT', async function () {
       const { nft, owner, soulBoundNft, requiredNft, challenger } =
         await setupSoulBound();
 
-      // Seed _challenger balance, NOT msg.sender
-      await requiredNft.setBalance(challenger.address, 1);
+      // Seed msg.sender (owner = caller acting as challenge contract)
+      await requiredNft.setBalance(owner.address, 1);
 
       const before = await soulBoundNft.balanceOf(challenger.address);
-      // Call from owner (acts as Challenge contract role)
       await nft
         .connect(owner)
         .safeMintNFT(0, 0, 0, ethers.ZeroAddress, 0, 0, ethers.ZeroAddress, challenger.address);
@@ -76,12 +74,12 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       expect(after - before).to.equal(1n);
     });
 
-    it('does NOT mint SoulBound when only msg.sender holds required NFT (was V1 bug)', async function () {
+    it('does NOT mint SoulBound when only _challenger holds required NFT (msg.sender does not)', async function () {
       const { nft, owner, soulBoundNft, requiredNft, challenger } =
         await setupSoulBound();
 
-      // Seed msg.sender (owner) balance — V1 would have minted; V2 must not
-      await requiredNft.setBalance(owner.address, 1);
+      // Only challenger has it; msg.sender (owner) does NOT
+      await requiredNft.setBalance(challenger.address, 1);
 
       const before = await soulBoundNft.balanceOf(challenger.address);
       await nft
@@ -92,7 +90,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       expect(after - before).to.equal(0n);
     });
 
-    it('mints SoulBound only ONCE even if multiple required NFTs match (break)', async function () {
+    it('mints SoulBound only ONCE even if msg.sender holds multiple required NFTs (break)', async function () {
       const { nft, owner, soulBoundNft, requiredNft, challenger } =
         await setupSoulBound();
 
@@ -104,9 +102,9 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
         .connect(owner)
         .addOrRemoveRequiredNftAddress(await required2.getAddress(), true);
 
-      // Challenger holds BOTH required NFTs
-      await requiredNft.setBalance(challenger.address, 1);
-      await required2.setBalance(challenger.address, 1);
+      // msg.sender (owner) holds BOTH required NFTs
+      await requiredNft.setBalance(owner.address, 1);
+      await required2.setBalance(owner.address, 1);
 
       const before = await soulBoundNft.balanceOf(challenger.address);
       await nft
@@ -171,17 +169,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
     });
   });
 
-  describe('H4 — safeMint no longer payable', function () {
-    it('reverts when called with value', async function () {
-      const { nft, owner, other } = await loadFixture(
-        deployExerciseSupplementFixture
-      );
-      // ethers v6 will throw before sending if non-payable + value
-      await expect(
-        nft.connect(owner).safeMint(other.address, { value: 1n })
-      ).to.be.rejected;
-    });
-
+  describe('safeMint', function () {
     it('mints normally when called without value', async function () {
       const { nft, owner, other } = await loadFixture(
         deployExerciseSupplementFixture
@@ -189,6 +177,15 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       await expect(nft.connect(owner).safeMint(other.address)).to.not.be
         .reverted;
       expect(await nft.balanceOf(other.address)).to.equal(1n);
+    });
+
+    it('accepts value (payable preserved for ABI compatibility)', async function () {
+      const { nft, owner, other } = await loadFixture(
+        deployExerciseSupplementFixture
+      );
+      await expect(
+        nft.connect(owner).safeMint(other.address, { value: 1n })
+      ).to.not.be.reverted;
     });
   });
 
@@ -201,14 +198,14 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       ).to.be.revertedWith('EMPTY ACCOUNTS');
     });
 
-    it('reverts TOO MANY ACCOUNTS when > 50', async function () {
+    it('reverts TOO MANY ACCOUNTS when > 100', async function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       const ALLOWED = await nft.ALLOWED_CONTRACTS_CHALLENGE();
-      const fifty1 = Array.from({ length: 51 }, (_, i) =>
+      const overflow = Array.from({ length: 101 }, (_, i) =>
         ethers.zeroPadValue(ethers.toBeHex(i + 1), 20)
       );
       await expect(
-        nft.connect(owner).batchGrantRole(ALLOWED, fifty1)
+        nft.connect(owner).batchGrantRole(ALLOWED, overflow)
       ).to.be.revertedWith('TOO MANY ACCOUNTS');
     });
 

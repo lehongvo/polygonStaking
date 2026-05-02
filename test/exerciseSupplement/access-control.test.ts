@@ -91,10 +91,10 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
       ).to.be.revertedWith('EMPTY ACCOUNTS');
     });
 
-    it('rejects > 50 accounts', async function () {
+    it('rejects > 100 accounts', async function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       const role = await nft.ALLOWED_CONTRACTS_CHALLENGE();
-      const accs = Array.from({ length: 51 }, (_, i) =>
+      const accs = Array.from({ length: 101 }, (_, i) =>
         ethers.zeroPadValue(ethers.toBeHex(i + 1), 20)
       );
       await expect(

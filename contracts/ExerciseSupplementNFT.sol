@@ -4398,7 +4398,7 @@ contract ExerciseSupplementNFT is
             revert("DO NOT HAVE PERMISSION TO GRANT THIS ROLE");
         }
         require(_accounts.length > 0, "EMPTY ACCOUNTS");
-        require(_accounts.length <= 50, "TOO MANY ACCOUNTS");
+        require(_accounts.length <= 100, "TOO MANY ACCOUNTS");
         for (uint256 index = 0; index < _accounts.length; index++) {
             require(_accounts[index] != address(0), "INVALID ACCOUNT");
             _grantRole(_role, _accounts[index]);

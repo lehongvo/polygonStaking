@@ -182,13 +182,14 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
         .updateNftListAddress(await normalNft.getAddress(), true, true);
     }
 
-    it('mints SoulBound + skips normal mint when challenger eligible', async function () {
+    it('mints SoulBound + skips normal mint when caller (msg.sender) holds required', async function () {
       const ctx = await loadFixture(deployExerciseSupplementFixture);
       await setupSoul(ctx);
       const { nft, owner, soulBoundNft, requiredNft, normalNft, challenger } =
         ctx;
 
-      await requiredNft.setBalance(challenger.address, 1);
+      // V1 logic: balanceOf(msg.sender) — caller (owner) must hold the required NFT.
+      await requiredNft.setBalance(owner.address, 1);
 
       const sBefore = await soulBoundNft.balanceOf(challenger.address);
       const nBefore = await normalNft.balanceOf(challenger.address);
@@ -249,8 +250,8 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
       const { nft, owner, soulBoundNft, requiredNft, specialNft0, challenger } =
         ctx;
 
-      // Challenger eligible for SoulBound + setup special NFT path
-      await requiredNft.setBalance(challenger.address, 1);
+      // V1 logic: caller (msg.sender = owner) must hold required NFT.
+      await requiredNft.setBalance(owner.address, 1);
       await nft
         .connect(owner)
         .updateSpecialConditionInfo(10, 10, 0, 0, 0, 98);
@@ -761,7 +762,8 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
       await nft
         .connect(owner)
         .addOrRemoveRequiredNftAddress(await requiredNft.getAddress(), true);
-      await requiredNft.setBalance(challenger.address, 1);
+      // V1 logic: balanceOf(msg.sender) = caller (owner)
+      await requiredNft.setBalance(owner.address, 1);
 
       await nft
         .connect(owner)
@@ -797,7 +799,8 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
       await nft
         .connect(owner)
         .addOrRemoveRequiredNftAddress(await requiredNft.getAddress(), true);
-      await requiredNft.setBalance(challenger.address, 1);
+      // V1 logic: balanceOf(msg.sender) = caller (owner)
+      await requiredNft.setBalance(owner.address, 1);
 
       // Special conditions fail (totalReward < amountDepositMatic)
       await nft
