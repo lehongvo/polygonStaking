@@ -41,7 +41,9 @@
   "scripts": {
     "compile": "hardhat compile",
     "flatten": "mkdir -p flattened && for f in ChallengeBaseStep ChallengeDetail ChallengeHIIT; do hardhat flatten contracts/ChallengeDetail/$f.sol | sed '/^WARNING:/d' > flattened/$f.flat.sol; done",
-    "test": "env PRIVATE_KEY= hardhat test $(find test -name '*.test.ts' -type f | sort | tr '\\n' ' ')",
+    "test": "env PRIVATE_KEY= TS_NODE_PROJECT=tsconfig.scripts.json TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"--no-experimental-strip-types --require=ts-node/register\" hardhat test $(find test -name '*.test.ts' -type f | sort | tr '\\n' ' ')",
+    "test:gacha": "env PRIVATE_KEY= TS_NODE_PROJECT=tsconfig.scripts.json TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"--no-experimental-strip-types --require=ts-node/register\" hardhat test $(find test/gacha -name '*.test.ts' -type f | sort | tr '\\n' ' ')",
+    "test:exercise": "env PRIVATE_KEY= TS_NODE_PROJECT=tsconfig.scripts.json TS_NODE_TRANSPILE_ONLY=true NODE_OPTIONS=\"--no-experimental-strip-types --require=ts-node/register\" hardhat test $(find test/exerciseSupplement -name '*.test.ts' -type f | sort | tr '\\n' ' ')",
     "test:coverage": "hardhat coverage",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
@@ -92,6 +94,9 @@
     "upgrade:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/upgrade-gacha-proxies.ts --network polygon",
     "check-role:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/check-upgrader-role.ts --network polygon",
     "check-close-role:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/check-close-gacha-role.ts --network polygon",
-    "check-admin-role:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/check-admin-role.ts --network polygon"
+    "check-admin-role:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/check-admin-role.ts --network polygon",
+    "get-impl:exercise:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/get-implementation.ts --network polygon",
+    "deploy:exercise:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/deploy-impl.ts --network polygon",
+    "upgrade:exercise:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/upgrade-proxy.ts --network polygon"
   }
 }
