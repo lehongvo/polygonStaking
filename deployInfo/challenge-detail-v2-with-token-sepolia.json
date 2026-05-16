@@ -1,0 +1,100 @@
+{
+  "network": "sepolia",
+  "contractName": "ChallengeBaseStep",
+  "contractAddress": "0x9A8Daa58735EE48B46A745e8baf826beb1507c3F",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2026-05-16T10:39:27.086Z",
+  "blockNumber": 10862490,
+  "constructorArgs": {
+    "stakeHolders": [
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4"
+    ],
+    "createByToken": "0x6F7E7dE8eA666174AB2dcAF742f1F64d6aFB3251",
+    "erc721Addresses": [
+      "0x45f0457a0F2F0aA2624032afD662Eda301d5462d"
+    ],
+    "primaryRequired": [
+      30,
+      1778912633,
+      1781504633,
+      10,
+      30
+    ],
+    "awardReceivers": [
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4"
+    ],
+    "index": 1,
+    "allowGiveUp": [
+      true,
+      false,
+      true
+    ],
+    "gasData": [
+      "200000000000000000",
+      "200000000000000000",
+      "0"
+    ],
+    "allAwardToSponsorWhenGiveUp": true,
+    "awardReceiversPercent": [
+      50,
+      50
+    ],
+    "totalAmount": "1000000000000000",
+    "walkingSpeedData": [],
+    "hiitData": []
+  },
+  "contractDetails": {
+    "sponsor": "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+    "challenger": "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+    "startTime": 1778912633,
+    "endTime": 1781504633,
+    "goal": 10,
+    "dayRequired": 30,
+    "createByToken": "0x6F7E7dE8eA666174AB2dcAF742f1F64d6aFB3251"
+  },
+  "tokenInfo": {
+    "tokenType": "ERC20",
+    "tokenAddress": "0x6F7E7dE8eA666174AB2dcAF742f1F64d6aFB3251",
+    "tokenSymbol": "TTJP",
+    "tokenDecimals": 18,
+    "duration": 2592000
+  },
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://sepolia.etherscan.io/address/0x9A8Daa58735EE48B46A745e8baf826beb1507c3F"
+  },
+  "roleGranted": {
+    "challengeRole": true,
+    "transactionHash": "0xa3fdb0d2131ddc013fb93446652bcab91ca9ad739b5cb5cfccdccfbb93d18bb4",
+    "timestamp": "2026-05-16T10:39:29.715Z"
+  },
+  "tokenFunding": {
+    "sent": true,
+    "transactionHash": "0x469f187a93f8102b448f714de0887533fa84b24d4ef93a07318e05e562d79f8e",
+    "tokenAddress": "0x6F7E7dE8eA666174AB2dcAF742f1F64d6aFB3251",
+    "tokenSymbol": "TTJP",
+    "amount": "1000000000000000",
+    "amountFormatted": "0.001",
+    "timestamp": "2026-05-16T10:39:29.716Z"
+  },
+  "transactionSendStep": {
+    "sent": false,
+    "transactionHash": null,
+    "timestamp": "2026-05-16T10:39:29.716Z",
+    "testData": {
+      "days": [
+        10
+      ],
+      "stepIndex": [
+        1000
+      ],
+      "timeRange": [
+        1,
+        100
+      ]
+    }
+  }
+}

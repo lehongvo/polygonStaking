@@ -1,0 +1,63 @@
+{
+  "network": "sepolia",
+  "contractName": "ChallengeBaseStep",
+  "contractAddress": "0xe5aeaB4AAA29ee80b0f6A8A8f2d835c8C1A46d3a",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2026-05-16T10:11:28.682Z",
+  "blockNumber": 10862385,
+  "constructorArgs": {
+    "stakeHolders": [
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4"
+    ],
+    "createByToken": "0x0000000000000000000000000000000000000000",
+    "erc721Addresses": [
+      "0x45f0457a0F2F0aA2624032afD662Eda301d5462d"
+    ],
+    "primaryRequired": [
+      30,
+      1778912633,
+      1781504633,
+      10,
+      30
+    ],
+    "awardReceivers": [
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+      "0x296F5c137b8940776f2E602c6213719bC60f3EF4"
+    ],
+    "index": 1,
+    "allowGiveUp": [
+      true,
+      true,
+      true
+    ],
+    "gasData": [
+      "200000000000000000",
+      "200000000000000000",
+      "0"
+    ],
+    "allAwardToSponsorWhenGiveUp": true,
+    "awardReceiversPercent": [
+      50,
+      50
+    ],
+    "totalAmount": "1000000000000",
+    "walkingSpeedData": [],
+    "hiitData": []
+  },
+  "verification": {
+    "verified": true,
+    "explorerUrl": "https://sepolia.etherscan.io/address/0xe5aeaB4AAA29ee80b0f6A8A8f2d835c8C1A46d3a"
+  },
+  "roleGranted": {
+    "challengeRole": true,
+    "transactionHash": "0xea88500d91b44df7d11269ab473d4d9775da1395d8004dce7a4f5eba66c432b0",
+    "timestamp": "2026-05-16T10:11:29.687Z"
+  },
+  "sendDailyResultTest": {
+    "sent": false,
+    "skipped": true,
+    "timestamp": "2026-05-16T10:11:29.687Z"
+  }
+}

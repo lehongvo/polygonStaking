@@ -51,25 +51,30 @@ function parseEnvConfigBaseOnlyStep(raw: string): any {
   const trimmed = raw.trim();
   const jsonStr = trimmed.startsWith('{')
     ? trimmed
-    : trimmed
-        .replace(/^CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP\s*=\s*/, '')
-        .trim();
+    : trimmed.replace(/^[A-Z0-9_]+\s*=\s*/, '').trim();
   try {
     return JSON.parse(jsonStr);
   } catch {
     const envPath = path.join(process.cwd(), '.env');
     if (!fs.existsSync(envPath))
-      throw new Error('Invalid CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP JSON');
+      throw new Error('Invalid challenge config JSON in .env');
     const content = fs.readFileSync(envPath, 'utf-8');
-    const key = 'CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP=';
-    const idx = content.indexOf(key);
+    // Try the network-specific key first, then fall back to the legacy one.
+    const candidateKeys = [
+      'CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP_SEPOLIA=',
+      'CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP=',
+    ];
+    let idx = -1;
+    for (const k of candidateKeys) {
+      idx = content.indexOf(k);
+      if (idx !== -1) break;
+    }
     if (idx === -1)
       throw new Error(
-        'CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP not found in .env'
+        'No CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP[_SEPOLIA] entry found in .env'
       );
     let start = content.indexOf('{', idx);
-    if (start === -1)
-      throw new Error('CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP: missing {');
+    if (start === -1) throw new Error('Challenge config missing {');
     let depth = 0;
     let end = start;
     for (let i = start; i < content.length; i++) {
@@ -147,11 +152,18 @@ async function main() {
   console.log('========================');
   let config: ChallengeBaseStepDeploymentConfig;
 
+  // Pick the env var name based on network: polygon uses the legacy name,
+  // sepolia uses the _SEPOLIA suffix.
+  const ENV_KEY =
+    network.name === 'sepolia'
+      ? 'CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP_SEPOLIA'
+      : 'CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP';
+
   try {
-    const envConfigRaw = process.env.CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP;
+    const envConfigRaw = process.env[ENV_KEY];
     if (!envConfigRaw || envConfigRaw.trim().length === 0) {
       console.error(
-        '❌ CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP not found in environment variables'
+        `❌ ${ENV_KEY} not found in environment variables (network=${network.name})`
       );
       process.exit(1);
     }
@@ -185,9 +197,7 @@ async function main() {
       );
       process.exit(1);
     }
-    console.log(
-      '✅ Configuration loaded from ENV (CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP)'
-    );
+    console.log(`✅ Configuration loaded from ENV (${ENV_KEY})`);
     console.log(
       '  • walkingSpeedData:',
       config.walkingSpeedData.length

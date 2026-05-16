@@ -1339,17 +1339,51 @@ const ExerciseSupplementNFT_ABI = [
   },
 ] as const;
 
+// Hardhat network is resolved lazily at call time so this helper can be
+// imported from scripts that run on different networks (polygon/sepolia).
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const hre = require('hardhat');
+
 const adminKey = process.env.ADMIN_PRIVATE_KEY;
-const network = process.env.POLYGON_RPC_URL;
-const ExerciseSupplementNFTAddress =
-  process.env.EXERCISE_SUPPLEMENT_NFT_ADDRESS;
+
+/** Return the RPC URL for the currently selected hardhat network. */
+function getRpcUrl(): string {
+  const name = hre.network.name;
+  if (name === 'sepolia') return process.env.SEPOLIA_RPC_URL ?? '';
+  if (name === 'amoy') return process.env.AMOY_RPC_URL ?? '';
+  return process.env.POLYGON_RPC_URL ?? '';
+}
+
+/** Return the ExerciseSupplementNFT proxy address for the current network. */
+function getExerciseSupplementNFTAddress(): string {
+  const name = hre.network.name;
+  if (name === 'sepolia')
+    return process.env.EXERCISE_SUPPLEMENT_NFT_ADDRESS_SEPOLIA ?? '';
+  return process.env.EXERCISE_SUPPLEMENT_NFT_ADDRESS ?? '';
+}
 
 const batchGrantRole = async (challengeAddress: string): Promise<string> => {
   try {
     console.log('\n================================================');
-    console.log('Batch grant role to challenge address', challengeAddress);
+    console.log(
+      `Batch grant role on network=${hre.network.name} to challenge address`,
+      challengeAddress
+    );
 
-    const provider = new ethers.JsonRpcProvider(network?.toString() || '');
+    const rpcUrl = getRpcUrl();
+    const ExerciseSupplementNFTAddress = getExerciseSupplementNFTAddress();
+    if (!rpcUrl) {
+      throw new Error(
+        `Missing RPC URL for network ${hre.network.name}. Set the appropriate *_RPC_URL env var in .env.`
+      );
+    }
+    if (!ExerciseSupplementNFTAddress) {
+      throw new Error(
+        `Missing ExerciseSupplementNFT address for network ${hre.network.name}. Set the appropriate EXERCISE_SUPPLEMENT_NFT_ADDRESS[_SEPOLIA] env var in .env.`
+      );
+    }
+
+    const provider = new ethers.JsonRpcProvider(rpcUrl);
     const signer = new ethers.Wallet(adminKey?.toString() || '', provider);
     const listChallengeAddress = [challengeAddress.toString()];
 
