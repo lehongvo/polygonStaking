@@ -22,6 +22,14 @@ contract MockGachaERC1155 {
         uint256 value
     );
 
+    event TransferBatch(
+        address indexed operator,
+        address indexed from,
+        address indexed to,
+        uint256[] ids,
+        uint256[] values
+    );
+
     constructor(string memory _name) {
         name = _name;
     }
@@ -50,5 +58,22 @@ contract MockGachaERC1155 {
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
         emit TransferSingle(msg.sender, from, to, id, amount);
+    }
+
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata
+    ) external {
+        require(from == msg.sender || isApprovedForAll[from][msg.sender], "not authorized");
+        require(ids.length == amounts.length, "length mismatch");
+        for (uint256 i = 0; i < ids.length; i++) {
+            require(balanceOf[from][ids[i]] >= amounts[i], "insufficient");
+            balanceOf[from][ids[i]] -= amounts[i];
+            balanceOf[to][ids[i]] += amounts[i];
+        }
+        emit TransferBatch(msg.sender, from, to, ids, amounts);
     }
 }

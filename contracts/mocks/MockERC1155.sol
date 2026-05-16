@@ -17,6 +17,14 @@ contract MockERC1155 {
         uint256 value
     );
 
+    event TransferBatch(
+        address indexed operator,
+        address indexed from,
+        address indexed to,
+        uint256[] ids,
+        uint256[] values
+    );
+
     function mint(address to, uint256 id, uint256 amount) external {
         balanceOf[id][to] += amount;
         emit TransferSingle(msg.sender, address(0), to, id, amount);
@@ -38,5 +46,22 @@ contract MockERC1155 {
         balanceOf[id][from] -= amount;
         balanceOf[id][to] += amount;
         emit TransferSingle(msg.sender, from, to, id, amount);
+    }
+
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata
+    ) external {
+        require(from == msg.sender || isApprovedForAll[from][msg.sender], "not authorized");
+        require(ids.length == amounts.length, "length mismatch");
+        for (uint256 i = 0; i < ids.length; i++) {
+            require(balanceOf[ids[i]][from] >= amounts[i], "insufficient");
+            balanceOf[ids[i]][from] -= amounts[i];
+            balanceOf[ids[i]][to] += amounts[i];
+        }
+        emit TransferBatch(msg.sender, from, to, ids, amounts);
     }
 }

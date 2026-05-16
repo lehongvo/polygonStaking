@@ -2448,6 +2448,19 @@ interface IERC1155 is IERC165 {
         uint256 amount,
         bytes calldata data
     ) external;
+
+    /**
+     * @dev xref:ROOT:erc1155.adoc#batch-operations[Batched] version of {safeTransferFrom}.
+     *
+     * Emits a {TransferBatch} event.
+     */
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) external;
 }
 
 // File: Gacha/EnumerableSet.sol
@@ -2971,6 +2984,22 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     event DeleteReward(address indexed _caller, uint256 _indexOfTokenReward, address _gachaAddress);
 
     /**
+     * @dev Event emitted when reward entries are auto-cleaned during a withdraw operation.
+     * @param _tokenAddress The token contract address used for matching (zero for NATIVE).
+     * @param _indexToken The token id used for matching (only meaningful for ERC1155).
+     * @param _typeToken The token type used for matching.
+     * @param _deletedCount Number of reward entries deleted.
+     * @param _gachaAddress The gacha contract address.
+     */
+    event RewardCleanupCompleted(
+        address indexed _tokenAddress,
+        uint256 _indexToken,
+        TypeToken _typeToken,
+        uint256 _deletedCount,
+        address _gachaAddress
+    );
+
+    /**
      * @dev Event emitted when a daily result is sent for a gacha.
      * @param _caller The address of the caller who sent the daily result.
      * @param _gachaAddress The address of the gacha the daily result is being sent for.
@@ -3342,7 +3371,11 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     }
 
     /**
-     * @dev Function to withdraw balances of various token types.
+     * @dev Function to withdraw balances of various token types. Also auto-deletes
+     * matching reward entries from rewardTokens/listIdToken before transferring
+     * (CEI ordering). Match semantics depend on _typeToken; see
+     * _findAndDeleteMatchingRewards. Idempotent: silent skip if no reward matches.
+     * Emits DeleteReward (per match) and RewardCleanupCompleted (when count > 0).
      * @param _tokenAddress The address of the token to withdraw.
      * @param _indexToken The index or ID of the token (used for ERC1155 tokens).
      * @param _typeToken The type of the token (e.g., NATIVE_TOKEN, ERC20, ERC1155).
@@ -3352,6 +3385,10 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         uint256 _indexToken,
         TypeToken _typeToken
     ) external onlyRole(CLOSE_GACHA_ROLE) {
+        // CEI: cleanup matching reward entries BEFORE external transfer to prevent
+        // reentrancy from observing stale reward state. Silent skip if no match.
+        _findAndDeleteMatchingRewards(_tokenAddress, _indexToken, _typeToken);
+
         // Check if the token type is not ERC1155
         if (_typeToken != TypeToken.ERC1155) {
             // Handle the case for native token
@@ -3397,6 +3434,129 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     balanceTokenERC1155,
                     ""
                 );
+            }
+        }
+    }
+
+    /**
+     * @dev Batch withdraw balances + auto-cleanup matching reward entries across
+     * multiple (tokenAddress, tokenIds, type) tuples in one transaction.
+     *
+     * Per outer element i:
+     *   - NATIVE_TOKEN: _addresses[i] must be address(0), _indexTokens[i] must be
+     *     empty. Withdraws full ETH balance of the contract. Cleanup matches all
+     *     NATIVE_TOKEN rewards.
+     *   - ERC20: _indexTokens[i].length must be 0 or 1. If 1, used for reward
+     *     lookup hint; cleanup deletes ALL ERC20 rewards for this address. Full
+     *     token balance is withdrawn.
+     *   - ERC721: each tokenId in _indexTokens[i] is transferred individually.
+     *     Cleanup deletes ALL ERC721 rewards for this address (indexToken is
+     *     metadata for ERC721 rewards, not used for matching).
+     *   - ERC1155: all tokenIds in _indexTokens[i] are transferred via
+     *     safeBatchTransferFrom in a single external call. Cleanup matches each
+     *     id strictly. Zero-balance ids are filtered before batch transfer.
+     *
+     * CEI: reward cleanup runs before any external transfer call.
+     * Caps: outer <= 10 contracts, inner <= 20 token ids per contract.
+     * Trust assumption: returnedNFTWallet is a trusted recipient (CLOSE_GACHA_ROLE
+     * controls both the wallet setter and this function); no ReentrancyGuard.
+     *
+     * @param _addresses Array of token contract addresses (address(0) for NATIVE).
+     * @param _indexTokens Per-address array of token ids (per-type arity rules apply).
+     * @param _typeTokens Per-address token type discriminator.
+     */
+    function withdrawBalancesBatch(
+        address[] calldata _addresses,
+        uint256[][] calldata _indexTokens,
+        TypeToken[] calldata _typeTokens
+    ) external onlyRole(CLOSE_GACHA_ROLE) {
+        require(_addresses.length > 0, "EMPTY BATCH.");
+        require(_addresses.length <= 10, "TOO MANY CONTRACTS.");
+        require(_addresses.length == _indexTokens.length, "INDEX TOKENS LENGTH MISMATCH.");
+        require(_addresses.length == _typeTokens.length, "TYPE TOKENS LENGTH MISMATCH.");
+
+        for (uint256 i = 0; i < _addresses.length; i++) {
+            TypeToken currentType = _typeTokens[i];
+            uint256 idsLen = _indexTokens[i].length;
+            require(idsLen <= 20, "TOO MANY IDS.");
+
+            if (currentType == TypeToken.NATIVE_TOKEN) {
+                require(idsLen == 0, "NATIVE NO IDS.");
+                require(_addresses[i] == address(0), "ZERO ADDRESS.");
+                _findAndDeleteMatchingRewards(address(0), 0, TypeToken.NATIVE_TOKEN);
+                if (address(this).balance > 0) {
+                    TransferHelper.saveTransferEth(
+                        payable(returnedNFTWallet),
+                        address(this).balance
+                    );
+                }
+            } else if (currentType == TypeToken.ERC20) {
+                require(_addresses[i] != address(0), "INVALID TOKEN.");
+                require(idsLen <= 1, "ERC20 MAX 1 ID.");
+                uint256 idLookup = idsLen == 1 ? _indexTokens[i][0] : 0;
+                _findAndDeleteMatchingRewards(_addresses[i], idLookup, TypeToken.ERC20);
+                uint256 bal = IERC20(_addresses[i]).balanceOf(address(this));
+                if (bal > 0) {
+                    TransferHelper.safeTransfer(_addresses[i], returnedNFTWallet, bal);
+                }
+            } else if (currentType == TypeToken.ERC721) {
+                require(_addresses[i] != address(0), "INVALID TOKEN.");
+                require(idsLen > 0, "EMPTY IDS.");
+                // CEI: cleanup matching rewards first (ERC721 matches by addr+type only)
+                _findAndDeleteMatchingRewards(_addresses[i], 0, TypeToken.ERC721);
+                // Then transfers per id
+                for (uint256 j = 0; j < idsLen; j++) {
+                    TransferHelper.safeTransferFrom(
+                        _addresses[i],
+                        address(this),
+                        returnedNFTWallet,
+                        _indexTokens[i][j]
+                    );
+                }
+            } else if (currentType == TypeToken.ERC1155) {
+                require(_addresses[i] != address(0), "INVALID TOKEN.");
+                require(idsLen > 0, "EMPTY IDS.");
+                // CEI: cleanup all matching rewards (per-id strict match for ERC1155)
+                for (uint256 j = 0; j < idsLen; j++) {
+                    _findAndDeleteMatchingRewards(
+                        _addresses[i],
+                        _indexTokens[i][j],
+                        TypeToken.ERC1155
+                    );
+                }
+                // Filter zero-balance ids and compact arrays before batch transfer
+                uint256[] memory filteredIds = new uint256[](idsLen);
+                uint256[] memory filteredAmounts = new uint256[](idsLen);
+                uint256 validCount = 0;
+                for (uint256 j = 0; j < idsLen; j++) {
+                    uint256 amt = IERC1155(_addresses[i]).balanceOf(
+                        address(this),
+                        _indexTokens[i][j]
+                    );
+                    if (amt > 0) {
+                        filteredIds[validCount] = _indexTokens[i][j];
+                        filteredAmounts[validCount] = amt;
+                        validCount++;
+                    }
+                }
+                if (validCount > 0) {
+                    // Resize to validCount via assembly to avoid extra copy loop.
+                    // memory-safe: only mutates the length prefix of two pre-allocated
+                    // memory arrays; does not touch the free-memory pointer or other regions.
+                    assembly ("memory-safe") {
+                        mstore(filteredIds, validCount)
+                        mstore(filteredAmounts, validCount)
+                    }
+                    IERC1155(_addresses[i]).safeBatchTransferFrom(
+                        address(this),
+                        returnedNFTWallet,
+                        filteredIds,
+                        filteredAmounts,
+                        ""
+                    );
+                }
+            } else {
+                revert("UNSUPPORTED TYPE.");
             }
         }
     }
@@ -3479,9 +3639,19 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
      * @param _indexOfTokenReward Index of the token reward to be deleted.
      */
     function deleteReward(uint256 _indexOfTokenReward) external onlyRole(UPDATER_REWARDS_ROLE) {
+        _deleteReward(_indexOfTokenReward);
+    }
+
+    /**
+     * @dev Internal helper to delete a reward entry. Bypasses role check; caller
+     * is responsible for authorization. Reverts if the index does not exist in
+     * listIdToken.
+     * @param _indexOfTokenReward Stable mapping key in rewardTokens. NOT a position
+     * in listIdToken (positions shift after swap-pop).
+     */
+    function _deleteReward(uint256 _indexOfTokenReward) private {
         checkIndexOfTokenReward(_indexOfTokenReward);
 
-        // Delete the reward token from the rewardTokens mapping
         delete rewardTokens[_indexOfTokenReward];
 
         for (uint256 i = 0; i < listIdToken.length; i++) {
@@ -3492,8 +3662,68 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         }
         listIdToken.pop();
 
-        // Emit an event to signal that a reward has been deleted
         emit DeleteReward(msg.sender, _indexOfTokenReward, address(this));
+    }
+
+    /**
+     * @dev Auto-find and delete reward entries that match the withdrawal target.
+     * Match semantics depend on type:
+     *   - ERC1155: strict match on (addressToken, indexToken, typeToken). Each
+     *     ERC1155 token id is a separate reward.
+     *   - ERC20 / ERC721 / NATIVE_TOKEN: match on (addressToken, typeToken) only;
+     *     RewardToken.indexToken is metadata for these types and not used as a
+     *     reward identity field. Withdrawing the contract balance for these types
+     *     invalidates ALL associated reward entries.
+     * Silent skip if no match (idempotent). Two-phase to avoid array mutation
+     * during iteration.
+     * @param _tokenAddress Token contract address (zero for NATIVE_TOKEN).
+     * @param _indexToken Token id; only used for ERC1155 matching.
+     * @param _typeToken Reward token type discriminator.
+     * @return deletedCount Number of reward entries removed.
+     */
+    function _findAndDeleteMatchingRewards(
+        address _tokenAddress,
+        uint256 _indexToken,
+        TypeToken _typeToken
+    ) private returns (uint256 deletedCount) {
+        uint256 listLen = listIdToken.length;
+        if (listLen == 0) {
+            return 0;
+        }
+
+        bool useIndexToken = (_typeToken == TypeToken.ERC1155);
+
+        // Phase 1: collect matching indices (read-only)
+        uint256[] memory matches = new uint256[](listLen);
+        uint256 matchCount = 0;
+        for (uint256 i = 0; i < listLen; i++) {
+            uint256 idx = listIdToken[i];
+            RewardToken storage r = rewardTokens[idx];
+            if (r.addressToken != _tokenAddress || r.typeToken != _typeToken) {
+                continue;
+            }
+            if (useIndexToken && r.indexToken != _indexToken) {
+                continue;
+            }
+            matches[matchCount] = idx;
+            matchCount++;
+        }
+
+        // Phase 2: delete each (mutates listIdToken via swap-pop)
+        for (uint256 i = 0; i < matchCount; i++) {
+            _deleteReward(matches[i]);
+        }
+
+        if (matchCount > 0) {
+            emit RewardCleanupCompleted(
+                _tokenAddress,
+                _indexToken,
+                _typeToken,
+                matchCount,
+                address(this)
+            );
+        }
+        return matchCount;
     }
 
     /**
