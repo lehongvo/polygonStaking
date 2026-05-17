@@ -126,6 +126,8 @@ SEPOLIA_RPC_URL=
 ETHERSCAN_API_KEY=
 POLYGONSCAN_API_KEY=
 SEPOLIA_API_KEY=
+URL_SERVER_ADMIN=
+SERVER_ADMIN_TOKEN=
 ```
 
 ### 4c. Fill in the values
@@ -141,6 +143,8 @@ SEPOLIA_API_KEY=
 | `ETHERSCAN_API_KEY` | Your free Etherscan v2 API key — used for source verification on every network. |
 | `POLYGONSCAN_API_KEY` | Backup key for Polygonscan verification (can be the same value). |
 | `SEPOLIA_API_KEY` | Backup key for Sepolia Etherscan verification (can be the same value). |
+| `URL_SERVER_ADMIN` | Backend admin API base URL (e.g. `https://api.espl.jp`). Required only if you plan to save deploys to the DB (Step 8). |
+| `SERVER_ADMIN_TOKEN` | Bearer token for the admin API. Required for Step 8 (save to DB). |
 
 ### 4d. Save the file
 
@@ -161,7 +165,7 @@ The challenge has settings such as: who plays, how long it lasts, how much the p
    ↓
 3. Choose prize currency  (Option A native, or Option B ERC20 token)
    ↓
-4. Provide parameters     (addresses, duration, prize amount, …)
+4. Provide parameters     (addresses, duration, prize amount, name, …)
    ↓
 5. CONFIRM data           (agent prints back; you verify every value)
    ↓
@@ -170,6 +174,8 @@ The challenge has settings such as: who plays, how long it lasts, how much the p
 7. Run npm deploy script  (agent runs; contract is deployed, verified, role granted, funded)
    ↓
 8. Verify on explorer
+   ↓
+9. SAVE TO DB (optional) — agent asks; if yes, POST to backend admin API
 ```
 
 Each of the items below corresponds to one of these sub-steps.
@@ -213,7 +219,59 @@ The agent will pick the appropriate deploy script and `.env` config variable bas
 | B. Token  | sepolia | `scripts/challenge/ChallengeWalkingSpeed/deploy-challenge-detail-v2-not-send-step-with-token.ts` | `CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP_WITH_TOKEN_SEPOLIA` |
 | B. Token  | polygon | `scripts/challenge/ChallengeWalkingSpeed/deploy-challenge-detail-v2-not-send-step-with-token.ts` | `CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP_WITH_TOKEN` |
 
-### 5c. Decide your parameters
+### 5c. Agent asks for your parameters — one field at a time
+
+**Before deploying**, the agent will go through each parameter with you interactively. You see the default (where one exists), and you can either accept it or override with your own value. This is the moment to set every address, amount, and label exactly the way you want — once deployed, the on-chain contract is permanent.
+
+The order the agent asks in:
+
+1. **`stakeHolders`** — 3 addresses, in this order:
+   - `stakeHolders[0]` = sponsor
+   - `stakeHolders[1]` = challenger
+   - `stakeHolders[2]` = fee address
+   Often all three are the same wallet for personal challenges (e.g. Tanimoto). The agent shows the current `.env` example and asks: _"Use these three addresses?"_ — type a different address to override any of them.
+
+2. **`challenger_address`** — usually = `stakeHolders[1]`. The agent confirms and records it explicitly because the DB body has a top-level `challenger_address` field (different from the contract's `stakeHolders` array).
+
+3. **`sponsor_address`** — usually = `stakeHolders[0]`. Same reason as challenger.
+
+4. **`erc721Addresses`** — the `ExerciseSupplementNFT` proxy address (registry). The agent reads `EXERCISE_SUPPLEMENT_NFT_ADDRESS` (or `_SEPOLIA`) from `.env` and asks: _"Use this NFT registry address?"_
+
+5. **`createByToken`** — the prize currency address:
+   - Option A (native): `0x0000…0000`
+   - Option B (ERC20): paste your token contract address. The agent will look it up on the block explorer and ask you to confirm the symbol/decimals before continuing.
+
+6. **`primaryRequired`** — five values:
+   - `[0]` duration (days)
+   - `[1]` startTime (unix seconds — agent computes "now" by default; you can override)
+   - `[2]` endTime (unix seconds — agent computes `start + duration days` by default)
+   - `[3]` goal (steps/day, e.g. `10000` real or `10` for test)
+   - `[4]` dayRequired (days needed to win)
+   The agent shows each value and the human-readable date for the timestamps.
+
+7. **`allowGiveUp`** — array of 3 booleans. Agent suggests `[true, true, true]` for native, `[true, false, true]` for token, and asks for confirmation.
+
+8. **`awardReceivers`** + **`awardReceiversPercent`** + **`index`** — agent walks through the receivers list:
+   - For each address in `awardReceivers`, what `%` do they get?
+   - Where is `index` (i.e. how many of the receivers are success receivers, the rest are failure receivers)?
+   - Sum of all percentages **must be ≤ 100** (agent rejects anything else immediately).
+
+9. **`totalAmount`** — the prize pool in **wei** (smallest unit). The agent helps you with the conversion: enter `0.001` and the agent computes `1000000000000000` for an 18-decimal token / native coin.
+
+10. **`gasData`** — gas budget array. Defaults to `["200000000000000000", "200000000000000000", "0"]`. Most users accept the default.
+
+11. **`allAwardToSponsorWhenGiveUp`** — boolean. Defaults to `true`.
+
+12. **`walkingSpeedData`** + **`hiitData`** — both default to `[]` (plain Step challenge). If you need walking-speed or HIIT mode, supply the array; otherwise leave empty.
+
+13. **DB metadata (only asked if you plan to save to DB in Step 8):**
+   - **`name`** — **required, no default**. The agent will not move on until you provide a name (e.g. `"Tanimoto-Sep-01"`).
+   - **`description`** — defaults to empty string. Type any description, or press Enter to accept empty.
+   - **`timezone_create`** — defaults to `Asia/Tokyo`. The agent asks: _"Use `Asia/Tokyo` as the create-time zone? (yes / other)"_
+
+When you are done, the agent collates all answers into a single `.env` configuration line. **No on-chain action has happened yet** — this is purely local data entry.
+
+### 5c.1 Parameter cheat-sheet
 
 Have these answers ready:
 
@@ -231,8 +289,11 @@ Have these answers ready:
 | Token address (Option B) | A 42-character `0x…` ERC20 contract address        | The ERC20 token used for the prize. Must already be deployed on the chosen network.                    |
 | Award split              | `[50, 50]` for two receivers                       | Percentages — sum **must be ≤ 100**.                                                                   |
 | allowGiveUp              | `[true, true, true]` for native, `[true, false, true]` for token | Array of three booleans. Index 1 must be **true for native** (sends `msg.value`) and **false for token** (no value sent; transfer happens after deploy). |
+| **Challenge name** (DB, optional) | e.g. `"Tanimoto-Sep-01"`                    | Free-form label used by the backend DB. **Only needed if you plan to save to DB in Step 8.** You can also provide this later at Step 8d when the agent prints the body for approval. |
+| **Description** (DB, optional) | (default empty)                                | Free-form description for the DB record. Same rule: needed only for Step 8. |
+| **Timezone** (DB, optional) | Default `Asia/Tokyo`                              | Used by the backend for time display. The agent will **confirm with you** either at this step or right before Step 8 POST. If you skip Step 8, this field is unused. |
 
-### 5d. Talk to your AI agent
+### 5d. Talk to your AI agent — kick off the interactive Q&A
 
 Inside the `smart-contract` folder, start the agent:
 
@@ -240,23 +301,33 @@ Inside the `smart-contract` folder, start the agent:
 claude
 ```
 
-Then send the request that matches your option:
+Then send a short opening prompt. The agent will reply by **walking you through each parameter from Step 5c in order** — you answer each one, the agent records it, and finally writes the consolidated config to `.env`.
 
 #### If you chose Option A (native coin)
 
-> Please add a new MATIC challenge configuration to my .env file. Wallet address: `0x296F5c137b8940776f2E602c6213719bC60f3EF4` for player, sponsor, and award receivers. Start time = now, duration = 30 days, required days = 30, end time = start + 30 days, step goal = 10000, total prize = 0.001 MATIC, 50/50 award split (50% on success, 50% on failure). Use `allowGiveUp = [true, true, true]`. Network: sepolia. Write under `CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP_SEPOLIA`.
+> I want to deploy a ChallengeBaseStep on **sepolia** (or polygon) with **MATIC** as the prize. Please walk me through every parameter one by one (stakeHolders, challenger, sponsor, primaryRequired, allowGiveUp, awardReceivers, percent split, totalAmount, gasData, walkingSpeedData, hiitData) and then the DB fields (name, description, timezone). Show me the default value for each and let me override anything. Do not write to `.env` until I confirm the full set.
 
 #### If you chose Option B (ERC20 token)
 
-> Please add a new JPYC challenge configuration to my .env file. Wallet address: `0x296F5c137b8940776f2E602c6213719bC60f3EF4` for player, sponsor, and award receivers. Token address: `<paste the token contract address here>`. Start time = now, duration = 30 days, required days = 30, end time = start + 30 days, step goal = 10000, total prize = 0.001 JPYC (18 decimals → 1000000000000000 wei), 50/50 award split. Use `allowGiveUp = [true, false, true]`. Network: sepolia. Write under `CONFIG_DEPLOY_CHALLENGE_BASE_ONLY_STEP_WITH_TOKEN_SEPOLIA`.
+> I want to deploy a ChallengeBaseStep on **sepolia** (or polygon) with an **ERC20 token** as the prize. Please walk me through every parameter one by one (stakeHolders, challenger, sponsor, **createByToken**, primaryRequired, allowGiveUp = `[true, false, true]`, awardReceivers, percent split, totalAmount, gasData, walkingSpeedData, hiitData) and then the DB fields (name, description, timezone). For the token, look it up on the explorer and confirm symbol/decimals with me. Show me the default for each field and let me override. Do not write to `.env` until I confirm the full set.
+
+The agent will reply with the first question. After you answer all of them, the agent prints back the full config and asks for one final confirmation before writing to `.env`. **Nothing is on-chain yet** — this is purely local data entry.
 
 ### 5e. ⚠️ Confirm the data BEFORE you go further
 
 **This is the most important step in the guide. Do not skip it.** Once the contract is deployed, the values are permanent.
 
-Ask the agent:
+At the end of Step 5d, the agent prints back the full configuration it just collected — every address, amount, date, and DB field, in the same shape as [`mock/exmapleChallengeBody.json`](mock/exmapleChallengeBody.json). It then asks for one final approval before writing to `.env`.
 
-> Please print back the full configuration you wrote so I can verify each value.
+Re-read every line carefully. If anything is wrong, say:
+
+> Change `<field>` to `<correct value>`. Then print the full config again.
+
+Only say "approved, write it to .env" when every value is exactly what you want.
+
+If the agent has already written `.env` and you spot a mistake afterward, you can still fix it before deploying:
+
+> Please print back the full configuration from `.env` so I can verify each value.
 
 Go through every line carefully. Check each item below:
 
@@ -398,6 +469,174 @@ Open the explorer link the agent gave you. You should see:
 If anything looks wrong, tell the agent:
 
 > The contract at `<address>` shows `<wrong thing>`. Investigate.
+
+---
+
+## Step 8 — (Optional) Save the Challenge to the Backend DB
+
+The deploy is complete on-chain, but most teams also need to **register the challenge with the backend admin API** so the frontend / ops tools can show it. The agent can do this for you in one step.
+
+### 8a. Agent asks for permission
+
+After the deploy succeeds, the agent will ask:
+
+> Deploy is finished. Do you want me to save this challenge to the backend admin DB (POST to `${URL_SERVER_ADMIN}/api/v1/challenges`)? **yes / no**
+
+Answer **`no`** if you only wanted the on-chain contract (e.g. a quick test). Answer **`yes`** to record the challenge in the backend.
+
+### 8b. What the agent needs
+
+The agent will use these two env vars from your `.env`:
+
+| Variable | Example | Purpose |
+| -------- | ------- | ------- |
+| `URL_SERVER_ADMIN` | `https://api.espl.jp` | Backend admin API base URL |
+| `SERVER_ADMIN_TOKEN` | `eyJ0eXAiOiJKV1QiLCJhbGciOi…` | JWT bearer token for admin requests |
+
+If either is missing, the agent will warn you and skip Step 8. Add them to `.env` and re-run the save manually:
+
+> Please save the challenge at `0x<address>` (deployed on `<network>`) to the backend DB now.
+
+### 8c. The agent looks up user IDs
+
+The backend stores each wallet as a row in the `users` table with a numeric `id`. The agent needs the `id` for both sponsor and challenger before it can build the request body.
+
+For each address in your challenge, the agent calls:
+
+```
+GET  ${URL_SERVER_ADMIN}/api/v1/users/get-profile-by-wallet/<wallet_address>
+Headers:
+  accept: application/json
+  authorization: Bearer ${SERVER_ADMIN_TOKEN}
+```
+
+The response contains the user record (including its numeric `id`). The agent will plug those into the request body as `sponsor_address_id` and `challenger_address_id`.
+
+If either wallet has **no profile yet** in the backend, the agent will stop and ask you to register the user first (via the admin UI or a separate API call). The on-chain contract is fine — only the DB record is delayed; you can re-run Step 8 once the profiles exist:
+
+> Please save the challenge at `0x<address>` (deployed on `<network>`) to the backend DB now.
+
+### 8d. Confirm the body before POSTing
+
+The agent will print the full request body, then ask:
+
+> I'm about to POST this body to `${URL_SERVER_ADMIN}/api/v1/challenges`. Please verify each value, especially the addresses, amount, and hash. **Approve / change / cancel?**
+
+Most fields are auto-derived from the on-chain deploy and are safe. Pay extra attention to these three because they cannot be derived automatically — the agent uses the values you provided in Step 5c, or asks you now if you skipped them there:
+
+| Field | What to confirm |
+| ----- | --------------- |
+| `name` | Free-form challenge name. Required by the DB. If you did not set this at Step 5c, the agent will prompt for it now (e.g. `"Tanimoto-Sep-01"`). |
+| `description` | Free-form description. Often empty. Optional. |
+| `timezone_create` | Default `Asia/Tokyo`. If the agent did not confirm this at Step 5c, it will confirm here before POSTing. |
+
+Also do a quick sanity scan of the rest:
+
+- `address` is the new contract you just deployed.
+- `hash` is the deploy tx hash from the audit-trail JSON.
+- `sponsor_address_id` and `challenger_address_id` are non-zero numbers (Step 8c populated them).
+- `network_id` matches the network you deployed on (Step 8f).
+
+If anything is wrong, say so and the agent will rebuild the body. Only approve when correct.
+
+### 8e. Body format (source of truth) and field mapping
+
+**The request body must follow the exact format in [`mock/exmapleChallengeBody.json`](mock/exmapleChallengeBody.json).** That file is the canonical schema the backend expects. Every key in it must appear in the body the agent POSTs, with the correct type (string, number, array). If you ever doubt a field's name or type, open that file and check.
+
+The agent populates the body from the deploy info + the answers you gave at Step 5c + `.env`. You do not need to memorize the mapping — the table below is here only so you can spot mistakes when reviewing in Step 8d.
+
+| Body field | Source |
+| ---------- | ------ |
+| `name`, `description` | From your inputs in Step 5c (or asked at 8d if you skipped them) |
+| `amount` | `totalAmount` (wei) ÷ 10<sup>decimals</sup>, expressed as a JSON number (e.g. `0.001`). For native (Option A) decimals = 18. For ERC20 (Option B) the agent reads `decimals()` from the token contract. |
+| `execute_time` | `primaryRequired[0]` (duration in days) |
+| `type_challenge` | `"Step"` for plain BaseStep. (Currently only BaseStep is deployed by this flow.) |
+| `daily_min_step_require` | `primaryRequired[3]` (step goal/day) |
+| `min_day_require` | `primaryRequired[4]` (required days) |
+| `give_up` | `allowGiveUp[0]` |
+| `give_up_type` | `0` (default) |
+| `gas_fee`, `fee_success`, `fee_error` | `0` (defaults) |
+| `success_fee_percent`, `fail_fee_percent` | `0` (defaults) |
+| `generate_nft` | `true` (default) |
+| `date_start`, `date_end` | `primaryRequired[1]`, `primaryRequired[2]` (unix timestamps) |
+| `sponsor_address` | `stakeHolders[0]` (preserves the checksum case of the original address) |
+| `challenger_address` | `stakeHolders[1]` (preserves the checksum case of the original address) |
+| `sponsor_address_id` | From `GET /users/get-profile-by-wallet/<sponsor_address>` (Step 8c) |
+| `challenger_address_id` | From `GET /users/get-profile-by-wallet/<challenger_address>` (Step 8c) |
+| `hash` | The deployment transaction hash of the challenge contract (from the audit-trail JSON in `deployInfo/`) |
+| `address` | The deployed challenge contract address |
+| `token_type` | `1` for native (Option A), `2` for ERC20 (Option B) |
+| `receivers` | **One row per entry** in the contract's `awardReceivers`. For each `i`: `address = awardReceivers[i]`, `percent = awardReceiversPercent[i]` (as a string), `amount = totalAmount × percent / 100` (decimal token units, not wei), and `type = 1` if `i < index` (paid on success) or `type = 2` if `i ≥ index` (paid on failure). |
+| `deposit_hash` | `"null"` (default literal string, until a separate deposit flow exists) |
+| `network` | The RPC URL from `.env` for the deploy network. The agent picks: `sepolia → SEPOLIA_RPC_URL`, `polygon → POLYGON_RPC_URL`, `amoy → AMOY_RPC_URL`. |
+| `network_id` | Backend numeric network id — see table below |
+| `private_key` | `PRIVATE_KEY` from `.env` (the deployer's key) |
+| `timezone_create` | The timezone you confirmed in Step 5c, or the default `Asia/Tokyo` if the agent asked again at 8d |
+
+### Example — `receivers` for a typical Tanimoto-style deploy
+
+If your contract config is:
+
+```
+stakeHolders          = [Tanimoto, Tanimoto, Tanimoto]
+awardReceivers        = [Tanimoto, Tanimoto]
+awardReceiversPercent = [50, 50]
+index                 = 1
+totalAmount           = 1000000000000000   // 0.001 token in wei (18 decimals)
+```
+
+then the agent builds:
+
+```json
+"receivers": [
+  {
+    "address": "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+    "amount": 0.0005,
+    "percent": "50",
+    "type": 1
+  },
+  {
+    "address": "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+    "amount": 0.0005,
+    "percent": "50",
+    "type": 2
+  }
+]
+```
+
+`type: 1` is the success receiver (i = 0, which is `< index = 1`); `type: 2` is the failure receiver (i = 1, which is `≥ index = 1`). Each amount is `totalAmount × percent / 100` converted to decimal token units.
+
+### 8f. network_id mapping (backend DB)
+
+The `network_id` is the backend's internal id, **not** the EVM chain id. The agent picks the right value based on the deploy network:
+
+| Hardhat network | `network_id` | DB name |
+| --------------- | ------------ | ------- |
+| `polygon`       | `5`          | Polygon |
+| `sepolia`       | `12`         | Sepolia |
+| `amoy`          | `13`         | Amoy |
+
+(For reference, the full backend mapping also contains Ethereum=1/8, Ropsten=2, Rinkeby=3, Mumbai=4, Astar=6, Shibuya=7, BSC Mainnet=9, Goerli=10, BSC Testnet=11, Astar zkEVM=14, Soneium Testnet Minato=15, Soneium=16. The agent will use the value that matches the network you deployed on.)
+
+### 8g. The agent POSTs to the backend
+
+```
+POST ${URL_SERVER_ADMIN}/api/v1/challenges
+Authorization: Bearer ${SERVER_ADMIN_TOKEN}
+Content-Type: application/json
+
+{ … the body it just showed you … }
+```
+
+The agent will report HTTP status + the response. A 200/201 with a JSON record means the challenge is saved.
+
+If the POST fails:
+
+- **401 / 403** → `SERVER_ADMIN_TOKEN` is missing or expired. Refresh the token in `.env` and ask the agent to retry.
+- **404** → `URL_SERVER_ADMIN` is wrong, or the route changed.
+- **422 / 400** → A field in the body is invalid (often `network_id` or a missing user id). The agent will show the response; fix and retry.
+
+The on-chain contract is **not** affected by a DB failure — you can re-run Step 8 later without redeploying.
 
 ---
 
@@ -551,12 +790,22 @@ claude
 #    "Use MATIC (native coin) as the prize."     (Option A)
 #    "Use JPYC (ERC20 token) as the prize."      (Option B)
 #
-# 3. CONFIGURE (agent writes to .env):
-#    "Please add a new challenge configuration with these settings: …"
+# 3. CONFIGURE — agent walks you through each parameter Q&A style:
+#    "Please walk me through every parameter (stakeHolders, challenger,
+#     sponsor, primaryRequired, allowGiveUp, awardReceivers + percent split,
+#     totalAmount, gasData, walkingSpeedData, hiitData) and the DB fields
+#     (name, description, timezone). Show me the default and let me override.
+#     Do not write to .env until I approve the full set."
+#    → Agent asks one field at a time; you input or accept the default.
+#    → `name` is REQUIRED (no default). `description` defaults to empty.
+#       `timezone_create` defaults to Asia/Tokyo (agent confirms).
 #
 # 4. CONFIRM the data (MANDATORY before deploy):
-#    "Please print back the full configuration so I can verify each value."
-#    → Check every address, amount, date, allowGiveUp[1], and percent sum.
+#    Agent prints the full config matching the format in
+#    `mock/exmapleChallengeBody.json`.
+#    → Check every address, amount, date, allowGiveUp[1], percent sum,
+#       name, description, timezone.
+#    → Only say "approved, write it to .env" when every value is right.
 #
 # 5. CHECK gas + balances:
 #    "Please check the current gas price on <network> and tell me how much the
@@ -570,9 +819,19 @@ claude
 #    "Looks good. Proceed with
 #       npm run deploy:challenge:<not-send-step|with-token>:<sepolia|polygon>"
 #
-# 8. AFTER DEPLOY:
-#    "Verify the contract at 0x… on the explorer."
-#    "Close the challenge at 0x… when the period ends."
+# 8. VERIFY ON EXPLORER:
+#    "Open the explorer link and confirm the contract settings."
+#
+# 9. SAVE TO DB (optional):
+#    Agent asks: "Save this challenge to the backend admin DB? yes / no"
+#    If yes → agent looks up sponsor + challenger user ids via
+#       GET ${URL_SERVER_ADMIN}/api/v1/users/get-profile-by-wallet/<addr>
+#    Then prints the request body for your final approval, then POSTs:
+#       POST ${URL_SERVER_ADMIN}/api/v1/challenges
+#    Both URL_SERVER_ADMIN and SERVER_ADMIN_TOKEN come from .env.
+#
+# 10. LATER: when the period ends:
+#    "Close the challenge at 0x… now."
 ```
 
 ---

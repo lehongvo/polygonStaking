@@ -1,10 +1,10 @@
 {
   "network": "sepolia",
   "contractName": "ChallengeBaseStep",
-  "contractAddress": "0x9A8Daa58735EE48B46A745e8baf826beb1507c3F",
+  "contractAddress": "0xdf86c7cFe8e39aDB896a51791409c5958683Ffdf",
   "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
-  "deploymentTime": "2026-05-16T10:39:27.086Z",
-  "blockNumber": 10862490,
+  "deploymentTime": "2026-05-17T15:32:13.861Z",
+  "blockNumber": 10869069,
   "constructorArgs": {
     "stakeHolders": [
       "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
@@ -64,26 +64,26 @@
   },
   "verification": {
     "verified": true,
-    "explorerUrl": "https://sepolia.etherscan.io/address/0x9A8Daa58735EE48B46A745e8baf826beb1507c3F"
+    "explorerUrl": "https://sepolia.etherscan.io/address/0xdf86c7cFe8e39aDB896a51791409c5958683Ffdf"
   },
   "roleGranted": {
     "challengeRole": true,
-    "transactionHash": "0xa3fdb0d2131ddc013fb93446652bcab91ca9ad739b5cb5cfccdccfbb93d18bb4",
-    "timestamp": "2026-05-16T10:39:29.715Z"
+    "transactionHash": "0x3c8f0eb81b62132b828cf419b4fa5385ba13248471ede6f9ee02799950c05866",
+    "timestamp": "2026-05-17T15:32:16.556Z"
   },
   "tokenFunding": {
     "sent": true,
-    "transactionHash": "0x469f187a93f8102b448f714de0887533fa84b24d4ef93a07318e05e562d79f8e",
+    "transactionHash": "0xbc1ce93fcfd711152dbf317eaf9af2b6c2b8586a93cdbb53ff64a417c5365af8",
     "tokenAddress": "0x6F7E7dE8eA666174AB2dcAF742f1F64d6aFB3251",
     "tokenSymbol": "TTJP",
     "amount": "1000000000000000",
     "amountFormatted": "0.001",
-    "timestamp": "2026-05-16T10:39:29.716Z"
+    "timestamp": "2026-05-17T15:32:16.556Z"
   },
   "transactionSendStep": {
     "sent": false,
     "transactionHash": null,
-    "timestamp": "2026-05-16T10:39:29.716Z",
+    "timestamp": "2026-05-17T15:32:16.556Z",
     "testData": {
       "days": [
         10

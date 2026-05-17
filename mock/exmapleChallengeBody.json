@@ -1,0 +1,51 @@
+{
+  "name": "Finial005",
+  "description": "",
+  "amount": 0.00001,
+  "execute_time": 7,
+  "type_challenge": "HIIT",
+  "daily_min_step_require": 0,
+  "min_day_require": 7,
+  "gas_fee": 0,
+  "fee_success": 0,
+  "fee_error": 0,
+  "give_up": false,
+  "give_up_type": 0,
+  "date_start": 1779032016,
+  "date_end": 1779645599,
+  "sponsor_address": "0x4E447D8C831406E28128321FCDA0bAd603CA125d",
+  "challenger_address": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+  "sponsor_address_id": 716,
+  "challenger_address_id": 1242,
+  "hash": "0x9a0f482c6eb63024386bef056bf49be478627e06df461ef16a0ad32c4b2e40ef",
+  "token_type": 2,
+  "address": "0x671776bF009779FfB91B43333A3e6F4bD82b9fBb",
+  "receivers": [
+    {
+      "address": "0xe400DAC7164A042288eaa9FE5CD63f9F974c30a6",
+      "amount": 0.00001,
+      "percent": "100",
+      "type": 1
+    },
+    {
+      "address": "0x4E447D8C831406E28128321FCDA0bAd603CA125d",
+      "amount": 0.000005,
+      "percent": "50",
+      "type": 2
+    },
+    {
+      "address": "0x296F5c137b8940776f2E602c6213719bC60f3EF4",
+      "amount": 0.000005,
+      "percent": "50",
+      "type": 2
+    }
+  ],
+  "deposit_hash": "null",
+  "network": "https://eth-sepolia.g.alchemy.com/v2/tl2r5NSPnvFOd0d3Nqaa8b_SHf2UkIIQ",
+  "network_id": 12,
+  "private_key": "086bca95c33037d3e1d10a8aefe2afb5720b0ee34c758c5954dca81c0d0f80b2",
+  "generate_nft": true,
+  "success_fee_percent": 0,
+  "fail_fee_percent": 0,
+  "timezone_create": "Asia/Bishkek"
+}
