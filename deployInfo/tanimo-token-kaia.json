@@ -1,0 +1,23 @@
+{
+  "network": "kaia",
+  "chainId": "8217",
+  "contractName": "TanimoToken",
+  "proxyAddress": "0x78627D9a195eaceCcf33A550D0d9EB857Ed98Ac1",
+  "implementationAddress": "0xac514803F4Abb05bAA5462b9223EBD848ff256ce",
+  "deployer": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+  "deploymentTime": "2026-05-26T15:07:19.694Z",
+  "blockNumber": 217615208,
+  "transactionHash": "0x8435057cb286c660133668ec8d6668fa83f6070c59fff8207743c644a4ce9a23",
+  "gasUsed": "246241",
+  "initArgs": {
+    "_ownerOfToken": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+    "_sizeCodeContract": "16549"
+  },
+  "onChain": {
+    "name": "Tanimo Token",
+    "symbol": "TTJP",
+    "decimals": "18",
+    "owner": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024"
+  },
+  "explorerUrl": "https://kaiascan.io/address/0x78627D9a195eaceCcf33A550D0d9EB857Ed98Ac1"
+}

@@ -1,0 +1,15 @@
+{
+  "network": "kaia",
+  "chainId": "8217",
+  "contractName": "ChallengeFee",
+  "address": "0x074a133a378b04FA936A53DAC4049aAa687FB16E",
+  "constructorArgs": [
+    0,
+    0
+  ],
+  "deployer": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+  "deploymentTime": "2026-05-26T16:10:55.097Z",
+  "deployTx": "0xba76936a6e8e8436e6e794257574b9c3f4e8fe1135cb876ea4a2ea38d4519b8d",
+  "updateFeeSettingTx": "0x59b780f2f8e04f4c28bacaa5eda476ccfb4f1aad1c10605b3f8675cd5d89a2a8",
+  "esnFeeSettingAfter": "0x074a133a378b04FA936A53DAC4049aAa687FB16E"
+}

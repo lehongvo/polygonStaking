@@ -52,28 +52,12 @@ const config = {
     },
   },
   etherscan: {
-    // Object form: per-network key. Etherscan v2 chains share the single
-    // ETHERSCAN_API_KEY; Kaia/Kairos use Kaiascan with APIKEY_KAIA.
-    apiKey: {
-      polygon:
-        process.env.ETHERSCAN_API_KEY ||
-        process.env.POLYGONSCAN_API_KEY ||
-        '',
-      polygonAmoy:
-        process.env.ETHERSCAN_API_KEY ||
-        process.env.POLYGONSCAN_API_KEY ||
-        '',
-      amoy:
-        process.env.ETHERSCAN_API_KEY ||
-        process.env.POLYGONSCAN_API_KEY ||
-        '',
-      sepolia:
-        process.env.ETHERSCAN_API_KEY ||
-        process.env.SEPOLIA_API_KEY ||
-        '',
-      kaia: process.env.APIKEY_KAIA || 'unset',
-      kairos: process.env.APIKEY_KAIA || 'unset',
-    },
+    // Single string = Etherscan API V2 (one key for all chains, chainid from network)
+    apiKey:
+      process.env.ETHERSCAN_API_KEY ||
+      process.env.POLYGONSCAN_API_KEY ||
+      process.env.SEPOLIA_API_KEY ||
+      '',
     customChains: [
       {
         network: 'polygon',
@@ -105,22 +89,6 @@ const config = {
         urls: {
           apiURL: 'https://api.etherscan.io/v2/api',
           browserURL: 'https://sepolia.etherscan.io',
-        },
-      },
-      {
-        network: 'kaia',
-        chainId: 8217,
-        urls: {
-          apiURL: 'https://mainnet-oapi.kaiascan.io/api',
-          browserURL: 'https://kaiascan.io',
-        },
-      },
-      {
-        network: 'kairos',
-        chainId: 1001,
-        urls: {
-          apiURL: 'https://kairos-oapi.kaiascan.io/api',
-          browserURL: 'https://kairos.kaiascan.io',
         },
       },
     ],

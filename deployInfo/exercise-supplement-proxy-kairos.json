@@ -1,0 +1,19 @@
+{
+  "network": "kairos",
+  "chainId": "1001",
+  "contractName": "ExerciseSupplementNFT",
+  "proxyAddress": "0x6E3873EaF96eF7a31A499228c54F8B69F0E95b44",
+  "implementationAddress": "0x31848cA70E42B65b3EA1e1895152C7D11d08cfeE",
+  "deployer": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+  "deploymentTime": "2026-05-25T17:20:18.593Z",
+  "blockNumber": 218086477,
+  "transactionHash": "0x097b6ea3766e0396f42e9f460cf010348ef16ac566555093b14229a4a78f7d38",
+  "gasUsed": "418705",
+  "initArgs": {
+    "initBaseURI": "",
+    "donationWallet": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+    "feeSettingAddress": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0",
+    "returnedNFTWallet": "0xa826774CA92237635421FeBe045CA2f3D1D4dbf0"
+  },
+  "explorerUrl": "https://kairos.kaiascan.io/address/0x6E3873EaF96eF7a31A499228c54F8B69F0E95b44"
+}

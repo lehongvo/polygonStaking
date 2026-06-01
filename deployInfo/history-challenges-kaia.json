@@ -1,0 +1,12 @@
+{
+  "network": "kaia",
+  "chainId": "8217",
+  "contractName": "HistoryChallenges",
+  "address": "0x8B4a723d12FEe6a45f9FbF3d400FDc8517bB0E9A",
+  "deployer": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+  "deploymentTime": "2026-05-26T15:58:46.211Z",
+  "blockNumber": 217618291,
+  "transactionHash": "0x7d27d24a7fbe511e4e903f4242523cc348fa735926b1bc07a6efe23c19bb8596",
+  "gasUsed": "1165228",
+  "explorerUrl": "https://kaiascan.io/address/0x8B4a723d12FEe6a45f9FbF3d400FDc8517bB0E9A"
+}

@@ -3861,6 +3861,23 @@ contract ExerciseSupplementNFT is
     // The ECDSA library provides cryptographic operations for verifying digital signatures
     using ECDSA for bytes32;
 
+    // Custom errors — replace revert strings to fit EIP-170 (24576-byte) limit
+    // on chains that enforce it strictly (Kaia/Kairos). Polygon raises this
+    // limit, but EVM-spec chains do not. Custom errors encode as a 4-byte
+    // selector vs the full string in bytecode.
+    error InvalidAddress();
+    error MissingNft();
+    error SecurityNotSet();
+    error HashUsed();
+    error InvalidSignature();
+    error EmptyAccounts();
+    error TooManyAccounts();
+    error NonexistentToken();
+    error ChallengeFinished();
+    error NftAlreadyInList();
+    error NftNotInList();
+    error NoGrantPermission();
+
     /**
      * @dev Enum defining the possible destinations for Gacha rewards.
      *
@@ -4064,7 +4081,7 @@ contract ExerciseSupplementNFT is
         bool _flag,
         bool _isTypeErc721
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
-        require(_nftAddress != address(0), "INVALID NFT ADDRESS");
+        if (_nftAddress == address(0)) revert InvalidAddress();
         if (_flag) {
             listNftAddress.add(_nftAddress);
             typeNfts[_nftAddress] = _isTypeErc721;
@@ -4083,7 +4100,7 @@ contract ExerciseSupplementNFT is
         address _erc20Address,
         bool _flag
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
-        require(_erc20Address != address(0), "INVALID ERC20 ADDRESS");
+        if (_erc20Address == address(0)) revert InvalidAddress();
         if (_flag) {
             listERC20Address.add(_erc20Address);
             if (compareStrings(ERC721Upgradeable(_erc20Address).symbol(), "TTJP")) {
@@ -4111,7 +4128,7 @@ contract ExerciseSupplementNFT is
         bool _flag
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
         if (_flag) {
-            require(_nftAddress != address(0), "INVALID SPECIAL NFT ADDRESS");
+            if (_nftAddress == address(0)) revert InvalidAddress();
             listSpecialNftAddress.add(_nftAddress);
         } else {
             listSpecialNftAddress.remove(_nftAddress);
@@ -4125,7 +4142,7 @@ contract ExerciseSupplementNFT is
     function updateDonationWalletAddress(
         address _donationWalletAddress
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_donationWalletAddress != address(0), "INVALID DONATION WALLET");
+        if (_donationWalletAddress == address(0)) revert InvalidAddress();
         donationWalletAddress = _donationWalletAddress;
     }
 
@@ -4136,7 +4153,7 @@ contract ExerciseSupplementNFT is
     function updateFeeSettingAddress(
         address _feeSettingAddress
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_feeSettingAddress != address(0), "INVALID FEE SETTING");
+        if (_feeSettingAddress == address(0)) revert InvalidAddress();
         feeSettingAddress = _feeSettingAddress;
     }
 
@@ -4147,7 +4164,7 @@ contract ExerciseSupplementNFT is
     function updateReturnedNFTWallet(
         address _returnedNFTWallet
     ) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_returnedNFTWallet != address(0), "INVALID RETURNED NFT WALLET");
+        if (_returnedNFTWallet == address(0)) revert InvalidAddress();
         returnedNFTWallet = _returnedNFTWallet;
     }
 
@@ -4158,7 +4175,7 @@ contract ExerciseSupplementNFT is
     function updateSecurityAddress(
         address _securityAddress
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_securityAddress != address(0), "INVALID SECURITY ADDRESS");
+        if (_securityAddress == address(0)) revert InvalidAddress();
         securityAddress = _securityAddress;
     }
 
@@ -4279,14 +4296,14 @@ contract ExerciseSupplementNFT is
                 _awardReceivers == donationWalletAddress &&
                 _dayRequired >= _duration - (_duration / listToleranceAmount[1])
             ) {
-                require(listSpecialNftAddress.length() >= 2, "MISSING SPECIAL NFT");
+                if (listSpecialNftAddress.length() < 2) revert MissingNft();
                 TransferHelper.safeMintNFT(listSpecialNftAddress.at(1), _challenger);
                 curentAddressNftUse = listSpecialNftAddress.at(1);
                 indexNftAfterMint = ExerciseSupplementNFT(listSpecialNftAddress.at(1))
                     .nextTokenIdToMint();
             } else {
                 if (_dayRequired >= _duration - (_duration / (listToleranceAmount[0]))) {
-                    require(listSpecialNftAddress.length() >= 1, "MISSING SPECIAL NFT");
+                    if (listSpecialNftAddress.length() < 1) revert MissingNft();
                     TransferHelper.safeMintNFT(listSpecialNftAddress.at(0), _challenger);
                     curentAddressNftUse = listSpecialNftAddress.at(0);
                     indexNftAfterMint = ExerciseSupplementNFT(listSpecialNftAddress.at(0))
@@ -4295,7 +4312,7 @@ contract ExerciseSupplementNFT is
             }
         } else {
             if (soulBoundNftAddress == address(0) || !hasSoulBoundMinted) {
-                require(listNftAddress.length() >= 1, "MISSING NFT ADDRESS");
+                if (listNftAddress.length() < 1) revert MissingNft();
                 TransferHelper.safeMintNFT(listNftAddress.at(0), _challenger);
                 curentAddressNftUse = listNftAddress.at(0);
                 indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0)).nextTokenIdToMint();
@@ -4318,8 +4335,8 @@ contract ExerciseSupplementNFT is
         uint64[2] memory _data,
         bytes memory _signature
     ) public onlyRole(ALLOWED_CONTRACTS_CHALLENGE) {
-        require(securityAddress != address(0), "SECURITY ADDR NOT SET");
-        require(!verifyHash[_signature], "Hash was used");
+        if (securityAddress == address(0)) revert SecurityNotSet();
+        if (verifyHash[_signature]) revert HashUsed();
         require(
             block.timestamp <= _data[1] && _data[1] - block.timestamp <= 10 minutes,
             "Signature is inaccessible"
@@ -4333,7 +4350,7 @@ contract ExerciseSupplementNFT is
         bytes32 hash = keccak256(abi.encodePacked(msg.sender, _day, _stepIndex, _data, chainId));
         bytes32 messageHash = hash.toEthSignedMessageHash();
 
-        require(messageHash.recover(_signature) == securityAddress, "Invalid signature");
+        if (messageHash.recover(_signature) != securityAddress) revert InvalidSignature();
 
         verifyHash[_signature] = true;
     }
@@ -4349,7 +4366,7 @@ contract ExerciseSupplementNFT is
         GachaRewardDestination _gachaRewardDestination,
         bool _flag
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
-        require(_gachaAddress != address(0), "INVALID GACHA ADDRESS");
+        if (_gachaAddress == address(0)) revert InvalidAddress();
         GachaInfos storage gachaInfosCus = gachaInfos;
         uint256 lengthCur = gachaInfosCus.gachaAddress.length;
         bool isGachaExist;
@@ -4395,12 +4412,12 @@ contract ExerciseSupplementNFT is
         address[] memory _accounts
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
         if (_role != ALLOWED_CONTRACTS_CHALLENGE) {
-            revert("DO NOT HAVE PERMISSION TO GRANT THIS ROLE");
+            revert NoGrantPermission();
         }
-        require(_accounts.length > 0, "EMPTY ACCOUNTS");
-        require(_accounts.length <= 100, "TOO MANY ACCOUNTS");
+        if (_accounts.length == 0) revert EmptyAccounts();
+        if (_accounts.length > 100) revert TooManyAccounts();
         for (uint256 index = 0; index < _accounts.length; index++) {
-            require(_accounts[index] != address(0), "INVALID ACCOUNT");
+            if (_accounts[index] == address(0)) revert InvalidAddress();
             _grantRole(_role, _accounts[index]);
         }
     }
@@ -4580,7 +4597,7 @@ contract ExerciseSupplementNFT is
      * @return string memory URI of the token
      */
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        require(_exists(tokenId), "ERC721METADATA: URI QUERY FOR NONEXISTENT TOKEN");
+        if (!_exists(tokenId)) revert NonexistentToken();
 
         string memory currentBaseURI = _baseURI();
         return
@@ -4624,7 +4641,7 @@ contract ExerciseSupplementNFT is
         if (to != address(0) && from != address(0)) {
             if (hasRole(ALLOWED_CONTRACTS_CHALLENGE, to)) {
                 _historySendNFT[firstTokenId][to] = from;
-                require(!IChallenge(payable(to)).isFinished(), "ERC721: CHALLENGE WAS FINISHED");
+                if (IChallenge(payable(to)).isFinished()) revert ChallengeFinished();
             }
         }
     }
@@ -4651,7 +4668,7 @@ contract ExerciseSupplementNFT is
         bool _flag
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
         if (_flag) {
-            require(_soulBoundNftAddress != address(0), "INVALID ADDRESS");
+            if (_soulBoundNftAddress == address(0)) revert InvalidAddress();
             soulBoundNftAddress = _soulBoundNftAddress;
         } else {
             soulBoundNftAddress = address(0);
@@ -4668,11 +4685,11 @@ contract ExerciseSupplementNFT is
         bool _flag
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
         if (_flag) {
-            require(_nftAddress != address(0), "INVALID ADDRESS");
-            require(!requiredNftAddressesForSoulBound.contains(_nftAddress), "NFT ALREADY IN LIST");
+            if (_nftAddress == address(0)) revert InvalidAddress();
+            if (requiredNftAddressesForSoulBound.contains(_nftAddress)) revert NftAlreadyInList();
             requiredNftAddressesForSoulBound.add(_nftAddress);
         } else {
-            require(requiredNftAddressesForSoulBound.contains(_nftAddress), "NFT NOT IN LIST");
+            if (!requiredNftAddressesForSoulBound.contains(_nftAddress)) revert NftNotInList();
             requiredNftAddressesForSoulBound.remove(_nftAddress);
         }
     }

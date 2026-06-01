@@ -103,6 +103,15 @@
     "check-admin-role:gacha:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/gacha/check-admin-role.ts --network polygon",
     "get-impl:exercise:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/get-implementation.ts --network polygon",
     "deploy:exercise:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/deploy-impl.ts --network polygon",
-    "upgrade:exercise:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/upgrade-proxy.ts --network polygon"
+    "deploy:exercise-proxy:kairos": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/deploy-proxy-kairos.ts --network kairos",
+    "deploy:exercise-proxy:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/deploy-proxy-kairos.ts --network kaia",
+    "upgrade:exercise:polygon": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/upgrade-proxy.ts --network polygon",
+    "deploy:ttjp:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/TTJP/deploy-tanimo-token-kaia.ts --network kaia",
+    "verify:ttjp:kaia": "hardhat verify --network kaia",
+    "deploy:special:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/exerciseSupplementNFT/deploy-and-setup-special-kaia.ts --network kaia",
+    "deploy:history:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/HistoryChallenges/deploy-history-kaia.ts --network kaia",
+    "deploy:fee:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeFee/deploy-and-set-kaia.ts --network kaia",
+    "deploy:challenge-base-step:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeDetail/deploy-challenge-base-step-kaia.ts --network kaia",
+    "send-daily-result:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeDetail/send-daily-result-kaia.ts --network kaia"
   }
 }

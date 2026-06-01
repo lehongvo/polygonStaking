@@ -1,0 +1,542 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0xDd38B3F6fa4281759c3f347B2dbb9766E488b4A1",
+      "txHash": "0x2f9859f05bb18c2a62718bec7af60f72bb94a55b0517fbb16dc2c9fec7bfa2c6",
+      "kind": "uups"
+    },
+    {
+      "address": "0x6E3873EaF96eF7a31A499228c54F8B69F0E95b44",
+      "txHash": "0x097b6ea3766e0396f42e9f460cf010348ef16ac566555093b14229a4a78f7d38",
+      "kind": "uups"
+    }
+  ],
+  "impls": {
+    "6384b8eb187d66b2e3db72aa12c7fb905187ed20320a57fd64606d73ca1d7314": {
+      "address": "0x31848cA70E42B65b3EA1e1895152C7D11d08cfeE",
+      "txHash": "0xfae43a5b7bb5c1ac196f6c6c056b196db8ce414d669b7aaef60a4882984f1e3e",
+      "layout": {
+        "solcVersion": "0.8.28",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "contracts/ExerciseSupplementNFT.sol:2253",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "contracts/ExerciseSupplementNFT.sol:2258"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:2735"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC165Upgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:2831"
+          },
+          {
+            "label": "_name",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_string_storage",
+            "contract": "ERC721Upgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3287"
+          },
+          {
+            "label": "_symbol",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_string_storage",
+            "contract": "ERC721Upgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3290"
+          },
+          {
+            "label": "_owners",
+            "offset": 0,
+            "slot": "103",
+            "type": "t_mapping(t_uint256,t_address)",
+            "contract": "ERC721Upgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3293"
+          },
+          {
+            "label": "_balances",
+            "offset": 0,
+            "slot": "104",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ERC721Upgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3296"
+          },
+          {
+            "label": "_tokenApprovals",
+            "offset": 0,
+            "slot": "105",
+            "type": "t_mapping(t_uint256,t_address)",
+            "contract": "ERC721Upgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3299"
+          },
+          {
+            "label": "_operatorApprovals",
+            "offset": 0,
+            "slot": "106",
+            "type": "t_mapping(t_address,t_mapping(t_address,t_bool))",
+            "contract": "ERC721Upgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3302"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "107",
+            "type": "t_array(t_uint256)44_storage",
+            "contract": "ERC721Upgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3790"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "151",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC721BurnableUpgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3833"
+          },
+          {
+            "label": "_roles",
+            "offset": 0,
+            "slot": "201",
+            "type": "t_mapping(t_bytes32,t_struct(RoleData)31302_storage)",
+            "contract": "AccessControlUpgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:2893"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "202",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "AccessControlUpgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:3099"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "251",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ERC1967UpgradeUpgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:2583"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "301",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "UUPSUpgradeable",
+            "src": "contracts/ExerciseSupplementNFT.sol:2698"
+          },
+          {
+            "label": "_tokenIdCounter",
+            "offset": 0,
+            "slot": "351",
+            "type": "t_struct(Counter)29114_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3925"
+          },
+          {
+            "label": "baseURI",
+            "offset": 0,
+            "slot": "352",
+            "type": "t_string_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3928"
+          },
+          {
+            "label": "baseExtension",
+            "offset": 0,
+            "slot": "353",
+            "type": "t_string_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3931"
+          },
+          {
+            "label": "listNftAddress",
+            "offset": 0,
+            "slot": "354",
+            "type": "t_struct(AddressSet)28822_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3934"
+          },
+          {
+            "label": "listERC20Address",
+            "offset": 0,
+            "slot": "356",
+            "type": "t_struct(AddressSet)28822_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3937"
+          },
+          {
+            "label": "listSpecialNftAddress",
+            "offset": 0,
+            "slot": "358",
+            "type": "t_struct(AddressSet)28822_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3940"
+          },
+          {
+            "label": "gachaContractAddress",
+            "offset": 0,
+            "slot": "360",
+            "type": "t_struct(AddressSet)28822_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3943"
+          },
+          {
+            "label": "donationWalletAddress",
+            "offset": 0,
+            "slot": "362",
+            "type": "t_address",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3946"
+          },
+          {
+            "label": "feeSettingAddress",
+            "offset": 0,
+            "slot": "363",
+            "type": "t_address",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3949"
+          },
+          {
+            "label": "returnedNFTWallet",
+            "offset": 0,
+            "slot": "364",
+            "type": "t_address",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3952"
+          },
+          {
+            "label": "typeNfts",
+            "offset": 0,
+            "slot": "365",
+            "type": "t_mapping(t_address,t_bool)",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3955"
+          },
+          {
+            "label": "listNftSpecialConditionInfo",
+            "offset": 0,
+            "slot": "366",
+            "type": "t_struct(NftSpecialConditionInfo)32808_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3958"
+          },
+          {
+            "label": "typeTokenErc20",
+            "offset": 0,
+            "slot": "372",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3961"
+          },
+          {
+            "label": "listToleranceAmount",
+            "offset": 0,
+            "slot": "373",
+            "type": "t_array(t_uint256)2_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3964"
+          },
+          {
+            "label": "_historySendNFT",
+            "offset": 0,
+            "slot": "375",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_address))",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3967"
+          },
+          {
+            "label": "securityAddress",
+            "offset": 0,
+            "slot": "376",
+            "type": "t_address",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3970"
+          },
+          {
+            "label": "verifyHash",
+            "offset": 0,
+            "slot": "377",
+            "type": "t_mapping(t_bytes_memory_ptr,t_bool)",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3973"
+          },
+          {
+            "label": "gachaInfos",
+            "offset": 0,
+            "slot": "378",
+            "type": "t_struct(GachaInfos)32794_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3991"
+          },
+          {
+            "label": "soulBoundNftAddress",
+            "offset": 0,
+            "slot": "380",
+            "type": "t_address",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3994"
+          },
+          {
+            "label": "requiredNftAddressesForSoulBound",
+            "offset": 0,
+            "slot": "381",
+            "type": "t_struct(AddressSet)28822_storage",
+            "contract": "ExerciseSupplementNFT",
+            "src": "contracts/ExerciseSupplementNFT.sol:3997"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_address)dyn_storage": {
+            "label": "address[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_bytes32)dyn_storage": {
+            "label": "bytes32[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_enum(GachaRewardDestination)32785)dyn_storage": {
+            "label": "enum ExerciseSupplementNFT.GachaRewardDestination[]",
+            "numberOfBytes": "32"
+          },
+          "t_array(t_uint256)2_storage": {
+            "label": "uint256[2]",
+            "numberOfBytes": "64"
+          },
+          "t_array(t_uint256)44_storage": {
+            "label": "uint256[44]",
+            "numberOfBytes": "1408"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_bytes_memory_ptr": {
+            "label": "bytes",
+            "numberOfBytes": "32"
+          },
+          "t_enum(GachaRewardDestination)32785": {
+            "label": "enum ExerciseSupplementNFT.GachaRewardDestination",
+            "members": [
+              "sendToChallenger",
+              "sendToChallengeContract",
+              "sendToSponsor"
+            ],
+            "numberOfBytes": "1"
+          },
+          "t_mapping(t_address,t_address)": {
+            "label": "mapping(address => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_bool)": {
+            "label": "mapping(address => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_mapping(t_address,t_bool))": {
+            "label": "mapping(address => mapping(address => bool))",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_struct(RoleData)31302_storage)": {
+            "label": "mapping(bytes32 => struct AccessControlUpgradeable.RoleData)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes32,t_uint256)": {
+            "label": "mapping(bytes32 => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_bytes_memory_ptr,t_bool)": {
+            "label": "mapping(bytes => bool)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_address)": {
+            "label": "mapping(uint256 => address)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_mapping(t_address,t_address))": {
+            "label": "mapping(uint256 => mapping(address => address))",
+            "numberOfBytes": "32"
+          },
+          "t_string_storage": {
+            "label": "string",
+            "numberOfBytes": "32"
+          },
+          "t_struct(AddressSet)28822_storage": {
+            "label": "struct EnumerableSet.AddressSet",
+            "members": [
+              {
+                "label": "_inner",
+                "type": "t_struct(Set)28507_storage",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Counter)29114_storage": {
+            "label": "struct CountersUpgradeable.Counter",
+            "members": [
+              {
+                "label": "_value",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(GachaInfos)32794_storage": {
+            "label": "struct ExerciseSupplementNFT.GachaInfos",
+            "members": [
+              {
+                "label": "gachaAddress",
+                "type": "t_array(t_address)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "gachaRewardDestination",
+                "type": "t_array(t_enum(GachaRewardDestination)32785)dyn_storage",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(NftSpecialConditionInfo)32808_storage": {
+            "label": "struct ExerciseSupplementNFT.NftSpecialConditionInfo",
+            "members": [
+              {
+                "label": "targetStepPerDay",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "challengeDuration",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "amountDepositMatic",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "amountDepositTTJP",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "amountDepositJPYC",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "4"
+              },
+              {
+                "label": "dividendSuccess",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "5"
+              }
+            ],
+            "numberOfBytes": "192"
+          },
+          "t_struct(RoleData)31302_storage": {
+            "label": "struct AccessControlUpgradeable.RoleData",
+            "members": [
+              {
+                "label": "members",
+                "type": "t_mapping(t_address,t_bool)",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "adminRole",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_struct(Set)28507_storage": {
+            "label": "struct EnumerableSet.Set",
+            "members": [
+              {
+                "label": "_values",
+                "type": "t_array(t_bytes32)dyn_storage",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_indexes",
+                "type": "t_mapping(t_bytes32,t_uint256)",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          },
+          "t_bytes_storage": {
+            "label": "bytes"
+          }
+        },
+        "namespaces": {}
+      }
+    }
+  }
+}

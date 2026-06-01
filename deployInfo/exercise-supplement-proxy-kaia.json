@@ -1,0 +1,19 @@
+{
+  "network": "kaia",
+  "chainId": "8217",
+  "contractName": "ExerciseSupplementNFT",
+  "proxyAddress": "0x4A0dB5c68d0f7a76D6dBDD7ecf0e96AdEB7027c7",
+  "implementationAddress": "0xe4a82DB54684fd12189Af10eC121CF917428A8b3",
+  "deployer": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+  "deploymentTime": "2026-05-26T15:23:10.165Z",
+  "blockNumber": 217616159,
+  "transactionHash": "0x1cda7b6a5f49409c5419df19552729b0d3bf345cc26a801dcb041a25ee975c96",
+  "gasUsed": "418669",
+  "initArgs": {
+    "initBaseURI": "",
+    "donationWallet": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+    "feeSettingAddress": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+    "returnedNFTWallet": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024"
+  },
+  "explorerUrl": "https://kaiascan.io/address/0x4A0dB5c68d0f7a76D6dBDD7ecf0e96AdEB7027c7"
+}

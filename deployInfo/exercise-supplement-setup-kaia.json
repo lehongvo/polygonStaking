@@ -1,0 +1,130 @@
+{
+  "network": "kaia",
+  "chainId": "8217",
+  "deployer": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
+  "timestamp": "2026-05-26T15:47:19.661Z",
+  "contracts": {
+    "ExerciseSupplementNFTProxy": "0x4A0dB5c68d0f7a76D6dBDD7ecf0e96AdEB7027c7",
+    "ExerciseSupplementNFTSpecial1": "0x4aEcd6bdb4DCAb9beb8a49F93c04c0C65d060530",
+    "ExerciseSupplementNFTSpecial2": "0xC1849D39bb4003039089cC46AC55D480EfF045F0",
+    "TTJPProxy": "0x78627D9a195eaceCcf33A550D0d9EB857Ed98Ac1"
+  },
+  "config": {
+    "SECURITY_ADDRESS": "0x9A266044a5e5010C101169766F9cC7BE18bB111e",
+    "DONATION_WALLET": "0xe400DAC7164A042288eaa9FE5CD63f9F974c30a6",
+    "FEE_SETTING_ADDRESS": "0x34E26EBc7659D489e40bAfBC1B41ab8f70FBd3Dc",
+    "RETURNED_NFT_WALLET": "0x1B224b4da437d26d0b47c185A58163D1319335B2",
+    "UPDATER_GRANTEE": "0xe9c11C331fC68230fC900349b2d290b48c5A0862",
+    "ESN_BASE_URI": "ipfs://QmWkeGA2DCkKZMwLU2M7H6eGPTy6hT8siTjC8PSS76m1h2/",
+    "SPECIAL1_BASE_URI": "ipfs://QmTTVzAyvbsUS2jbCLCXAuQ7Gy3vDbRxzKS2jnD8xjGZwp/",
+    "SPECIAL2_BASE_URI": "ipfs://QmNjBQidKr3z1KxEWzq8zGf8S3dt2usHgxxqSjSZeMkCYo/",
+    "SPECIAL_COND": {
+      "targetStepPerDay": "1000000",
+      "challengeDuration": "10000",
+      "amountDepositMatic": "100",
+      "amountDepositTTJP": "100",
+      "amountDepositJPYC": "100",
+      "dividendSuccess": "98"
+    },
+    "TOLERANCE_AMOUNT_SUCCESS": "1",
+    "TOLERANCE_AMOUNT_FAILED": "1"
+  },
+  "txs": [
+    {
+      "step": 1,
+      "label": "Deploy Special1 (baseURI=ipfs://QmTTVzAyvbsUS2jbCLCXAuQ7Gy3vDbRxzKS2jnD8xjGZwp/)",
+      "hash": "0xfbba20f7b6e8a180fd85026546b4028fa7cc189b0b8c8b77438ea73c011712cc",
+      "gasUsed": "1958307"
+    },
+    {
+      "step": 2,
+      "label": "Deploy Special2 (baseURI=ipfs://QmNjBQidKr3z1KxEWzq8zGf8S3dt2usHgxxqSjSZeMkCYo/)",
+      "hash": "0x360b3616154c84b40bf29764c354b29226ddc49db52848e887d52f52a0d120cd",
+      "gasUsed": "1958307"
+    },
+    {
+      "step": 3,
+      "label": "Special1.updateAdmin(0x4A0dB5c68d0f7a76D6dBDD7ecf0e96AdEB7027c7, true)",
+      "hash": "0x083d335ded343ad848c24a51b1db3c776df0a4a20abd993bb17c35fe03f6200f",
+      "gasUsed": "74200"
+    },
+    {
+      "step": 4,
+      "label": "Special2.updateAdmin(0x4A0dB5c68d0f7a76D6dBDD7ecf0e96AdEB7027c7, true)",
+      "hash": "0x9cf8c15e1b47e4142f99a02066e76900b7ac4c5d7153b5880cce7fd75ef0b9a5",
+      "gasUsed": "74200"
+    },
+    {
+      "step": 5,
+      "label": "updateSecurityAddress(0x9A266044a5e5010C101169766F9cC7BE18bB111e)",
+      "hash": "0x3ffac34dbd9ed1c90885d6dfebdf76b041b47e1b64609d46d93c2f06ca696a44",
+      "gasUsed": "51824"
+    },
+    {
+      "step": 6,
+      "label": "updateSpecialNftAddress(0x4aEcd6bdb4DCAb9beb8a49F93c04c0C65d060530, true)",
+      "hash": "0xe644ec64b3dbe36f06953aa832741cba002a0363c3461898baba5d39d8e55e1d",
+      "gasUsed": "96495"
+    },
+    {
+      "step": 7,
+      "label": "updateSpecialNftAddress(0xC1849D39bb4003039089cC46AC55D480EfF045F0, true)",
+      "hash": "0xde29a9c844f925bc38547e4fc2b9fe2f3137e00bc494f2aad178d475e1f3654f",
+      "gasUsed": "79395"
+    },
+    {
+      "step": 8,
+      "label": "setBaseURI(ipfs://QmWkeGA2DCkKZMwLU2M7H6eGPTy6hT8siTjC8PSS76m1h2/)",
+      "hash": "0xce3c835e9c1f08941c313dd8c498b8075ec579fe66e104bba3d9dfdf746923e4",
+      "gasUsed": "97354"
+    },
+    {
+      "step": 9,
+      "label": "updateToleranceAmount(1, 1)",
+      "hash": "0xad23de1181e908f153ed3a85622a5557d87e342b385152c74951151084974ab4",
+      "gasUsed": "73022"
+    },
+    {
+      "step": 10,
+      "label": "updateListERC20Address(TTJP=0x78627D9a195eaceCcf33A550D0d9EB857Ed98Ac1, true)",
+      "hash": "0xab1829ad773b2bbf197eb6551f688e76c1e36e17f8fcf99c7df1a60ee93ed4df",
+      "gasUsed": "130580"
+    },
+    {
+      "step": 11,
+      "label": "updateNftListAddress(ESN_proxy=0x4A0dB5c68d0f7a76D6dBDD7ecf0e96AdEB7027c7, true, true)",
+      "hash": "0x02a0cd1ab22da20d6998ab45603f0476cc43b49f8a06841885e5e2c6da46bfd5",
+      "gasUsed": "119653"
+    },
+    {
+      "step": 12,
+      "label": "updateDonationWalletAddress(0xe400DAC7164A042288eaa9FE5CD63f9F974c30a6)",
+      "hash": "0x9353b71d9d5332666366a713eb6bff5c7ebeac63728714568910e35ccdc5a96f",
+      "gasUsed": "34272"
+    },
+    {
+      "step": 13,
+      "label": "updateFeeSettingAddress(0x34E26EBc7659D489e40bAfBC1B41ab8f70FBd3Dc)",
+      "hash": "0x73c2dd9d128300a3c07362ff552b820a7899d2d6cb4216247f487d607bb764f7",
+      "gasUsed": "35054"
+    },
+    {
+      "step": 14,
+      "label": "updateReturnedNFTWallet(0x1B224b4da437d26d0b47c185A58163D1319335B2)",
+      "hash": "0xfce58918156f982df56e017ffaf1163efad55410677d3e0a86f3cd388d9e6f4d",
+      "gasUsed": "35230"
+    },
+    {
+      "step": 15,
+      "label": "updateSpecialConditionInfo(1000000, 10000, 100, 100, 100, 98)",
+      "hash": "0xe075416225fe29246e1b9308914893e83737842b6e3676a706fd476e21071b73",
+      "gasUsed": "162216"
+    },
+    {
+      "step": 16,
+      "label": "grantRole(UPDATER_ACTIVITIES_ROLE, 0xe9c11C331fC68230fC900349b2d290b48c5A0862)",
+      "hash": "0x0a4328f42cf63e615d136c8bd797c4d2a8fedd3313fa1dea28262cf3df41c082",
+      "gasUsed": "56359"
+    }
+  ]
+}
