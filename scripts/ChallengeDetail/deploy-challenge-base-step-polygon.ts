@@ -1,34 +1,29 @@
 /**
- * Deploy a single ChallengeBaseStep instance on Kaia mainnet.
+ * Deploy + verify a single ChallengeBaseStep instance on Polygon mainnet.
  *
- * Reads `deploy` block from scripts/contract/kaia.json, but overrides
- * primaryRequired[1] (startTime) = now and primaryRequired[2] (endTime)
- * = now + 30 days per Vincent's instruction.
+ * Purpose: publish the N1-removed ChallengeBaseStep source on Polygonscan.
+ * NO role grant (deployer is not ESN admin and it is not needed for a
+ * verify-only deploy).
  *
- * allowGiveUp[1] = true → requires msg.value == totalAmount, paid in
- * native KAIA.
+ * allowGiveUp[1] = true → requires msg.value == totalAmount (native POL).
  *
  * Run:
- *   npm run deploy:challenge-base-step:kaia
+ *   npm run deploy:challenge-base-step:polygon
  */
 import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ethers, network, run } from 'hardhat';
 
-const KAIA_JSON_PATH = path.join(
-  process.cwd(),
-  'scripts',
-  'contract',
-  'kaia.json'
-);
+// Polygon ESN proxy (live, same one used by the prior Polygon HIIT deploy).
+const ESN_PROXY_POLYGON = '0x55285EcCef5487E87C5980C880131aCadDE7767C';
 
 async function main() {
-  console.log('🚀 CHALLENGE BASE STEP — DEPLOY ON KAIA MAINNET');
-  console.log('================================================');
+  console.log('🚀 CHALLENGE BASE STEP — DEPLOY ON POLYGON MAINNET');
+  console.log('==================================================');
 
-  if (network.name !== 'kaia') {
-    console.error(`❌ Only 'kaia', got '${network.name}'`);
+  if (network.name !== 'polygon') {
+    console.error(`❌ Only 'polygon', got '${network.name}'`);
     process.exit(1);
   }
 
@@ -36,20 +31,27 @@ async function main() {
   const balance = await ethers.provider.getBalance(deployer.address);
   console.log(`📍 Network:  ${network.name}`);
   console.log(`👤 Deployer: ${deployer.address}`);
-  console.log(`💰 Balance:  ${ethers.formatEther(balance)} KAIA`);
+  console.log(`💰 Balance:  ${ethers.formatEther(balance)} POL`);
 
-  // Load config + override timestamps
-  const kaiaJson = JSON.parse(fs.readFileSync(KAIA_JSON_PATH, 'utf8'));
-  const cfg = kaiaJson.deploy;
-  if (!cfg) {
-    console.error('❌ kaia.json missing "deploy" block');
-    process.exit(1);
-  }
   const now = Math.floor(Date.now() / 1000);
   const endTime = now + 30 * 24 * 3600;
-  cfg.primaryRequired[1] = now;
-  cfg.primaryRequired[2] = endTime;
+  const d = deployer.address;
 
+  const cfg = {
+    stakeHolders: [d, d, d],
+    createByToken: '0x0000000000000000000000000000000000000000',
+    erc721Addresses: [ESN_PROXY_POLYGON],
+    primaryRequired: [1, now, endTime, 1, 1],
+    awardReceivers: [d, d],
+    index: 1,
+    allowGiveUp: [true, true, true],
+    gasData: ['0', '0', '0'],
+    allAwardToSponsorWhenGiveUp: true,
+    awardReceiversPercent: [50, 50],
+    totalAmount: '1000000000000',
+    walkingSpeedData: [] as number[],
+    hiitData: [] as number[],
+  };
   const totalAmount = BigInt(cfg.totalAmount);
 
   console.log('\n📋 ARGS');
@@ -58,25 +60,17 @@ async function main() {
   console.log(`createByToken:               ${cfg.createByToken}`);
   console.log(`erc721Addresses:             ${JSON.stringify(cfg.erc721Addresses)}`);
   console.log(`primaryRequired:             ${JSON.stringify(cfg.primaryRequired)}`);
-  console.log(`  [duration]      = ${cfg.primaryRequired[0]} days`);
-  console.log(`  [startTime]     = ${cfg.primaryRequired[1]} (${new Date(cfg.primaryRequired[1] * 1000).toISOString()})`);
-  console.log(`  [endTime]       = ${cfg.primaryRequired[2]} (${new Date(cfg.primaryRequired[2] * 1000).toISOString()})`);
-  console.log(`  [goal]          = ${cfg.primaryRequired[3]}`);
-  console.log(`  [dayRequired]   = ${cfg.primaryRequired[4]}`);
   console.log(`awardReceivers:              ${JSON.stringify(cfg.awardReceivers)}`);
   console.log(`index:                       ${cfg.index}`);
   console.log(`allowGiveUp:                 ${JSON.stringify(cfg.allowGiveUp)}`);
   console.log(`gasData:                     ${JSON.stringify(cfg.gasData)}`);
   console.log(`allAwardToSponsorWhenGiveUp: ${cfg.allAwardToSponsorWhenGiveUp}`);
   console.log(`awardReceiversPercent:       ${JSON.stringify(cfg.awardReceiversPercent)}`);
-  console.log(`totalAmount:                 ${cfg.totalAmount} wei (${ethers.formatEther(totalAmount)} KAIA)`);
-  console.log(`walkingSpeedData:            ${JSON.stringify(cfg.walkingSpeedData)}`);
-  console.log(`hiitData:                    ${JSON.stringify(cfg.hiitData)}`);
+  console.log(`totalAmount:                 ${cfg.totalAmount} wei (${ethers.formatEther(totalAmount)} POL)`);
   console.log(`msg.value:                   ${totalAmount.toString()} wei (allowGiveUp[1]=true → required)`);
 
   console.log('\n🏗️  DEPLOYING ChallengeBaseStep');
   const Factory = await ethers.getContractFactory('ChallengeBaseStep');
-
   const tx = await Factory.deploy(
     cfg.stakeHolders,
     cfg.createByToken,
@@ -104,36 +98,11 @@ async function main() {
   console.log(`📦 Block:       ${receipt?.blockNumber}`);
   console.log(`⛽ Gas used:    ${receipt?.gasUsed?.toString()}`);
 
-  // Grant ALLOWED_CONTRACTS_CHALLENGE on the ESN proxy so the new
-  // challenge can call back into ESN during sendDailyResult.
-  console.log('\n🔑 Granting ALLOWED_CONTRACTS_CHALLENGE on ESN proxy...');
-  const ESN_PROXY = cfg.erc721Addresses[0];
-  const esn = new ethers.Contract(
-    ESN_PROXY,
-    [
-      'function grantRole(bytes32,address)',
-      'function hasRole(bytes32,address) view returns (bool)',
-      'function ALLOWED_CONTRACTS_CHALLENGE() view returns (bytes32)',
-    ],
-    deployer
-  );
-  const role = await esn.ALLOWED_CONTRACTS_CHALLENGE();
-  const grantTx = await esn.grantRole(role, address);
-  const grantRcpt = await grantTx.wait();
-  const granted = await esn.hasRole(role, address);
-  console.log(`     tx:      ${grantTx.hash}`);
-  console.log(`     gas:     ${grantRcpt?.gasUsed?.toString()}`);
-  console.log(`     hasRole: ${granted}`);
-  if (!granted) {
-    console.error('❌ Role not granted after tx');
-    process.exit(1);
-  }
-
-  // Verify on Kaiascan (uses APIKEY_KAIA + kaia customChains in hardhat.config).
-  console.log('\n🔍 VERIFYING on Kaiascan...');
+  // Verify on Polygonscan (uses POLYGONSCAN_API_KEY/ETHERSCAN_API_KEY).
+  console.log('\n🔍 VERIFYING on Polygonscan...');
   let verified = false;
   try {
-    await dTx?.wait(5); // wait for confirmations before verify
+    await dTx?.wait(5);
     await run('verify:verify', {
       address,
       constructorArguments: [
@@ -153,19 +122,18 @@ async function main() {
       ],
     });
     verified = true;
-    console.log('✅ Verified on Kaiascan (etherscan API)');
+    console.log('✅ Verified on Polygonscan');
   } catch (e: any) {
     const msg = e?.message ?? String(e);
     if (/already verified/i.test(msg)) {
       verified = true;
       console.log('✅ Already verified');
     } else {
-      // Kaiascan etherscan-API rejects viaIR contracts → fall back to Sourcify.
-      console.warn('⚠️  Kaiascan etherscan-API verify failed, trying Sourcify…');
+      console.warn('⚠️  Polygonscan verify failed, trying Sourcify…');
       try {
         await run('verify:sourcify', { address });
         verified = true;
-        console.log('✅ Verified on Sourcify (chainId 8217)');
+        console.log('✅ Verified on Sourcify (chainId 137)');
       } catch (e2: any) {
         const msg2 = e2?.message ?? String(e2);
         if (/already verified/i.test(msg2)) {
@@ -178,23 +146,13 @@ async function main() {
     }
   }
 
-  // Update kaia.json
-  kaiaJson.ChallengeBaseStep = address;
-  fs.writeFileSync(KAIA_JSON_PATH, JSON.stringify(kaiaJson, null, 4) + '\n');
-  console.log(`\n💾 kaia.json: ChallengeBaseStep = ${address}`);
-
-  // Audit
-  const auditPath = path.join(
-    process.cwd(),
-    'deployInfo',
-    'challenge-base-step-kaia.json'
-  );
+  const auditPath = path.join(process.cwd(), 'deployInfo', 'challenge-base-step-polygon.json');
   fs.writeFileSync(
     auditPath,
     JSON.stringify(
       {
         network: network.name,
-        chainId: '8217',
+        chainId: '137',
         contractName: 'ChallengeBaseStep',
         address,
         deployer: deployer.address,
@@ -204,16 +162,15 @@ async function main() {
         gasUsed: receipt?.gasUsed?.toString() ?? '',
         msgValue: totalAmount.toString(),
         constructorArgs: cfg,
-        grantRoleTx: grantTx.hash,
         verified,
-        explorerUrl: `https://kaiascan.io/address/${address}`,
+        explorerUrl: `https://polygonscan.com/address/${address}`,
       },
       null,
       2
     ) + '\n'
   );
-  console.log(`💾 Audit:     ${auditPath}`);
-  console.log(`\n🔗 Explorer:  https://kaiascan.io/address/${address}`);
+  console.log(`\n💾 Audit:     ${auditPath}`);
+  console.log(`🔗 Explorer:  https://polygonscan.com/address/${address}`);
 }
 
 main()

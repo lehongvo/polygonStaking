@@ -1,13 +1,13 @@
 {
   "network": "kaia",
   "chainId": "8217",
-  "contractName": "ChallengeBaseStep",
-  "address": "0x69667f71AB535a3c4EA5eD78e21A4809Ea18B1aD",
+  "contractName": "ChallengeHIIT",
+  "address": "0x3c4Ff0F52042Caa649409d5a0B35cc3446665DF1",
   "deployer": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
-  "deploymentTime": "2026-06-03T15:40:47.000Z",
-  "blockNumber": 218307015,
-  "transactionHash": "0x1f94abd75c09d30f21c5beb8c6f8e47c25671629d794f6494a516023cde83851",
-  "gasUsed": "4565080",
+  "deploymentTime": "2026-06-03T15:45:26.554Z",
+  "blockNumber": 218307244,
+  "transactionHash": "0x3eb879c9468986ddfd9af7c6bd99a8025a5527c83bc44cbd8c4079ef6a40e9e2",
+  "gasUsed": "4103106",
   "msgValue": "1000000000000",
   "constructorArgs": {
     "stakeHolders": [
@@ -21,8 +21,9 @@
     ],
     "primaryRequired": [
       1,
-      1780501247,
-      1783093247,
+      1780501476,
+      1783093476,
+      1,
       1,
       1
     ],
@@ -46,11 +47,9 @@
       50,
       50
     ],
-    "totalAmount": "1000000000000",
-    "walkingSpeedData": [],
-    "hiitData": []
+    "totalAmount": "1000000000000"
   },
-  "grantRoleTx": "0x2c7a4c784d30e427929593dd837543e51031c3102db47106b7b6eaaa8f29193f",
+  "grantRoleTx": "0xa51fa965d88890423599869d155213e821f43cdcd4563aa5cf8a43668806c6ef",
   "verified": true,
-  "explorerUrl": "https://kaiascan.io/address/0x69667f71AB535a3c4EA5eD78e21A4809Ea18B1aD"
+  "explorerUrl": "https://kaiascan.io/address/0x3c4Ff0F52042Caa649409d5a0B35cc3446665DF1"
 }

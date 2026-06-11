@@ -1,13 +1,13 @@
 {
-  "network": "kaia",
-  "chainId": "8217",
+  "network": "polygon",
+  "chainId": "137",
   "contractName": "ChallengeBaseStep",
-  "address": "0x69667f71AB535a3c4EA5eD78e21A4809Ea18B1aD",
+  "address": "0x3d169CAD06E51A5caBA4bbd47c307f8ee3a85269",
   "deployer": "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
-  "deploymentTime": "2026-06-03T15:40:47.000Z",
-  "blockNumber": 218307015,
-  "transactionHash": "0x1f94abd75c09d30f21c5beb8c6f8e47c25671629d794f6494a516023cde83851",
-  "gasUsed": "4565080",
+  "deploymentTime": "2026-06-03T16:12:46.921Z",
+  "blockNumber": 87865417,
+  "transactionHash": "0xb9f109dbf85f85dadfdd206569ffe070b55ee05b5a053c178f1384b8b1e092bb",
+  "gasUsed": "4709522",
   "msgValue": "1000000000000",
   "constructorArgs": {
     "stakeHolders": [
@@ -15,14 +15,14 @@
       "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024",
       "0xe340371845820cb16Cb8908E0ed07e2E1Ff40024"
     ],
-    "createByToken": "0xe7c3d8c9a439fede00d2600032d5db0be71c3c29",
+    "createByToken": "0x0000000000000000000000000000000000000000",
     "erc721Addresses": [
-      "0x4A0dB5c68d0f7a76D6dBDD7ecf0e96AdEB7027c7"
+      "0x55285EcCef5487E87C5980C880131aCadDE7767C"
     ],
     "primaryRequired": [
       1,
-      1780501247,
-      1783093247,
+      1780503105,
+      1783095105,
       1,
       1
     ],
@@ -37,8 +37,8 @@
       true
     ],
     "gasData": [
-      "200000000000000000",
-      "200000000000000000",
+      "0",
+      "0",
       "0"
     ],
     "allAwardToSponsorWhenGiveUp": true,
@@ -50,7 +50,6 @@
     "walkingSpeedData": [],
     "hiitData": []
   },
-  "grantRoleTx": "0x2c7a4c784d30e427929593dd837543e51031c3102db47106b7b6eaaa8f29193f",
   "verified": true,
-  "explorerUrl": "https://kaiascan.io/address/0x69667f71AB535a3c4EA5eD78e21A4809Ea18B1aD"
+  "explorerUrl": "https://polygonscan.com/address/0x3d169CAD06E51A5caBA4bbd47c307f8ee3a85269"
 }

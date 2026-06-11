@@ -877,12 +877,9 @@ contract ChallengeHIIT is IERC721Receiver {
 
         uint256[] memory awardReceiversApprovalsTamp = new uint256[](_awardReceiversPercent.length);
 
-        uint256 totalPercent;
         for (uint256 j = 0; j < _awardReceiversPercent.length; j++) {
             awardReceiversApprovalsTamp[j] = (_awardReceiversPercent[j] * _totalAmount) / 100;
-            totalPercent += _awardReceiversPercent[j];
         }
-        require(totalPercent <= 100, "Sum of percents exceeds 100");
 
         require(_awardReceivers.length == awardReceiversApprovalsTamp.length, "Invalid lists");
 

@@ -1,15 +1,20 @@
 /**
- * Deploy a single ChallengeBaseStep instance on Kaia mainnet.
+ * Deploy a single ChallengeHIIT instance on Kaia mainnet, then verify it
+ * on Kaiascan.
  *
- * Reads `deploy` block from scripts/contract/kaia.json, but overrides
- * primaryRequired[1] (startTime) = now and primaryRequired[2] (endTime)
- * = now + 30 days per Vincent's instruction.
+ * Mirrors deploy-challenge-base-step-kaia.ts: reads the `deployHiit` block
+ * from scripts/contract/kaia.json, overrides primaryRequired[1] (startTime)
+ * = now and primaryRequired[2] (endTime) = now + 30 days.
  *
- * allowGiveUp[1] = true → requires msg.value == totalAmount, paid in
- * native KAIA.
+ * HIIT constructor takes 11 args (no walkingSpeedData / hiitData). Its
+ * primaryRequired has 6 elements:
+ *   [duration, startTime, endTime, highIntensityIntervals,
+ *    totalHighIntensityTime, dayRequired]
+ *
+ * allowGiveUp[1] = true → requires msg.value == totalAmount (native KAIA).
  *
  * Run:
- *   npm run deploy:challenge-base-step:kaia
+ *   npm run deploy:challenge-hiit:kaia
  */
 import 'dotenv/config';
 import * as fs from 'fs';
@@ -24,8 +29,8 @@ const KAIA_JSON_PATH = path.join(
 );
 
 async function main() {
-  console.log('🚀 CHALLENGE BASE STEP — DEPLOY ON KAIA MAINNET');
-  console.log('================================================');
+  console.log('🚀 CHALLENGE HIIT — DEPLOY ON KAIA MAINNET');
+  console.log('===========================================');
 
   if (network.name !== 'kaia') {
     console.error(`❌ Only 'kaia', got '${network.name}'`);
@@ -40,9 +45,15 @@ async function main() {
 
   // Load config + override timestamps
   const kaiaJson = JSON.parse(fs.readFileSync(KAIA_JSON_PATH, 'utf8'));
-  const cfg = kaiaJson.deploy;
+  const cfg = kaiaJson.deployHiit;
   if (!cfg) {
-    console.error('❌ kaia.json missing "deploy" block');
+    console.error('❌ kaia.json missing "deployHiit" block');
+    process.exit(1);
+  }
+  if (!cfg.primaryRequired || cfg.primaryRequired.length !== 6) {
+    console.error(
+      '❌ deployHiit.primaryRequired must have 6 elements: [duration, startTime, endTime, highIntensityIntervals, totalHighIntensityTime, dayRequired]'
+    );
     process.exit(1);
   }
   const now = Math.floor(Date.now() / 1000);
@@ -52,32 +63,8 @@ async function main() {
 
   const totalAmount = BigInt(cfg.totalAmount);
 
-  console.log('\n📋 ARGS');
-  console.log('=======');
-  console.log(`stakeHolders:                ${JSON.stringify(cfg.stakeHolders)}`);
-  console.log(`createByToken:               ${cfg.createByToken}`);
-  console.log(`erc721Addresses:             ${JSON.stringify(cfg.erc721Addresses)}`);
-  console.log(`primaryRequired:             ${JSON.stringify(cfg.primaryRequired)}`);
-  console.log(`  [duration]      = ${cfg.primaryRequired[0]} days`);
-  console.log(`  [startTime]     = ${cfg.primaryRequired[1]} (${new Date(cfg.primaryRequired[1] * 1000).toISOString()})`);
-  console.log(`  [endTime]       = ${cfg.primaryRequired[2]} (${new Date(cfg.primaryRequired[2] * 1000).toISOString()})`);
-  console.log(`  [goal]          = ${cfg.primaryRequired[3]}`);
-  console.log(`  [dayRequired]   = ${cfg.primaryRequired[4]}`);
-  console.log(`awardReceivers:              ${JSON.stringify(cfg.awardReceivers)}`);
-  console.log(`index:                       ${cfg.index}`);
-  console.log(`allowGiveUp:                 ${JSON.stringify(cfg.allowGiveUp)}`);
-  console.log(`gasData:                     ${JSON.stringify(cfg.gasData)}`);
-  console.log(`allAwardToSponsorWhenGiveUp: ${cfg.allAwardToSponsorWhenGiveUp}`);
-  console.log(`awardReceiversPercent:       ${JSON.stringify(cfg.awardReceiversPercent)}`);
-  console.log(`totalAmount:                 ${cfg.totalAmount} wei (${ethers.formatEther(totalAmount)} KAIA)`);
-  console.log(`walkingSpeedData:            ${JSON.stringify(cfg.walkingSpeedData)}`);
-  console.log(`hiitData:                    ${JSON.stringify(cfg.hiitData)}`);
-  console.log(`msg.value:                   ${totalAmount.toString()} wei (allowGiveUp[1]=true → required)`);
-
-  console.log('\n🏗️  DEPLOYING ChallengeBaseStep');
-  const Factory = await ethers.getContractFactory('ChallengeBaseStep');
-
-  const tx = await Factory.deploy(
+  // Constructor args (11) — used for BOTH deploy and verify.
+  const args: any[] = [
     cfg.stakeHolders,
     cfg.createByToken,
     cfg.erc721Addresses,
@@ -89,10 +76,33 @@ async function main() {
     cfg.allAwardToSponsorWhenGiveUp,
     cfg.awardReceiversPercent,
     totalAmount,
-    cfg.walkingSpeedData,
-    cfg.hiitData,
-    { value: totalAmount }
-  );
+  ];
+
+  console.log('\n📋 ARGS');
+  console.log('=======');
+  console.log(`stakeHolders:                ${JSON.stringify(cfg.stakeHolders)}`);
+  console.log(`createByToken:               ${cfg.createByToken}`);
+  console.log(`erc721Addresses:             ${JSON.stringify(cfg.erc721Addresses)}`);
+  console.log(`primaryRequired:             ${JSON.stringify(cfg.primaryRequired)}`);
+  console.log(`  [duration]               = ${cfg.primaryRequired[0]} days`);
+  console.log(`  [startTime]              = ${cfg.primaryRequired[1]} (${new Date(cfg.primaryRequired[1] * 1000).toISOString()})`);
+  console.log(`  [endTime]                = ${cfg.primaryRequired[2]} (${new Date(cfg.primaryRequired[2] * 1000).toISOString()})`);
+  console.log(`  [highIntensityIntervals] = ${cfg.primaryRequired[3]}`);
+  console.log(`  [totalHighIntensityTime] = ${cfg.primaryRequired[4]} s`);
+  console.log(`  [dayRequired]            = ${cfg.primaryRequired[5]}`);
+  console.log(`awardReceivers:              ${JSON.stringify(cfg.awardReceivers)}`);
+  console.log(`index:                       ${cfg.index}`);
+  console.log(`allowGiveUp:                 ${JSON.stringify(cfg.allowGiveUp)}`);
+  console.log(`gasData:                     ${JSON.stringify(cfg.gasData)}`);
+  console.log(`allAwardToSponsorWhenGiveUp: ${cfg.allAwardToSponsorWhenGiveUp}`);
+  console.log(`awardReceiversPercent:       ${JSON.stringify(cfg.awardReceiversPercent)}`);
+  console.log(`totalAmount:                 ${cfg.totalAmount} wei (${ethers.formatEther(totalAmount)} KAIA)`);
+  console.log(`msg.value:                   ${totalAmount.toString()} wei (allowGiveUp[1]=true → required)`);
+
+  console.log('\n🏗️  DEPLOYING ChallengeHIIT');
+  const Factory = await ethers.getContractFactory('ChallengeHIIT');
+
+  const tx = await Factory.deploy(...args, { value: totalAmount });
 
   await tx.waitForDeployment();
   const address = await tx.getAddress();
@@ -120,12 +130,18 @@ async function main() {
   const role = await esn.ALLOWED_CONTRACTS_CHALLENGE();
   const grantTx = await esn.grantRole(role, address);
   const grantRcpt = await grantTx.wait();
-  const granted = await esn.hasRole(role, address);
+  // Public Kaia RPC is load-balanced; the read can hit a node that hasn't
+  // synced the grant tx yet → poll a few times before giving up.
+  let granted = false;
+  for (let i = 0; i < 10 && !granted; i++) {
+    granted = await esn.hasRole(role, address);
+    if (!granted) await new Promise(r => setTimeout(r, 3000));
+  }
   console.log(`     tx:      ${grantTx.hash}`);
   console.log(`     gas:     ${grantRcpt?.gasUsed?.toString()}`);
   console.log(`     hasRole: ${granted}`);
   if (!granted) {
-    console.error('❌ Role not granted after tx');
+    console.error('❌ Role not granted after tx (after retries)');
     process.exit(1);
   }
 
@@ -136,58 +152,30 @@ async function main() {
     await dTx?.wait(5); // wait for confirmations before verify
     await run('verify:verify', {
       address,
-      constructorArguments: [
-        cfg.stakeHolders,
-        cfg.createByToken,
-        cfg.erc721Addresses,
-        cfg.primaryRequired,
-        cfg.awardReceivers,
-        cfg.index,
-        cfg.allowGiveUp,
-        cfg.gasData.map((s: string) => BigInt(s)),
-        cfg.allAwardToSponsorWhenGiveUp,
-        cfg.awardReceiversPercent,
-        totalAmount,
-        cfg.walkingSpeedData,
-        cfg.hiitData,
-      ],
+      constructorArguments: args,
     });
     verified = true;
-    console.log('✅ Verified on Kaiascan (etherscan API)');
+    console.log('✅ Verified on Kaiascan');
   } catch (e: any) {
     const msg = e?.message ?? String(e);
     if (/already verified/i.test(msg)) {
       verified = true;
       console.log('✅ Already verified');
     } else {
-      // Kaiascan etherscan-API rejects viaIR contracts → fall back to Sourcify.
-      console.warn('⚠️  Kaiascan etherscan-API verify failed, trying Sourcify…');
-      try {
-        await run('verify:sourcify', { address });
-        verified = true;
-        console.log('✅ Verified on Sourcify (chainId 8217)');
-      } catch (e2: any) {
-        const msg2 = e2?.message ?? String(e2);
-        if (/already verified/i.test(msg2)) {
-          verified = true;
-          console.log('✅ Already verified on Sourcify');
-        } else {
-          console.warn('⚠️  Verify failed (deploy OK, re-verify later):', msg2);
-        }
-      }
+      console.warn('⚠️  Verify failed (deploy OK, re-verify later):', msg);
     }
   }
 
   // Update kaia.json
-  kaiaJson.ChallengeBaseStep = address;
+  kaiaJson.ChallengeHIIT = address;
   fs.writeFileSync(KAIA_JSON_PATH, JSON.stringify(kaiaJson, null, 4) + '\n');
-  console.log(`\n💾 kaia.json: ChallengeBaseStep = ${address}`);
+  console.log(`\n💾 kaia.json: ChallengeHIIT = ${address}`);
 
   // Audit
   const auditPath = path.join(
     process.cwd(),
     'deployInfo',
-    'challenge-base-step-kaia.json'
+    'challenge-hiit-kaia.json'
   );
   fs.writeFileSync(
     auditPath,
@@ -195,7 +183,7 @@ async function main() {
       {
         network: network.name,
         chainId: '8217',
-        contractName: 'ChallengeBaseStep',
+        contractName: 'ChallengeHIIT',
         address,
         deployer: deployer.address,
         deploymentTime: new Date().toISOString(),

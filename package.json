@@ -112,6 +112,9 @@
     "deploy:history:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/HistoryChallenges/deploy-history-kaia.ts --network kaia",
     "deploy:fee:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeFee/deploy-and-set-kaia.ts --network kaia",
     "deploy:challenge-base-step:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeDetail/deploy-challenge-base-step-kaia.ts --network kaia",
+    "deploy:challenge-hiit:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeDetail/deploy-challenge-hiit-kaia.ts --network kaia",
+    "verify:challenge-base-step:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeDetail/verify-challenge-base-step-kaia.ts --network kaia",
+    "verify:challenge-hiit:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeDetail/verify-challenge-hiit-kaia.ts --network kaia",
     "send-daily-result:kaia": "TS_NODE_PROJECT=tsconfig.scripts.json hardhat run scripts/ChallengeDetail/send-daily-result-kaia.ts --network kaia"
   }
 }
