@@ -22,7 +22,7 @@ describe('Gacha — reward management', function () {
             5,
             []
           )
-      ).to.be.revertedWith('ZERO ADDRESS.');
+      ).to.be.revertedWithCustomError(gacha, 'ZeroAddress');
     });
 
     it('reverts ZERO ADDRESS for native with non-zero token', async function () {
@@ -41,7 +41,7 @@ describe('Gacha — reward management', function () {
             5,
             []
           )
-      ).to.be.revertedWith('ZERO ADDRESS.');
+      ).to.be.revertedWithCustomError(gacha, 'ZeroAddress');
     });
 
     it('reverts INVALID REWARD VALUE when value=0', async function () {
@@ -60,7 +60,7 @@ describe('Gacha — reward management', function () {
             5,
             []
           )
-      ).to.be.revertedWith('INVALID REWARD VALUE.');
+      ).to.be.revertedWithCustomError(gacha, 'InvalidRewardValue');
     });
 
     it('reverts LIST NFT MUST BE EXIST for ERC721 transfer with empty list', async function () {
@@ -79,7 +79,7 @@ describe('Gacha — reward management', function () {
             5,
             []
           )
-      ).to.be.revertedWith('LIST NFT MUST BE EXIST');
+      ).to.be.revertedWithCustomError(gacha, 'ListNftMustBeExist');
     });
 
     it('emits AddNewReward event with token + rate + type + gacha address', async function () {
@@ -151,7 +151,7 @@ describe('Gacha — reward management', function () {
             5,
             []
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -181,8 +181,9 @@ describe('Gacha — reward management', function () {
       const { gacha, owner, attacker, erc20Reward } =
         await loadFixture(deployGachaFixture);
       await addERC20Reward(gacha, owner, erc20Reward, 50, 100n, 5);
-      await expect(gacha.connect(attacker).deleteReward(1)).to.be.revertedWith(
-        /AccessControl/
+      await expect(gacha.connect(attacker).deleteReward(1)).to.be.revertedWithCustomError(
+        gacha,
+        'AccessControlUnauthorizedAccount'
       );
     });
   });
@@ -211,14 +212,14 @@ describe('Gacha — reward management', function () {
       const { gacha, owner } = await loadFixture(deployGachaFixture);
       await expect(
         gacha.connect(owner).updateRewardRateAndMaxAllowed(0, 200, 5)
-      ).to.be.revertedWith('MAX NUMBER ALLOWED SHOULD BE EQUAL ZERO.');
+      ).to.be.revertedWithCustomError(gacha, 'MaxNumberAllowedShouldBeEqualZero');
     });
 
     it('rejects caller without UPDATER_ACTIVITIES_ROLE', async function () {
       const { gacha, attacker } = await loadFixture(deployGachaFixture);
       await expect(
         gacha.connect(attacker).updateRewardRateAndMaxAllowed(0, 50, 0)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
   });
 

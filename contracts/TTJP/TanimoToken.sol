@@ -2,6 +2,11 @@
 
 pragma solidity ^0.8.16;
 
+// ==== custom errors (auto) ====
+error InvalidNetworkFee();
+error YouDoNotHaveRight();
+error Erc20ChallengeWasFinished();
+
 import "./ERC20Upgradeable.sol";
 import "./Initializable.sol";
 import "./UUPSUpgradeable.sol";
@@ -15,7 +20,7 @@ contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable {
      * @dev Value send to contract should be equal with `amount`.
      */
     modifier validateFee(uint256 _amount) {
-        require(msg.value == _amount, "Invalid network fee");
+        if (!(msg.value == _amount)) revert InvalidNetworkFee();
         _;
     }
 
@@ -23,7 +28,7 @@ contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable {
      * @dev Action only called from owner.
      */
     modifier onlyOwner() {
-        require(msg.sender == _owner, "You do not have right");
+        if (!(msg.sender == _owner)) revert YouDoNotHaveRight();
         _;
     }
 
@@ -53,11 +58,15 @@ contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /**
-     * @dev Burn token of an address.
-     * @param _from : from address
+     * @dev Burn token — H4 fix: was `onlyOwner` burning ANY `_from` (arbitrary confiscation of any
+     * holder's balance without consent). That signature was never invoked (only present in ABIs).
+     * Now a caller may burn ONLY their own tokens (`_from` must equal `msg.sender`); the owner can
+     * no longer confiscate. Signature kept for ABI compatibility. Storage layout unchanged.
+     * @param _from : holder whose tokens are burned — must be the caller
      * @param _amountToken : amount token to burn
      */
-    function burnToken(address _from, uint _amountToken) onlyOwner public {
+    function burnToken(address _from, uint _amountToken) public {
+        if (_from != msg.sender) revert YouDoNotHaveRight();
         _burn(_from, _amountToken);
     }
     
@@ -87,7 +96,7 @@ contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable {
         uint256 size;
         assembly { size := extcodesize(to) }
         if(size == sizeContract) {
-            require(!IChallenge(payable(to)).isFinished(), "ERC20: Challenge was finished");
+            if (!(!IChallenge(payable(to)).isFinished())) revert Erc20ChallengeWasFinished();
         }
     }
 

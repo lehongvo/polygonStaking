@@ -11,9 +11,7 @@ describe('ExerciseSupplementNFT — Wallet & config setters', function () {
       const { nft, attacker } = await loadFixture(
         deployExerciseSupplementFixture
       );
-      await expect(nft.connect(attacker).setBaseURI('new')).to.be.revertedWith(
-        /AccessControl/
-      );
+      await expect(nft.connect(attacker).setBaseURI('new')).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
     it('updates base URI', async function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
@@ -54,7 +52,7 @@ describe('ExerciseSupplementNFT — Wallet & config setters', function () {
       );
       await expect(
         nft.connect(attacker).updateSpecialConditionInfo(1, 1, 1, 1, 1, 1)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
   });
 

@@ -7,7 +7,7 @@ export async function deployExerciseSupplementFixture() {
     await ethers.getSigners();
 
   // Deploy ExerciseSupplementNFT via UUPS proxy
-  const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+  const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
   const baseURI = 'ipfs://test/';
   const nft = await upgrades.deployProxy(
     Factory,

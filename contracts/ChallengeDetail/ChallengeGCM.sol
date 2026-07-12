@@ -3,6 +3,42 @@
 
 pragma solidity ^0.8.16;
 
+// ==== custom errors (auto) ====
+error RelayExpired();
+error RelayBadNonce();
+error RelayBadSignature();
+error TransferHelperFailed();
+error OnlyStakeholdersCanCallThisFunction();
+error AddressInsufficientBalance();
+error AddressUnableToSendValueRecipientMayHaveReverted();
+error ReentrancyguardReentrantCall();
+error ChallengeHasNotStartedYet();
+error ChallengeWasFinished();
+error ChallengeHasNotFinishedYet();
+error CanNotGiveUp();
+error ThisChallengeWasGiveUp();
+error OnlyChallengerCanCallThisFunction();
+error CantCall();
+error SumOfPercentsExceeds100();
+error InvalidStepExceedsGoalOrNotGreater();
+error TheChallengeHasNotYetBeenFinished();
+error OnlyReturnedNftWalletAddress();
+error InsufficientContractBalance();
+error InvalidDayLength();
+error InvalidStepIndexLength();
+error InvalidAllowGiveUp();
+error InvalidHiitData();
+error InvalidAward();
+error InvalidValue();
+error InvalidLists();
+error InvalidValue0();
+error InvalidValue1();
+error InvalidHiitResultsLength();
+error InsufficientMaticForNativeStaking();
+error PrincipalMaticTransferFailed();
+error RewardsMaticTransferFailed();
+error SystemFeeMaticTransferFailed();
+
 /**
  * @dev Interface for the ChallengeFee contract.
  */
@@ -88,16 +124,13 @@ library TransferHelper {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x095ea7b3, to, value)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: APPROVE_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function saveTransferEth(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "Address: insufficient balance");
+        if (!(address(this).balance >= amount)) revert AddressInsufficientBalance();
         (bool success, ) = recipient.call{ value: amount }("");
-        require(success, "Address: unable to send value, recipient may have reverted");
+        if (!(success)) revert AddressUnableToSendValueRecipientMayHaveReverted();
     }
 
     function safeMintNFT1155(
@@ -110,30 +143,21 @@ library TransferHelper {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x280f4e28, account, id, amount, dataValue)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: MINT_NFT1155_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeTransfer(address token, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa9059cbb, to, value)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: TRANSFER_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeApproveForAllNFT1155(address token, address operator, bool approved) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa22cb465, operator, approved)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: APPROVE_NFT1155_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeTransferNFT1155(
@@ -147,38 +171,26 @@ library TransferHelper {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xf242432a, from, to, id, amount, dataValue)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: TRANSFER_NFT1155_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeMintNFT(address token, address to) internal {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x40d097c3, to));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: MINT_NFT_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeApproveForAll(address token, address to, bool value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa22cb465, to, value)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: APPROVE_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeTransferFrom(address token, address from, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x23b872dd, from, to, value)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: TRANSFER_FROM_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     // sends ETH or an erc20 token
@@ -194,10 +206,7 @@ library TransferHelper {
             (bool success, bytes memory data) = token.call(
                 abi.encodeWithSelector(0xa9059cbb, to, value)
             );
-            require(
-                success && (data.length == 0 || abi.decode(data, (bool))),
-                "TransferHelper: TRANSFER_FAILED"
-            );
+            if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
         }
     }
 }
@@ -665,6 +674,9 @@ contract ChallengeGCM is IERC721Receiver {
      */
     bool[] public allowGiveUp;
 
+    /** @dev Reentrancy guard status (1 = unlocked, 2 = locked). Mirror ChallengeDetail. */
+    uint256 private _reentrancyStatus = 1;
+
     /** @dev isFinished challenge finish or not.
      */
     bool public isFinished;
@@ -752,8 +764,8 @@ contract ChallengeGCM is IERC721Receiver {
      * @dev Action should be called in challenge time.
      */
     modifier onTime() {
-        require(block.timestamp >= startTime, "Challenge has not started yet");
-        require(block.timestamp <= endTime, "Challenge was finished");
+        if (!(block.timestamp >= startTime)) revert ChallengeHasNotStartedYet();
+        if (!(block.timestamp <= endTime)) revert ChallengeWasFinished();
         _;
     }
 
@@ -762,7 +774,7 @@ contract ChallengeGCM is IERC721Receiver {
      */
     modifier onTimeSendResult() {
         // require(block.timestamp <= endTime + 2 days, "Challenge was finished");
-        require(block.timestamp >= startTime, "Challenge has not started yet");
+        if (!(block.timestamp >= startTime)) revert ChallengeHasNotStartedYet();
         _;
     }
 
@@ -770,15 +782,26 @@ contract ChallengeGCM is IERC721Receiver {
      * @dev Action should be called after challenge finish.
      */
     modifier afterFinish() {
-        require(block.timestamp > endTime + 2 days, "Challenge has not finished yet");
+        if (!(block.timestamp > endTime + 2 days)) revert ChallengeHasNotFinishedYet();
         _;
+    }
+
+    /**
+     * @dev Reentrancy guard (mirror ChallengeDetail) — blocks re-entering settlement
+     * entrypoints during a payout (e.g. a malicious stakeholder receiver reentering giveUp).
+     */
+    modifier nonReentrant() {
+        if (!(_reentrancyStatus != 2)) revert ReentrancyguardReentrantCall();
+        _reentrancyStatus = 2;
+        _;
+        _reentrancyStatus = 1;
     }
 
     /**
      * @dev Action should be called when challenge is running.
      */
     modifier available() {
-        require(!isFinished, "Challenge was finished");
+        if (!(!isFinished)) revert ChallengeWasFinished();
         _;
     }
 
@@ -786,7 +809,7 @@ contract ChallengeGCM is IERC721Receiver {
      * @dev Action should be called when challenge was allowed give up.
      */
     modifier canGiveUp() {
-        require(allowGiveUp[0], "Can not give up");
+        if (!(allowGiveUp[0])) revert CanNotGiveUp();
         _;
     }
 
@@ -794,7 +817,7 @@ contract ChallengeGCM is IERC721Receiver {
      * @dev User only call give up one time.
      */
     modifier notSelectGiveUp() {
-        require(!selectGiveUpStatus, "This challenge was give up");
+        if (!(!selectGiveUpStatus)) revert ThisChallengeWasGiveUp();
         _;
     }
 
@@ -802,10 +825,7 @@ contract ChallengeGCM is IERC721Receiver {
      * @dev Action only called from stakeholders.
      */
     modifier onlyStakeHolders() {
-        require(
-            msg.sender == challenger || msg.sender == sponsor,
-            "Only stakeholders can call this function"
-        );
+        if (!(msg.sender == challenger || msg.sender == sponsor)) revert OnlyStakeholdersCanCallThisFunction();
         _;
     }
 
@@ -813,7 +833,7 @@ contract ChallengeGCM is IERC721Receiver {
      * @dev Action only called from challenger.
      */
     modifier onlyChallenger() {
-        require(msg.sender == challenger, "Only challenger can call this function");
+        if (!(msg.sender == challenger)) revert OnlyChallengerCanCallThisFunction();
         _;
     }
 
@@ -821,7 +841,7 @@ contract ChallengeGCM is IERC721Receiver {
      * @dev verify challenge success or not before close.
      */
     modifier availableForClose() {
-        require(!isSuccess && !isFinished, "Cant call");
+        if (!(!isSuccess && !isFinished)) revert CantCall();
         _;
     }
 
@@ -873,6 +893,13 @@ contract ChallengeGCM is IERC721Receiver {
 
         uint256[] memory awardReceiversApprovalsTamp = new uint256[](_awardReceiversPercent.length); // Creating a new array with length equal to _awardReceiversPercent length.
 
+        {
+            uint256 sumPercent;
+            for (uint256 k = 0; k < _awardReceiversPercent.length; k++) {
+                sumPercent += _awardReceiversPercent[k];
+            }
+            if (!(sumPercent <= 100)) revert SumOfPercentsExceeds100();
+        }
         for (uint256 j = 0; j < _awardReceiversPercent.length; j++) {
             awardReceiversApprovalsTamp[j] = (_awardReceiversPercent[j] * _totalAmount) / 100; // Calculating the award amount for each receiver.
         }
@@ -972,7 +999,72 @@ contract ChallengeGCM is IERC721Receiver {
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange,
         uint256[] memory _glucoseLevels
-    ) public available onTimeSendResult onlyChallenger {
+    ) public nonReentrant available onTimeSendResult onlyChallenger {
+        _executeDailyResult(_day, _stepIndex, _data, _signature, _listGachaAddress, _listNFTAddress, _listIndexNFT, _listSenderAddress, _statusTypeNft, _timeRange, _glucoseLevels);
+    }
+
+    mapping(address => uint256) public relayNonce;
+
+    /**
+     * @notice Meta-tx relayer: challenger ký off-chain, relayer submit. ⚠️ FUND-AUTH — audit trước deploy.
+     */
+    function sendDailyResultViaRelayer(
+        uint256[] memory _day,
+        uint256[] memory _stepIndex,
+        uint64[2] memory _data,
+        bytes calldata _signature,
+        address[] memory _listGachaAddress,
+        address[] memory _listNFTAddress,
+        uint256[][] memory _listIndexNFT,
+        address[][] memory _listSenderAddress,
+        bool[] memory _statusTypeNft,
+        uint64[2] memory _timeRange,
+        uint256[] memory _glucoseLevels,
+        uint256 _nonce,
+        uint256 _deadline,
+        bytes calldata _challengerSig
+    ) public nonReentrant available onTimeSendResult {
+        if (!(block.timestamp <= _deadline)) revert RelayExpired();
+        if (!(_nonce == relayNonce[challenger])) revert RelayBadNonce();
+        bytes32 payload = keccak256(
+            abi.encode(address(this), block.chainid, _nonce, _deadline, _day, _stepIndex, _data, _timeRange, _glucoseLevels)
+        );
+        bytes32 ethHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payload));
+        if (!(_recoverRelaySigner(ethHash, _challengerSig) == challenger)) revert RelayBadSignature();
+        relayNonce[challenger]++;
+        _executeDailyResult(_day, _stepIndex, _data, _signature, _listGachaAddress, _listNFTAddress, _listIndexNFT, _listSenderAddress, _statusTypeNft, _timeRange, _glucoseLevels);
+    }
+
+    function _recoverRelaySigner(bytes32 hash, bytes calldata sig) private pure returns (address) {
+        if (sig.length != 65) revert RelayBadSignature();
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := calldataload(sig.offset)
+            s := calldataload(add(sig.offset, 32))
+            v := byte(0, calldataload(add(sig.offset, 64)))
+        }
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) revert RelayBadSignature();
+        if (v != 27 && v != 28) revert RelayBadSignature();
+        address signer = ecrecover(hash, v, r, s);
+        if (signer == address(0)) revert RelayBadSignature();
+        return signer;
+    }
+
+    function _executeDailyResult(
+        uint256[] memory _day,
+        uint256[] memory _stepIndex,
+        uint64[2] memory _data,
+        bytes calldata _signature,
+        address[] memory _listGachaAddress,
+        address[] memory _listNFTAddress,
+        uint256[][] memory _listIndexNFT,
+        address[][] memory _listSenderAddress,
+        bool[] memory _statusTypeNft,
+        uint64[2] memory _timeRange,
+        uint256[] memory _glucoseLevels
+    ) private {
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
             _stepIndex,
@@ -989,9 +1081,10 @@ contract ChallengeGCM is IERC721Receiver {
         uint256[] storage tempHistoryGCM = historyGCM;
 
         for (uint256 i = 0; i < dayLength; i++) {
-            for (uint256 j = 0; j < tempHistoryDate.length; j++) {
+            uint256 histLen = tempHistoryDate.length;
+            for (uint256 j = 0; j < histLen; j++) {
                 if (tempHistoryDate[j] >= _timeRange[0] && tempHistoryDate[j] <= _timeRange[1]) {
-                    require(tempHistoryData[j] < goal, "Invalid step: exceeds goal or not greater");
+                    if (!(tempHistoryData[j] < goal)) revert InvalidStepExceedsGoalOrNotGreater();
                     isSendSameDay = true;
                     tempHistoryData[j] = _stepIndex[dayLength - 1];
                     tempHistoryDate[j] = _day[dayLength - 1];
@@ -1084,7 +1177,7 @@ contract ChallengeGCM is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
-    ) external canGiveUp notSelectGiveUp onTime available onlyStakeHolders {
+    ) external nonReentrant canGiveUp notSelectGiveUp onTime available onlyStakeHolders {
         updateRewardSuccessAndfail();
 
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
@@ -1188,7 +1281,7 @@ contract ChallengeGCM is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
-    ) external onlyStakeHolders afterFinish availableForClose {
+    ) external nonReentrant onlyStakeHolders afterFinish availableForClose {
         // Transfer NFTs and handle failure scenario for receivers
         transferToListReceiverFail(
             _listNFTAddress,
@@ -1217,9 +1310,8 @@ contract ChallengeGCM is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
     ) external {
-        require(isFinished, "The challenge has not yet been finished");
-        require(returnedNFTWallet == msg.sender, "Only returned nft wallet address");
-
+        if (!(isFinished)) revert TheChallengeHasNotYetBeenFinished();
+        if (!(returnedNFTWallet == msg.sender)) revert OnlyReturnedNftWalletAddress();
         // Transfer ERC20 tokens
         for (uint256 i = 0; i < _listTokenErc20.length; i++) {
             address tokenErc20 = _listTokenErc20[i];
@@ -1460,6 +1552,19 @@ contract ChallengeGCM is IERC721Receiver {
                 approvalFailOf[awardReceivers[i]] =
                     (awardReceiversPercent[i] * coinNativeBalance) / 100;
                 sumAwardFail = (awardReceiversPercent[i] * coinNativeBalance) / 100;
+            }
+        } else {
+            // Token-funded challenge (native balance == 0): the constructor pre-seeded
+            // approvalSuccessOf/approvalFailOf with NATIVE-denominated amounts. With no
+            // native balance, tranferCoinNative() in settlement reverts
+            // (InsufficientContractBalance) and permanently bricks the payout (root cause
+            // of the ~1700 JPYC stuck on Kaia). Zero the native accruals so those
+            // transfers become no-ops; the ERC20 distribution below pays receivers.
+            serverSuccessFee = 0;
+            serverFailureFee = 0;
+            for (uint256 i = 0; i < awardReceivers.length; i++) {
+                approvalSuccessOf[awardReceivers[i]] = 0;
+                approvalFailOf[awardReceivers[i]] = 0;
             }
         }
         // Get total balance of base token in contract

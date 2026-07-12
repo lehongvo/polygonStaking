@@ -20,7 +20,7 @@ describe('Gacha — randomRewards full coverage', function () {
       // Pass `other` as challengeAddress while calling from `attacker`.
       await expect(
         gacha.connect(attacker).randomRewards(other.address, [5000])
-      ).to.be.revertedWith(/ONLY CHALLENGE CONTRACT/);
+      ).to.be.revertedWithCustomError(gacha, 'OnlyChallengeCanCallSendDailyResultWithGacha');
     });
 
     it('reverts if isSendDailyResultWithGacha already set', async function () {
@@ -37,7 +37,7 @@ describe('Gacha — randomRewards full coverage', function () {
       // Second call should revert because isFinished=true → flag set
       await expect(
         challenge.callRandomRewards(await gacha.getAddress(), [5000])
-      ).to.be.revertedWith(/ALREADY SEND DAILY RESULT/);
+      ).to.be.revertedWithCustomError(gacha, 'AlreadySendDailyResultWithGacha');
     });
 
     it('returns false when checkRequireBalanceNft fails (e.g. low step)', async function () {
@@ -91,7 +91,7 @@ describe('Gacha — randomRewards full coverage', function () {
       // Second call should revert on timeLimit
       await expect(
         challenge.callRandomRewards(await gacha.getAddress(), [5000])
-      ).to.be.revertedWith(/EXCEEDED THE LIMIT/);
+      ).to.be.revertedWithCustomError(gacha, 'ActiveGachaLimitExceeded');
     });
   });
 

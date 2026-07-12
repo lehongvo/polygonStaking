@@ -75,13 +75,13 @@ describe('ChallengeBaseStep — security fixes', function () {
     it('reverts when sum of percents > 100', async function () {
       await expect(
         deployBaseStep({ awardReceiversPercent: [60, 50] })
-      ).to.be.revertedWith('Sum of percents exceeds 100');
+      ).to.be.revertedWithCustomError(await hre.ethers.getContractFactory('ChallengeBaseStep'), 'SumOfPercentsExceeds100');
     });
 
     it('reverts when sum of percents = 110', async function () {
       await expect(
         deployBaseStep({ awardReceiversPercent: [50, 60] })
-      ).to.be.revertedWith('Sum of percents exceeds 100');
+      ).to.be.revertedWithCustomError(await hre.ethers.getContractFactory('ChallengeBaseStep'), 'SumOfPercentsExceeds100');
     });
 
     it('accepts sum of percents = 100 exactly', async function () {
@@ -126,7 +126,7 @@ describe('ChallengeBaseStep — security fixes', function () {
             [],
             []
           )
-      ).to.be.revertedWith('Challenge was finished');
+      ).to.be.revertedWithCustomError(challenge, 'ChallengeWasFinished');
     });
   });
 
@@ -169,8 +169,9 @@ describe('ChallengeDetail — security fixes', function () {
   }
 
   it('N1: reverts with sum of percents > 100', async function () {
-    await expect(deployDetail([60, 60])).to.be.revertedWith(
-      'Sum of percents exceeds 100'
+    await expect(deployDetail([60, 60])).to.be.revertedWithCustomError(
+      await hre.ethers.getContractFactory('ChallengeDetail'),
+      'SumOfPercentsExceeds100'
     );
   });
 
@@ -208,8 +209,9 @@ describe('ChallengeHIIT — security fixes', function () {
   }
 
   it('N1: reverts with sum of percents > 100', async function () {
-    await expect(deployHIIT([60, 60])).to.be.revertedWith(
-      'Sum of percents exceeds 100'
+    await expect(deployHIIT([60, 60])).to.be.revertedWithCustomError(
+      await hre.ethers.getContractFactory('ChallengeHIIT'),
+      'SumOfPercentsExceeds100'
     );
   });
 
@@ -229,6 +231,6 @@ describe('ChallengeHIIT — security fixes', function () {
       challenge
         .connect(challenger)
         .sendDailyResult([], [], [], data, sig, [], [], [], [], [], timeRange)
-    ).to.be.revertedWith('Challenge was finished');
+    ).to.be.revertedWithCustomError(challenge, 'ChallengeWasFinished');
   });
 });

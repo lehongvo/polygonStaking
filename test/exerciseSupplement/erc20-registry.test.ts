@@ -57,7 +57,7 @@ describe('ExerciseSupplementNFT — ERC20 registry', function () {
     const tok = await deployErc20('Z');
     await expect(
       nft.connect(attacker).updateListERC20Address(await tok.getAddress(), true)
-    ).to.be.revertedWith(/AccessControl/);
+    ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
   });
 
   it('symbol matching is case-sensitive: "ttjp" lowercase → type 3 (other)', async function () {
@@ -111,7 +111,7 @@ describe('ExerciseSupplementNFT — ERC20 registry', function () {
     const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
     await expect(
       nft.connect(owner).updateListERC20Address(ethers.ZeroAddress, true)
-    ).to.be.revertedWith('INVALID ERC20 ADDRESS');
+    ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
   });
 
   it('remove non-listed address: list unchanged + typeToken stays 0', async function () {

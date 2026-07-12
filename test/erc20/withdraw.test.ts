@@ -68,6 +68,6 @@ describe('T11 – withdrawTokensOnCompletion ERC20 sweep', function () {
       challenge
         .connect(signers[0])
         .withdrawTokensOnCompletion([tknAddr], [], [], [])
-    ).to.be.revertedWith('Only returned nft wallet address');
+    ).to.be.revertedWithCustomError(challenge, 'OnlyReturnedNftWalletAddress');
   });
 });

@@ -15,14 +15,14 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
         nft
           .connect(attacker)
           .updateGachaContractAddress(other.address, 0, true)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
 
     it('reverts on zero address even when caller has role', async function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateGachaContractAddress(ethers.ZeroAddress, 0, true)
-      ).to.be.revertedWith('INVALID GACHA ADDRESS');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('admin with role can add gacha entry', async function () {
@@ -123,14 +123,14 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       );
       await expect(
         nft.connect(attacker).updateSecurityAddress(other.address)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
 
     it('reverts on zero address', async function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateSecurityAddress(ethers.ZeroAddress)
-      ).to.be.revertedWith('INVALID SECURITY ADDRESS');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('admin can set security address', async function () {
@@ -165,7 +165,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
             ethers.ZeroAddress,
             challenger.address
           )
-      ).to.be.revertedWith('MISSING NFT ADDRESS');
+      ).to.be.revertedWithCustomError(nft, 'MissingNft');
     });
   });
 
@@ -195,7 +195,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       const ALLOWED = await nft.ALLOWED_CONTRACTS_CHALLENGE();
       await expect(
         nft.connect(owner).batchGrantRole(ALLOWED, [])
-      ).to.be.revertedWith('EMPTY ACCOUNTS');
+      ).to.be.revertedWithCustomError(nft, 'EmptyAccounts');
     });
 
     it('reverts TOO MANY ACCOUNTS when > 100', async function () {
@@ -206,7 +206,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       );
       await expect(
         nft.connect(owner).batchGrantRole(ALLOWED, overflow)
-      ).to.be.revertedWith('TOO MANY ACCOUNTS');
+      ).to.be.revertedWithCustomError(nft, 'TooManyAccounts');
     });
 
     it('reverts INVALID ACCOUNT when array contains zero address', async function () {
@@ -218,7 +218,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
         nft
           .connect(owner)
           .batchGrantRole(ALLOWED, [other.address, ethers.ZeroAddress])
-      ).to.be.revertedWith('INVALID ACCOUNT');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('grants role to all valid accounts', async function () {
@@ -240,21 +240,21 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateDonationWalletAddress(ethers.ZeroAddress)
-      ).to.be.revertedWith('INVALID DONATION WALLET');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('updateFeeSettingAddress reverts on zero', async function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateFeeSettingAddress(ethers.ZeroAddress)
-      ).to.be.revertedWith('INVALID FEE SETTING');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('updateReturnedNFTWallet reverts on zero', async function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateReturnedNFTWallet(ethers.ZeroAddress)
-      ).to.be.revertedWith('INVALID RETURNED NFT WALLET');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
   });
 
@@ -263,7 +263,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateNftListAddress(ethers.ZeroAddress, true, true)
-      ).to.be.revertedWith('INVALID NFT ADDRESS');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('sets typeNfts on add and clears on remove', async function () {
@@ -307,7 +307,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateSpecialNftAddress(ethers.ZeroAddress, true)
-      ).to.be.revertedWith('INVALID SPECIAL NFT ADDRESS');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('removing zero address does not revert (no-op)', async function () {
@@ -323,7 +323,7 @@ describe('ExerciseSupplementNFT — Critical fixes', function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateListERC20Address(ethers.ZeroAddress, true)
-      ).to.be.revertedWith('INVALID ERC20 ADDRESS');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('clears typeTokenErc20 on remove', async function () {

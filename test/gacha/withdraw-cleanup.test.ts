@@ -67,7 +67,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             0,
             TypeToken.ERC20
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
 
     it('ERC20: withdraws balance and deletes matching reward entry', async function () {
@@ -338,14 +338,14 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[]],
             [TypeToken.ERC20]
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
 
     it('reverts EMPTY BATCH on empty addresses', async function () {
       const { gacha, owner } = await loadFixture(deployGachaFixture);
       await expect(
         gacha.connect(owner).withdrawBalancesBatch([], [], [])
-      ).to.be.revertedWith('EMPTY BATCH.');
+      ).to.be.revertedWithCustomError(gacha, 'EmptyBatch');
     });
 
     it('reverts TOO MANY CONTRACTS when > 10 addresses', async function () {
@@ -359,7 +359,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
         gacha
           .connect(owner)
           .withdrawBalancesBatch(addresses, indexTokens, types)
-      ).to.be.revertedWith('TOO MANY CONTRACTS.');
+      ).to.be.revertedWithCustomError(gacha, 'TooManyContracts');
     });
 
     it('reverts INDEX TOKENS LENGTH MISMATCH', async function () {
@@ -373,7 +373,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[], []],
             [TypeToken.ERC20]
           )
-      ).to.be.revertedWith('INDEX TOKENS LENGTH MISMATCH.');
+      ).to.be.revertedWithCustomError(gacha, 'IndexTokensLengthMismatch');
     });
 
     it('reverts TYPE TOKENS LENGTH MISMATCH', async function () {
@@ -387,7 +387,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[]],
             [TypeToken.ERC20, TypeToken.ERC20]
           )
-      ).to.be.revertedWith('TYPE TOKENS LENGTH MISMATCH.');
+      ).to.be.revertedWithCustomError(gacha, 'TypeTokensLengthMismatch');
     });
 
     it('reverts TOO MANY IDS when inner > 20', async function () {
@@ -402,7 +402,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [ids],
             [TypeToken.ERC1155]
           )
-      ).to.be.revertedWith('TOO MANY IDS.');
+      ).to.be.revertedWithCustomError(gacha, 'TooManyIds');
     });
 
     it('reverts NATIVE NO IDS when ids passed for NATIVE', async function () {
@@ -415,7 +415,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[1]],
             [TypeToken.NATIVE_TOKEN]
           )
-      ).to.be.revertedWith('NATIVE NO IDS.');
+      ).to.be.revertedWithCustomError(gacha, 'NativeNoIds');
     });
 
     it('reverts ZERO ADDRESS when NATIVE has non-zero address', async function () {
@@ -429,7 +429,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[]],
             [TypeToken.NATIVE_TOKEN]
           )
-      ).to.be.revertedWith('ZERO ADDRESS.');
+      ).to.be.revertedWithCustomError(gacha, 'ZeroAddress');
     });
 
     it('reverts ERC20 MAX 1 ID when more than 1 id for ERC20', async function () {
@@ -443,7 +443,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[1, 2]],
             [TypeToken.ERC20]
           )
-      ).to.be.revertedWith('ERC20 MAX 1 ID.');
+      ).to.be.revertedWithCustomError(gacha, 'Erc20Max1Id');
     });
 
     it('reverts INVALID TOKEN when ERC20 address is zero', async function () {
@@ -456,7 +456,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[]],
             [TypeToken.ERC20]
           )
-      ).to.be.revertedWith('INVALID TOKEN.');
+      ).to.be.revertedWithCustomError(gacha, 'InvalidToken');
     });
 
     it('reverts EMPTY IDS when ERC721 has no ids', async function () {
@@ -470,7 +470,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[]],
             [TypeToken.ERC721]
           )
-      ).to.be.revertedWith('EMPTY IDS.');
+      ).to.be.revertedWithCustomError(gacha, 'EmptyIds');
     });
 
     it('reverts EMPTY IDS when ERC1155 has no ids', async function () {
@@ -484,7 +484,7 @@ describe('Gacha — withdraw with reward cleanup', function () {
             [[]],
             [TypeToken.ERC1155]
           )
-      ).to.be.revertedWith('EMPTY IDS.');
+      ).to.be.revertedWithCustomError(gacha, 'EmptyIds');
     });
   });
 
@@ -812,14 +812,14 @@ describe('Gacha — withdraw with reward cleanup', function () {
       const { gacha, attacker } = await loadFixture(deployGachaFixture);
       await expect(
         gacha.connect(attacker).deleteReward(1)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
 
     it('public deleteReward reverts on non-existent index', async function () {
       const { gacha, owner } = await loadFixture(deployGachaFixture);
       await expect(
         gacha.connect(owner).deleteReward(999)
-      ).to.be.revertedWith('INDEX OF TOKEN REWARD NOT EXIST.');
+      ).to.be.revertedWithCustomError(gacha, 'IndexOfTokenRewardNotExist');
     });
   });
 });

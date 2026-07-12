@@ -38,7 +38,7 @@ describe('T21 – ChallengeBaseStep: allowGiveUp[0]=false blocks giveUp', () => 
     // allowGiveUp[0]=false のため、giveUp は "Can not give up" で revert する
     await expect(
       challenge.connect(challenger).giveUp([], [], [], [])
-    ).to.be.revertedWith('Can not give up');
+    ).to.be.revertedWithCustomError(challenge, 'CanNotGiveUp');
   });
 
   // ギブアップが不許可でも、目標達成による成功フローは正常に処理されることを確認

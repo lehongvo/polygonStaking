@@ -2881,6 +2881,8 @@ abstract contract AccessControlUpgradeable is
     IAccessControlUpgradeable,
     ERC165Upgradeable
 {
+    error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
+
     function __AccessControl_init() internal onlyInitializing {}
 
     function __AccessControl_init_unchained() internal onlyInitializing {}
@@ -2946,16 +2948,8 @@ abstract contract AccessControlUpgradeable is
      */
     function _checkRole(bytes32 role, address account) internal view virtual {
         if (!hasRole(role, account)) {
-            revert(
-                string(
-                    abi.encodePacked(
-                        "AccessControl: account ",
-                        StringsUpgradeable.toHexString(account),
-                        " is missing role ",
-                        StringsUpgradeable.toHexString(uint256(role), 32)
-                    )
-                )
-            );
+            // OZ v5 style: custom error thay chuỗi (bỏ StringsUpgradeable → giảm bytecode size)
+            revert AccessControlUnauthorizedAccount(account, role);
         }
     }
 

@@ -70,7 +70,7 @@ describe('ExerciseSupplementNFT — NFT registry', function () {
         nft
           .connect(attacker)
           .updateSpecialNftAddress(await specialNft0.getAddress(), true)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -88,7 +88,7 @@ describe('ExerciseSupplementNFT — NFT registry', function () {
       const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
       await expect(
         nft.connect(owner).updateSoulBoundAddress(ethers.ZeroAddress, true)
-      ).to.be.revertedWith('INVALID ADDRESS');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('disable: resets to zero', async function () {
@@ -122,7 +122,7 @@ describe('ExerciseSupplementNFT — NFT registry', function () {
         nft
           .connect(owner)
           .addOrRemoveRequiredNftAddress(ethers.ZeroAddress, true)
-      ).to.be.revertedWith('INVALID ADDRESS');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('add duplicate reverts', async function () {
@@ -133,7 +133,7 @@ describe('ExerciseSupplementNFT — NFT registry', function () {
       await nft.connect(owner).addOrRemoveRequiredNftAddress(addr, true);
       await expect(
         nft.connect(owner).addOrRemoveRequiredNftAddress(addr, true)
-      ).to.be.revertedWith('NFT ALREADY IN LIST');
+      ).to.be.revertedWithCustomError(nft, 'NftAlreadyInList');
     });
 
     it('remove: deletes from list', async function () {

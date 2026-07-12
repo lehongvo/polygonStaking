@@ -3,11 +3,11 @@
 pragma solidity ^0.8.16;
 
 import "./IChallenge.sol";
-import "./SafeMath.sol";
 import "./IERC20.sol";
 
 contract HistoryChallenges{
-    using SafeMath for uint256;
+    // SafeMath removed: Solidity 0.8.x has built-in checked arithmetic
+    // (reverts on overflow/underflow identically) → SafeMath is redundant bytecode/gas.
 
     /**
      * @dev Returns information about a specific challenge contract.
@@ -74,7 +74,7 @@ contract HistoryChallenges{
                 return(
                     IChallenge(_contractChallengeAddress).totalReward(),
                     depositToken,
-                    IChallenge(_contractChallengeAddress).indexNft().sub(1),
+                    IChallenge(_contractChallengeAddress).indexNft() - 1,
                     _contractChallengeAddress,
                     IChallenge(_contractChallengeAddress).erc721Address(1),
                     chainId,
@@ -92,7 +92,7 @@ contract HistoryChallenges{
                 return(
                     0,
                     depositToken,
-                    IChallenge(_contractChallengeAddress).indexNft().sub(1),
+                    IChallenge(_contractChallengeAddress).indexNft() - 1,
                     _contractChallengeAddress,
                     IChallenge(_contractChallengeAddress).erc721Address(1),
                     chainId,
@@ -134,7 +134,7 @@ contract HistoryChallenges{
             uint256 balanceContract;
 
             if(contractBalance > totalReward) {
-                balanceContract = contractBalance.sub(totalReward);
+                balanceContract = contractBalance - totalReward;
             }
             
             if(IChallenge(_contractChallengeAddress).isFinished()) {
@@ -142,7 +142,7 @@ contract HistoryChallenges{
                 uint256[] memory balanceToken = IChallenge(_contractChallengeAddress).getBalanceToken();
                 return(
                     totalReward, 
-                    balanceMatic >= totalReward ? balanceMatic.sub(totalReward) : 0, 
+                    balanceMatic >= totalReward ? balanceMatic - totalReward : 0,
                     tokenBalanceBefor, 
                     balanceToken, 
                     listTokenSymbol
@@ -161,7 +161,7 @@ contract HistoryChallenges{
                     tokenBalanceBefor[i] = totalReward;
                     indexCreateToken = i;
                     if(balance >= totalReward) {
-                        tokenBalanceAfter[i] = balance.sub(totalReward);
+                        tokenBalanceAfter[i] = balance - totalReward;
                     }
                 } else {
                     tokenBalanceAfter[i] = balance;
@@ -171,7 +171,7 @@ contract HistoryChallenges{
             if(IChallenge(challengeAddress).isFinished()) {
                 uint256 balanceMatic = IChallenge(_contractChallengeAddress).totalBalanceBaseToken();
                 uint256[] memory balanceToken = IChallenge(challengeAddress).getBalanceToken();
-                balanceToken[indexCreateToken] = balanceToken[indexCreateToken].sub(totalReward);
+                balanceToken[indexCreateToken] = balanceToken[indexCreateToken] - totalReward;
                 return(0, balanceMatic, tokenBalanceBefor, balanceToken, listTokenSymbol);
             } else {
                 return(0, contractBalance, tokenBalanceBefor, tokenBalanceAfter, listTokenSymbol);

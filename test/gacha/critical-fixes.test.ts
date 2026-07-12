@@ -15,7 +15,7 @@ describe('Gacha — Critical fixes', function () {
         gacha
           .connect(attacker)
           .withdrawBalances(await erc20Reward.getAddress(), 0, TypeToken.ERC20)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
 
     it('succeeds when caller has CLOSE_GACHA_ROLE (granted to deployer)', async function () {
@@ -39,9 +39,7 @@ describe('Gacha — Critical fixes', function () {
     it('deleteReward(invalidIndex) reverts', async function () {
       const { gacha, owner } = await loadFixture(deployGachaFixture);
 
-      await expect(gacha.connect(owner).deleteReward(999)).to.be.revertedWith(
-        'INDEX OF TOKEN REWARD NOT EXIST.'
-      );
+      await expect(gacha.connect(owner).deleteReward(999)).to.be.revertedWithCustomError(gacha, 'IndexOfTokenRewardNotExist');
     });
 
     it('updateRewardRateAndMaxAllowed(invalidIndex, ...) reverts', async function () {
@@ -49,7 +47,7 @@ describe('Gacha — Critical fixes', function () {
 
       await expect(
         gacha.connect(owner).updateRewardRateAndMaxAllowed(999, 50, 5)
-      ).to.be.revertedWith('INDEX OF TOKEN REWARD NOT EXIST.');
+      ).to.be.revertedWithCustomError(gacha, 'IndexOfTokenRewardNotExist');
     });
 
     it('valid index passes through', async function () {
@@ -73,9 +71,7 @@ describe('Gacha — Critical fixes', function () {
       const before = await gacha.getListIdToken();
       expect(before.length).to.equal(1);
 
-      await expect(gacha.connect(owner).deleteReward(2)).to.be.revertedWith(
-        'INDEX OF TOKEN REWARD NOT EXIST.'
-      );
+      await expect(gacha.connect(owner).deleteReward(2)).to.be.revertedWithCustomError(gacha, 'IndexOfTokenRewardNotExist');
 
       const after = await gacha.getListIdToken();
       expect(after.length).to.equal(1);

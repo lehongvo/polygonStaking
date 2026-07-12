@@ -88,6 +88,6 @@ describe('T26 – historyData growth bounded: 1 push per unique day', function (
         day: extraDayTs,
         steps: 1000,
       })
-    ).to.be.revertedWith('Challenge was finished');
+    ).to.be.revertedWithCustomError(challenge, 'ChallengeWasFinished');
   });
 });

@@ -12,7 +12,7 @@ import "./SafeMath.sol";
 
 contract ExerciseSupplementNFT is ERC721, Ownable, ERC721Burnable{
     using Strings for uint256;
-    using SafeMath for uint256;
+    // SafeMath removed: Solidity 0.8.x checked arithmetic reverts identically → redundant.
     using Counters for Counters.Counter;
 
     struct NftSpecialConditionInfo {
@@ -213,7 +213,7 @@ contract ExerciseSupplementNFT is ERC721, Ownable, ERC721Burnable{
         if(
             _goal >= listNftSpecialConditionInfo.targetStepPerDay &&  
             _duration >= listNftSpecialConditionInfo.challengeDuration && 
-            _duration >= _duration.sub(_duration.div(7)) &&
+            _duration >= _duration - (_duration / 7) &&
             checkAmountDepositCondition(_createByToken, _totalReward)
         ) {
             if(

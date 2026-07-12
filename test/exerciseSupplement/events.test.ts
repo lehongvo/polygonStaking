@@ -58,7 +58,7 @@ describe('ExerciseSupplementNFT — Events', function () {
 
   it('upgradeTo emits Upgraded(implementation)', async function () {
     const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const newImpl = await Factory.deploy();
     await newImpl.waitForDeployment();
 

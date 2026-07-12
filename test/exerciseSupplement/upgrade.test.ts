@@ -8,7 +8,7 @@ const { ethers, upgrades } = hre as any;
 describe('ExerciseSupplementNFT — UUPS upgrade', function () {
   it('owner with UPGRADER_ROLE can call upgradeTo', async function () {
     const { nft, owner } = await loadFixture(deployExerciseSupplementFixture);
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const newImpl = await Factory.deploy();
     await newImpl.waitForDeployment();
     await expect(nft.connect(owner).upgradeTo(await newImpl.getAddress())).to
@@ -19,24 +19,24 @@ describe('ExerciseSupplementNFT — UUPS upgrade', function () {
     const { nft, attacker } = await loadFixture(
       deployExerciseSupplementFixture
     );
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const newImpl = await Factory.deploy();
     await newImpl.waitForDeployment();
     await expect(
       nft.connect(attacker).upgradeTo(await newImpl.getAddress())
-    ).to.be.revertedWith(/AccessControl/);
+    ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
   });
 
   it('upgradeToAndCall also gated by UPGRADER_ROLE', async function () {
     const { nft, attacker } = await loadFixture(
       deployExerciseSupplementFixture
     );
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const newImpl = await Factory.deploy();
     await newImpl.waitForDeployment();
     await expect(
       nft.connect(attacker).upgradeToAndCall(await newImpl.getAddress(), '0x')
-    ).to.be.revertedWith(/AccessControl/);
+    ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
   });
 
   it('state preserved after upgrade', async function () {
@@ -46,7 +46,7 @@ describe('ExerciseSupplementNFT — UUPS upgrade', function () {
     await nft.connect(owner).safeMint(other.address);
     const balanceBefore = await nft.balanceOf(other.address);
 
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const newImpl = await Factory.deploy();
     await newImpl.waitForDeployment();
     await nft.connect(owner).upgradeTo(await newImpl.getAddress());
@@ -59,7 +59,7 @@ describe('ExerciseSupplementNFT — UUPS upgrade', function () {
     const adminRole = await nft.DEFAULT_ADMIN_ROLE();
     const minterRole = await nft.MINTER_ROLE();
 
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const newImpl = await Factory.deploy();
     await newImpl.waitForDeployment();
     await nft.connect(owner).upgradeTo(await newImpl.getAddress());
@@ -72,7 +72,7 @@ describe('ExerciseSupplementNFT — UUPS upgrade', function () {
     const { nft, owner, donation, feeSetting, returned } =
       await loadFixture(deployExerciseSupplementFixture);
 
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const newImpl = await Factory.deploy();
     await newImpl.waitForDeployment();
     await nft.connect(owner).upgradeTo(await newImpl.getAddress());
@@ -88,7 +88,7 @@ describe('ExerciseSupplementNFT — UUPS upgrade', function () {
     );
     await nft.connect(owner).safeMint(other.address);
 
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const v2 = await Factory.deploy();
     await v2.waitForDeployment();
     await nft.connect(owner).upgradeTo(await v2.getAddress());
@@ -105,11 +105,11 @@ describe('ExerciseSupplementNFT — UUPS upgrade', function () {
     const role = await nft.UPGRADER_ROLE();
     await nft.connect(owner).renounceRole(role, owner.address);
 
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const newImpl = await Factory.deploy();
     await newImpl.waitForDeployment();
     await expect(
       nft.connect(owner).upgradeTo(await newImpl.getAddress())
-    ).to.be.revertedWith(/AccessControl/);
+    ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
   });
 });

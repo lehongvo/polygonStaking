@@ -97,7 +97,7 @@ describe('ExerciseSupplementNFT — View functions', function () {
 
   it('getListToleranceAmount returns [0,0] before being set', async function () {
     // Use direct deploy without fixture defaults to test fresh state
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const { upgrades } = hre as any;
     const [a, b, c, d] = await ethers.getSigners();
     const fresh = await upgrades.deployProxy(

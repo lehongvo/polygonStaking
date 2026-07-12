@@ -39,7 +39,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
     const role = await nft.MINTER_ROLE();
     await expect(
       nft.connect(attacker).grantRole(role, other.address)
-    ).to.be.revertedWith(/AccessControl/);
+    ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
   });
 
   it('non-admin cannot revoke a role', async function () {
@@ -49,7 +49,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
     const role = await nft.MINTER_ROLE();
     await expect(
       nft.connect(attacker).revokeRole(role, owner.address)
-    ).to.be.revertedWith(/AccessControl/);
+    ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
   });
 
   it('account can renounce its own role', async function () {
@@ -80,7 +80,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
       const role = await nft.MINTER_ROLE();
       await expect(
         nft.connect(owner).batchGrantRole(role, [other.address])
-      ).to.be.revertedWith('DO NOT HAVE PERMISSION TO GRANT THIS ROLE');
+      ).to.be.revertedWithCustomError(nft, 'NoGrantPermission');
     });
 
     it('rejects empty accounts', async function () {
@@ -88,7 +88,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
       const role = await nft.ALLOWED_CONTRACTS_CHALLENGE();
       await expect(
         nft.connect(owner).batchGrantRole(role, [])
-      ).to.be.revertedWith('EMPTY ACCOUNTS');
+      ).to.be.revertedWithCustomError(nft, 'EmptyAccounts');
     });
 
     it('rejects > 100 accounts', async function () {
@@ -99,7 +99,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
       );
       await expect(
         nft.connect(owner).batchGrantRole(role, accs)
-      ).to.be.revertedWith('TOO MANY ACCOUNTS');
+      ).to.be.revertedWithCustomError(nft, 'TooManyAccounts');
     });
 
     it('rejects zero address in array', async function () {
@@ -111,7 +111,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
         nft
           .connect(owner)
           .batchGrantRole(role, [other.address, ethers.ZeroAddress])
-      ).to.be.revertedWith('INVALID ACCOUNT');
+      ).to.be.revertedWithCustomError(nft, 'InvalidAddress');
     });
 
     it('non-UPDATER_ACTIVITIES_ROLE caller reverts', async function () {
@@ -121,7 +121,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
       const role = await nft.ALLOWED_CONTRACTS_CHALLENGE();
       await expect(
         nft.connect(attacker).batchGrantRole(role, [other.address])
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
 
     it('boundary: exactly 50 accounts → succeeds', async function () {
@@ -177,7 +177,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
       // owner can no longer grant
       await expect(
         nft.connect(owner).grantRole(minterRole, owner.address)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
 
     it('renounce on behalf of another reverts', async function () {
@@ -187,7 +187,7 @@ describe('ExerciseSupplementNFT — Access control & roles', function () {
       const role = await nft.MINTER_ROLE();
       await expect(
         nft.connect(attacker).renounceRole(role, owner.address)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWith('AccessControl: can only renounce roles for self');
     });
   });
 });

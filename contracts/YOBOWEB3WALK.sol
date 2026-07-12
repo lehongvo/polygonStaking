@@ -41,6 +41,39 @@
 
 pragma solidity ^0.8.0;
 
+// ==== custom errors (auto) ====
+error Erc721ApproveCallerIsNotTokenOwnerNorApprovedForAll();
+error Erc721CallerIsNotTokenOwnerNorApproved();
+error Erc721TransferToNonErc721receiverImplementer();
+error AddressInsufficientBalance();
+error AddressUnableToSendValueRecipientMayHaveReverted();
+error AddressInsufficientBalanceForCall();
+error AddressCallToNonContract();
+error AddressStaticCallToNonContract();
+error AddressDelegateCallToNonContract();
+error StringsHexLengthInsufficient();
+error Erc721AddressZeroIsNotAValidOwner();
+error Erc721InvalidTokenId();
+error Erc721ApprovalToCurrentOwner();
+error Erc721MintToTheZeroAddress();
+error Erc721TokenAlreadyMinted();
+error Erc721TransferFromIncorrectOwner();
+error Erc721TransferToTheZeroAddress();
+error Erc721ApproveToCaller();
+error OwnableCallerIsNotTheOwner();
+error OwnableNewOwnerIsTheZeroAddress();
+error CounterDecrementOverflow();
+error OnlyAdminsCanCallThisFunction();
+error InvalidParticipantAddress();
+error ParticipantAlreadyHasSbt();
+error ExceedsMaxSupply();
+error InvalidAddress();
+error InvalidAddressInBatch();
+error NoSbtOwned();
+error Erc721metadataUriQueryForNonexistentToken();
+error UpdateadminInvalidAddress();
+error UpdateadminCannotRemoveLastAdmin();
+
 /**
  * @dev Interface of the ERC165 standard, as defined in the
  * https://eips.ethereum.org/EIPS/eip-165[EIP].
@@ -314,10 +347,9 @@ library Address {
      * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
      */
     function sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "Address: insufficient balance");
-
+        if (!(address(this).balance >= amount)) revert AddressInsufficientBalance();
         (bool success, ) = recipient.call{ value: amount }("");
-        require(success, "Address: unable to send value, recipient may have reverted");
+        if (!(success)) revert AddressUnableToSendValueRecipientMayHaveReverted();
     }
 
     /**
@@ -388,9 +420,8 @@ library Address {
         uint256 value,
         string memory errorMessage
     ) internal returns (bytes memory) {
-        require(address(this).balance >= value, "Address: insufficient balance for call");
-        require(isContract(target), "Address: call to non-contract");
-
+        if (!(address(this).balance >= value)) revert AddressInsufficientBalanceForCall();
+        if (!(isContract(target))) revert AddressCallToNonContract();
         (bool success, bytes memory returndata) = target.call{ value: value }(data);
         return verifyCallResult(success, returndata, errorMessage);
     }
@@ -419,8 +450,7 @@ library Address {
         bytes memory data,
         string memory errorMessage
     ) internal view returns (bytes memory) {
-        require(isContract(target), "Address: static call to non-contract");
-
+        if (!(isContract(target))) revert AddressStaticCallToNonContract();
         (bool success, bytes memory returndata) = target.staticcall(data);
         return verifyCallResult(success, returndata, errorMessage);
     }
@@ -449,8 +479,7 @@ library Address {
         bytes memory data,
         string memory errorMessage
     ) internal returns (bytes memory) {
-        require(isContract(target), "Address: delegate call to non-contract");
-
+        if (!(isContract(target))) revert AddressDelegateCallToNonContract();
         (bool success, bytes memory returndata) = target.delegatecall(data);
         return verifyCallResult(success, returndata, errorMessage);
     }
@@ -575,7 +604,7 @@ library Strings {
             buffer[i] = _HEX_SYMBOLS[value & 0xf];
             value >>= 4;
         }
-        require(value == 0, "Strings: hex length insufficient");
+        if (!(value == 0)) revert StringsHexLengthInsufficient();
         return string(buffer);
     }
 
@@ -690,7 +719,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      * @dev See {IERC721-balanceOf}.
      */
     function balanceOf(address owner) public view virtual override returns (uint256) {
-        require(owner != address(0), "ERC721: address zero is not a valid owner");
+        if (!(owner != address(0))) revert Erc721AddressZeroIsNotAValidOwner();
         return _balances[owner];
     }
 
@@ -699,7 +728,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      */
     function ownerOf(uint256 tokenId) public view virtual override returns (address) {
         address owner = _owners[tokenId];
-        require(owner != address(0), "ERC721: invalid token ID");
+        if (!(owner != address(0))) revert Erc721InvalidTokenId();
         return owner;
     }
 
@@ -749,12 +778,8 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      */
     function approve(address to, uint256 tokenId) public virtual override {
         address owner = ERC721.ownerOf(tokenId);
-        require(to != owner, "ERC721: approval to current owner");
-
-        require(
-            _msgSender() == owner || isApprovedForAll(owner, _msgSender()),
-            "ERC721: approve caller is not token owner nor approved for all"
-        );
+        if (!(to != owner)) revert Erc721ApprovalToCurrentOwner();
+        if (!(_msgSender() == owner || isApprovedForAll(owner, _msgSender()))) revert Erc721ApproveCallerIsNotTokenOwnerNorApprovedForAll();
 
         _approve(to, tokenId);
     }
@@ -790,10 +815,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      */
     function transferFrom(address from, address to, uint256 tokenId) public virtual override {
         //solhint-disable-next-line max-line-length
-        require(
-            _isApprovedOrOwner(_msgSender(), tokenId),
-            "ERC721: caller is not token owner nor approved"
-        );
+        if (!(_isApprovedOrOwner(_msgSender(), tokenId))) revert Erc721CallerIsNotTokenOwnerNorApproved();
 
         _transfer(from, to, tokenId);
     }
@@ -814,10 +836,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
         uint256 tokenId,
         bytes memory data
     ) public virtual override {
-        require(
-            _isApprovedOrOwner(_msgSender(), tokenId),
-            "ERC721: caller is not token owner nor approved"
-        );
+        if (!(_isApprovedOrOwner(_msgSender(), tokenId))) revert Erc721CallerIsNotTokenOwnerNorApproved();
         _safeTransfer(from, to, tokenId, data);
     }
 
@@ -846,10 +865,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
         bytes memory data
     ) internal virtual {
         _transfer(from, to, tokenId);
-        require(
-            _checkOnERC721Received(from, to, tokenId, data),
-            "ERC721: transfer to non ERC721Receiver implementer"
-        );
+        if (!(_checkOnERC721Received(from, to, tokenId, data))) revert Erc721TransferToNonErc721receiverImplementer();
     }
 
     /**
@@ -901,10 +917,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      */
     function _safeMint(address to, uint256 tokenId, bytes memory data) internal virtual {
         _mint(to, tokenId);
-        require(
-            _checkOnERC721Received(address(0), to, tokenId, data),
-            "ERC721: transfer to non ERC721Receiver implementer"
-        );
+        if (!(_checkOnERC721Received(address(0), to, tokenId, data))) revert Erc721TransferToNonErc721receiverImplementer();
     }
 
     /**
@@ -920,9 +933,8 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      * Emits a {Transfer} event.
      */
     function _mint(address to, uint256 tokenId) internal virtual {
-        require(to != address(0), "ERC721: mint to the zero address");
-        require(!_exists(tokenId), "ERC721: token already minted");
-
+        if (!(to != address(0))) revert Erc721MintToTheZeroAddress();
+        if (!(!_exists(tokenId))) revert Erc721TokenAlreadyMinted();
         _beforeTokenTransfer(address(0), to, tokenId);
 
         _balances[to] += 1;
@@ -971,9 +983,8 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      * Emits a {Transfer} event.
      */
     function _transfer(address from, address to, uint256 tokenId) internal virtual {
-        require(ERC721.ownerOf(tokenId) == from, "ERC721: transfer from incorrect owner");
-        require(to != address(0), "ERC721: transfer to the zero address");
-
+        if (!(ERC721.ownerOf(tokenId) == from)) revert Erc721TransferFromIncorrectOwner();
+        if (!(to != address(0))) revert Erc721TransferToTheZeroAddress();
         _beforeTokenTransfer(from, to, tokenId);
 
         // Clear approvals from the previous owner
@@ -1004,7 +1015,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      * Emits an {ApprovalForAll} event.
      */
     function _setApprovalForAll(address owner, address operator, bool approved) internal virtual {
-        require(owner != operator, "ERC721: approve to caller");
+        if (!(owner != operator)) revert Erc721ApproveToCaller();
         _operatorApprovals[owner][operator] = approved;
         emit ApprovalForAll(owner, operator, approved);
     }
@@ -1013,7 +1024,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
      * @dev Reverts if the `tokenId` has not been minted yet.
      */
     function _requireMinted(uint256 tokenId) internal view virtual {
-        require(_exists(tokenId), "ERC721: invalid token ID");
+        if (!(_exists(tokenId))) revert Erc721InvalidTokenId();
     }
 
     /**
@@ -1039,7 +1050,7 @@ contract ERC721 is Context, ERC165, IERC721, IERC721Metadata {
                 return retval == IERC721Receiver.onERC721Received.selector;
             } catch (bytes memory reason) {
                 if (reason.length == 0) {
-                    revert("ERC721: transfer to non ERC721Receiver implementer");
+                    revert Erc721TransferToNonErc721receiverImplementer();
                 } else {
                     /// @solidity memory-safe-assembly
                     assembly {
@@ -1142,7 +1153,7 @@ abstract contract Ownable is Context {
      * @dev Throws if the sender is not the owner.
      */
     function _checkOwner() internal view virtual {
-        require(owner() == _msgSender(), "Ownable: caller is not the owner");
+        if (!(owner() == _msgSender())) revert OwnableCallerIsNotTheOwner();
     }
 
     /**
@@ -1161,7 +1172,7 @@ abstract contract Ownable is Context {
      * Can only be called by the current owner.
      */
     function transferOwnership(address newOwner) public virtual onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        if (!(newOwner != address(0))) revert OwnableNewOwnerIsTheZeroAddress();
         _transferOwnership(newOwner);
     }
 
@@ -1210,7 +1221,7 @@ library Counters {
 
     function decrement(Counter storage counter) internal {
         uint256 value = counter._value;
-        require(value > 0, "Counter: decrement overflow");
+        if (!(value > 0)) revert CounterDecrementOverflow();
         unchecked {
             counter._value = value - 1;
         }
@@ -1629,7 +1640,7 @@ contract YOBOWEB3WALK is ERC721, Ownable {
     event ChallengeCompleted(address indexed participant, uint256 indexed tokenId);
 
     modifier onlyAdmin() {
-        require(admins.contains(_msgSender()), "Only admins can call this function");
+        if (!(admins.contains(_msgSender()))) revert OnlyAdminsCanCallThisFunction();
         _;
     }
 
@@ -1667,10 +1678,9 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      * @notice Each participant can only receive one SBT
      */
     function recordChallengeAndMint(address participant) external onlyAdmin {
-        require(participant != address(0), "Invalid participant address");
-        require(balanceOf(participant) == 0, "Participant already has SBT");
-        require(_tokenIdCounter.current() < MAX_SUPPLY, "Exceeds max supply");
-
+        if (!(participant != address(0))) revert InvalidParticipantAddress();
+        if (!(balanceOf(participant) == 0)) revert ParticipantAlreadyHasSbt();
+        if (!(_tokenIdCounter.current() < MAX_SUPPLY)) revert ExceedsMaxSupply();
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(participant, tokenId);
@@ -1685,9 +1695,8 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      * @notice Used for emergency situations like system failures
      */
     function safeMint(address to) public onlyAdmin {
-        require(to != address(0), "Invalid address");
-        require(_tokenIdCounter.current() < MAX_SUPPLY, "Exceeds max supply");
-
+        if (!(to != address(0))) revert InvalidAddress();
+        if (!(_tokenIdCounter.current() < MAX_SUPPLY)) revert ExceedsMaxSupply();
         uint256 tokenId = _tokenIdCounter.current();
         _tokenIdCounter.increment();
         _safeMint(to, tokenId);
@@ -1702,12 +1711,10 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      * @notice More gas efficient than individual minting for bulk operations
      */
     function batchMint(address[] calldata recipients) public onlyAdmin {
-        require(_tokenIdCounter.current() + recipients.length <= MAX_SUPPLY, "Exceeds max supply");
-
+        if (!(_tokenIdCounter.current() + recipients.length <= MAX_SUPPLY)) revert ExceedsMaxSupply();
         for (uint256 i = 0; i < recipients.length; i++) {
             address to = recipients[i];
-            require(to != address(0), "Invalid address in batch");
-
+            if (!(to != address(0))) revert InvalidAddressInBatch();
             uint256 tokenId = _tokenIdCounter.current();
             _tokenIdCounter.increment();
             _safeMint(to, tokenId);
@@ -1746,8 +1753,7 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      * @notice Each participant owns maximum one SBT
      */
     function getTokenIdByOwner(address owner) external view returns (uint256) {
-        require(balanceOf(owner) > 0, "No SBT owned");
-
+        if (!(balanceOf(owner) > 0)) revert NoSbtOwned();
         // Simple implementation: find first token owned by address
         // Since each participant owns max 1 token, this is sufficient
         for (uint256 i = 0; i < _tokenIdCounter.current(); i++) {
@@ -1773,8 +1779,7 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      * @return string Token URI (e.g., "ipfs://hash/001.json")
      */
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-        require(_exists(tokenId), "ERC721Metadata: URI query for nonexistent token");
-
+        if (!(_exists(tokenId))) revert Erc721metadataUriQueryForNonexistentToken();
         string memory currentBaseURI = _baseURI();
         return
             bytes(currentBaseURI).length > 0
@@ -1828,11 +1833,11 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      * @notice Cannot remove the last remaining admin
      */
     function updateAdmin(address _adminAddr, bool _flag) external onlyAdmin {
-        require(_adminAddr != address(0), "UpdateAdmin: Invalid address");
+        if (!(_adminAddr != address(0))) revert UpdateadminInvalidAddress();
         if (_flag) {
             admins.add(_adminAddr);
         } else {
-            require(admins.length() > 1, "UpdateAdmin: Cannot remove last admin");
+            if (!(admins.length() > 1)) revert UpdateadminCannotRemoveLastAdmin();
             admins.remove(_adminAddr);
         }
     }

@@ -33,6 +33,31 @@
 
 pragma solidity ^0.8.16;
 
+// Custom errors (thay require/revert-string vendored — giảm bytecode size, giữ nguyên điều kiện revert)
+error StringsHexLengthInsufficient();
+error AddressInsufficientBalance();
+error AddressUnableToSendValueRecipientMayHaveReverted();
+error AddressInsufficientBalanceForCall();
+error AddressCallToNonContract();
+error InitializableContractIsNotInitializing();
+error InitializableContractIsInitializing();
+error AccesscontrolCanOnlyRenounceRolesForSelf();
+error Erc1967upgradeUnsupportedProxiableuuid();
+error Erc1967upgradeNewImplementationIsNotUups();
+error Erc1967NewAdminIsTheZeroAddress();
+error Erc1967NewBeaconIsNotAContract();
+error AddressDelegateCallToNonContract();
+error FunctionMustBeCalledThroughDelegatecall();
+error FunctionMustBeCalledThroughActiveProxy();
+error SafemathAdditionOverflow();
+error SafemathMultiplicationOverflow();
+error InvalidRequireBalanceNftAddress();
+error AlreadySendDailyResultWithGacha();
+error OnlyChallengeCanCallSendDailyResultWithGacha();
+error ActiveGachaLimitExceeded();
+error DonationAddressShouldBeDefined();
+error TransferHelperFailed();
+
 interface IExerciseSupplementNFT {
     /**
      * @dev Retrieves the destination address for a given challenge contract.
@@ -469,7 +494,7 @@ library StringsUpgradeable {
             buffer[i] = _SYMBOLS[value & 0xf];
             value >>= 4;
         }
-        require(value == 0, "Strings: hex length insufficient");
+        if (!(value == 0)) revert StringsHexLengthInsufficient();
         return string(buffer);
     }
 
@@ -782,10 +807,10 @@ library AddressUpgradeable {
      * https://solidity.readthedocs.io/en/v0.5.11/security-considerations.html#use-the-checks-effects-interactions-pattern[checks-effects-interactions pattern].
      */
     function sendValue(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "Address: insufficient balance");
+        if (!(address(this).balance >= amount)) revert AddressInsufficientBalance();
 
         (bool success, ) = recipient.call{ value: amount }("");
-        require(success, "Address: unable to send value, recipient may have reverted");
+        if (!(success)) revert AddressUnableToSendValueRecipientMayHaveReverted();
     }
 
     /**
@@ -856,7 +881,7 @@ library AddressUpgradeable {
         uint256 value,
         string memory errorMessage
     ) internal returns (bytes memory) {
-        require(address(this).balance >= value, "Address: insufficient balance for call");
+        if (!(address(this).balance >= value)) revert AddressInsufficientBalanceForCall();
         (bool success, bytes memory returndata) = target.call{ value: value }(data);
         return verifyCallResultFromTarget(target, success, returndata, errorMessage);
     }
@@ -905,7 +930,7 @@ library AddressUpgradeable {
             if (returndata.length == 0) {
                 // only check isContract if the call was successful and the return data is empty
                 // otherwise we already know that it was a contract
-                require(isContract(target), "Address: call to non-contract");
+                if (!(isContract(target))) revert AddressCallToNonContract();
             }
             return returndata;
         } else {
@@ -1080,7 +1105,7 @@ abstract contract Initializable {
      * {initializer} and {reinitializer} modifiers, directly or indirectly.
      */
     modifier onlyInitializing() {
-        require(_initializing, "Initializable: contract is not initializing");
+        if (!(_initializing)) revert InitializableContractIsNotInitializing();
         _;
     }
 
@@ -1093,7 +1118,7 @@ abstract contract Initializable {
      * Emits an {Initialized} event the first time it is successfully executed.
      */
     function _disableInitializers() internal virtual {
-        require(!_initializing, "Initializable: contract is initializing");
+        if (!(!_initializing)) revert InitializableContractIsInitializing();
         if (_initialized < type(uint8).max) {
             _initialized = type(uint8).max;
             emit Initialized(type(uint8).max);
@@ -1242,6 +1267,8 @@ abstract contract AccessControlUpgradeable is
     IAccessControlUpgradeable,
     ERC165Upgradeable
 {
+    error AccessControlUnauthorizedAccount(address account, bytes32 neededRole);
+
     function __AccessControl_init() internal onlyInitializing {}
 
     function __AccessControl_init_unchained() internal onlyInitializing {}
@@ -1307,16 +1334,8 @@ abstract contract AccessControlUpgradeable is
      */
     function _checkRole(bytes32 role, address account) internal view virtual {
         if (!hasRole(role, account)) {
-            revert(
-                string(
-                    abi.encodePacked(
-                        "AccessControl: account ",
-                        StringsUpgradeable.toHexString(account),
-                        " is missing role ",
-                        StringsUpgradeable.toHexString(uint256(role), 32)
-                    )
-                )
-            );
+            // OZ v5 style: custom error thay chuỗi (bỏ StringsUpgradeable/MathUpgradeable → giảm bytecode size)
+            revert AccessControlUnauthorizedAccount(account, role);
         }
     }
 
@@ -1384,7 +1403,7 @@ abstract contract AccessControlUpgradeable is
      * May emit a {RoleRevoked} event.
      */
     function renounceRole(bytes32 role, address account) public virtual override {
-        require(account == _msgSender(), "AccessControl: can only renounce roles for self");
+        if (!(account == _msgSender())) revert AccesscontrolCanOnlyRenounceRolesForSelf();
 
         _revokeRole(role, account);
     }
@@ -1558,9 +1577,9 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
             try IERC1822ProxiableUpgradeable(newImplementation).proxiableUUID() returns (
                 bytes32 slot
             ) {
-                require(slot == _IMPLEMENTATION_SLOT, "ERC1967Upgrade: unsupported proxiableUUID");
+                if (!(slot == _IMPLEMENTATION_SLOT)) revert Erc1967upgradeUnsupportedProxiableuuid();
             } catch {
-                revert("ERC1967Upgrade: new implementation is not UUPS");
+                revert Erc1967upgradeNewImplementationIsNotUups();
             }
             _upgradeToAndCall(newImplementation, data, forceCall);
         }
@@ -1590,7 +1609,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
      * @dev Stores a new address in the EIP1967 admin slot.
      */
     function _setAdmin(address newAdmin) private {
-        require(newAdmin != address(0), "ERC1967: new admin is the zero address");
+        if (!(newAdmin != address(0))) revert Erc1967NewAdminIsTheZeroAddress();
         StorageSlotUpgradeable.getAddressSlot(_ADMIN_SLOT).value = newAdmin;
     }
 
@@ -1627,7 +1646,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
      * @dev Stores a new beacon in the EIP1967 beacon slot.
      */
     function _setBeacon(address newBeacon) private {
-        require(AddressUpgradeable.isContract(newBeacon), "ERC1967: new beacon is not a contract");
+        if (!(AddressUpgradeable.isContract(newBeacon))) revert Erc1967NewBeaconIsNotAContract();
         require(
             AddressUpgradeable.isContract(IBeaconUpgradeable(newBeacon).implementation()),
             "ERC1967: beacon implementation is not a contract"
@@ -1663,7 +1682,7 @@ abstract contract ERC1967UpgradeUpgradeable is Initializable {
         address target,
         bytes memory data
     ) private returns (bytes memory) {
-        require(AddressUpgradeable.isContract(target), "Address: delegate call to non-contract");
+        if (!(AddressUpgradeable.isContract(target))) revert AddressDelegateCallToNonContract();
 
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = target.delegatecall(data);
@@ -1721,8 +1740,8 @@ abstract contract UUPSUpgradeable is
      * fail.
      */
     modifier onlyProxy() {
-        require(address(this) != __self, "Function must be called through delegatecall");
-        require(_getImplementation() == __self, "Function must be called through active proxy");
+        if (!(address(this) != __self)) revert FunctionMustBeCalledThroughDelegatecall();
+        if (!(_getImplementation() == __self)) revert FunctionMustBeCalledThroughActiveProxy();
         _;
     }
 
@@ -1964,7 +1983,7 @@ library SafeMath {
      */
     function add(uint256 a, uint256 b) internal pure returns (uint256) {
         uint256 c = a + b;
-        require(c >= a, "SafeMath: addition overflow");
+        if (!(c >= a)) revert SafemathAdditionOverflow();
 
         return c;
     }
@@ -2019,7 +2038,7 @@ library SafeMath {
         }
 
         uint256 c = a * b;
-        require(c / a == b, "SafeMath: multiplication overflow");
+        if (!(c / a == b)) revert SafemathMultiplicationOverflow();
 
         return c;
     }
@@ -2106,36 +2125,27 @@ library TransferHelper {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x095ea7b3, to, value)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: APPROVE_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function saveTransferEth(address payable recipient, uint256 amount) internal {
-        require(address(this).balance >= amount, "Address: insufficient balance");
+        if (!(address(this).balance >= amount)) revert AddressInsufficientBalance();
         (bool success, ) = recipient.call{ value: amount }("");
-        require(success, "Address: unable to send value, recipient may have reverted");
+        if (!(success)) revert AddressUnableToSendValueRecipientMayHaveReverted();
     }
 
     function safeTransfer(address token, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa9059cbb, to, value)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: TRANSFER_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeApproveForAllNFT1155(address token, address operator, bool approved) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa22cb465, operator, approved)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: APPROVE_NFT1155_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeTransferNFT1155(
@@ -2149,10 +2159,7 @@ library TransferHelper {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xf242432a, from, to, id, amount, dataValue)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: TRANSFER_NFT1155_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeMintNFT1155(
@@ -2165,38 +2172,26 @@ library TransferHelper {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x280f4e28, account, id, amount, dataValue)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: MINT_NFT1155_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeMintNFT(address token, address to) internal {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x40d097c3, to));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: MINT_NFT_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeApproveForAll(address token, address to, bool value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0xa22cb465, to, value)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: APPROVE_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     function safeTransferFrom(address token, address from, address to, uint256 value) internal {
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(0x23b872dd, from, to, value)
         );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: TRANSFER_FROM_FAILED"
-        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
     }
 
     // sends ETH or an erc20 token
@@ -2212,10 +2207,7 @@ library TransferHelper {
             (bool success, bytes memory data) = token.call(
                 abi.encodeWithSelector(0xa9059cbb, to, value)
             );
-            require(
-                success && (data.length == 0 || abi.decode(data, (bool))),
-                "TransferHelper: TRANSFER_FAILED"
-            );
+            if (!(success && (data.length == 0 || abi.decode(data, (bool))))) revert TransferHelperFailed();
         }
     }
 }
@@ -2847,12 +2839,29 @@ library EnumerableSet {
 pragma solidity ^0.8.16;
 
 contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPSUpgradeable {
+    // Custom errors (thay require-string ở business logic — giảm bytecode size + gas, giữ nguyên điều kiện revert)
+    error EmptyBatch();
+    error TooManyContracts();
+    error IndexTokensLengthMismatch();
+    error TypeTokensLengthMismatch();
+    error TooManyIds();
+    error NativeNoIds();
+    error ZeroAddress();
+    error InvalidToken();
+    error Erc20Max1Id();
+    error EmptyIds();
+    error UnsupportedType();
+    error ListNftMustBeExist();
+    error InvalidRewardValue();
+    error MaxNumberAllowedShouldBeEqualZero();
+    error IndexOfTokenRewardNotExist();
+
     // Import necessary libraries
     // EnumerableSet for managing sets of addresses and uints
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // SafeMath for safe arithmetic operations to prevent integer overflow or underflow
-    using SafeMath for uint256;
+    // SafeMath removed: Solidity 0.8.x has built-in checked arithmetic (reverts identically
+    // on overflow/underflow/div-by-zero) → SafeMath is redundant bytecode/gas.
 
     // Enum defining the types of tokens that can be used in the system
     enum TypeToken {
@@ -3102,10 +3111,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         __AccessControl_init();
 
         // Set the required balance NFT addresses and their corresponding types
-        require(
-            _requireBalanceNftAddress.length == _typeNfts.length,
-            "INVALID REQUIRE BALANCE NFT ADDRESS."
-        );
+        if (!(_requireBalanceNftAddress.length == _typeNfts.length)) revert InvalidRequireBalanceNftAddress();
         challengeInfo = _challengeInfo;
         for (uint256 i = 0; i < _requireBalanceNftAddress.length; i++) {
             requireBalanceNftAddress.add(_requireBalanceNftAddress[i]);
@@ -3162,16 +3168,10 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         uint256[] memory _dataStep
     ) external returns (bool) {
         // Modifier to restrict access to only admins
-        require(
-            !isSendDailyResultWithGacha[msg.sender][_challengeAddress],
-            "ALREADY SEND DAILY RESULT WITH GACHA CONTRACT."
-        );
+        if (!(!isSendDailyResultWithGacha[msg.sender][_challengeAddress])) revert AlreadySendDailyResultWithGacha();
 
         // Modifier only challenge address can call function
-        require(
-            _challengeAddress == msg.sender,
-            "ONLY CHALLENGE CONTRACT CAN CALL SEND DAILY RESULT WITH GACHA."
-        );
+        if (!(_challengeAddress == msg.sender)) revert OnlyChallengeCanCallSendDailyResultWithGacha();
 
         // Get the address of the challenger from the challenge contract
         address erc721Address = IChallenge(_challengeAddress).erc721Address(0);
@@ -3181,14 +3181,10 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         );
 
         // Get the address of the challenger from the challenge contract
-        uint256 currentDate = block.timestamp.div(86400);
+        uint256 currentDate = block.timestamp / 86400;
 
         // Check if the number of times the challenger has activated gacha on the current date has not exceeded the limit set in the challengeInfo
-        require(
-            countTimeActiveGacha[_challengeAddress][currentDate] <
-                challengeInfo.timeLimitActiveGacha,
-            "THE NUMBER OF ACTIVE GACHA TIMES IN A DAY HAS EXCEEDED THE LIMIT."
-        );
+        if (!(countTimeActiveGacha[_challengeAddress][currentDate] < challengeInfo.timeLimitActiveGacha)) revert ActiveGachaLimitExceeded();
 
         // Initialize a new UserInfor object for the challenger
         UserInfor memory newUserInfor;
@@ -3210,7 +3206,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
             // Increase the count of active gacha times for the current date of the challenger
             countTimeActiveGacha[_challengeAddress][currentDate] = countTimeActiveGacha[
                 _challengeAddress
-            ][currentDate].add(1);
+            ][currentDate] + 1;
 
             /**
              * If the random index reward is not equal to 0 (which means the user has the ability to win a reward),
@@ -3343,15 +3339,14 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     // Increment the max number allowed for the selected reward token
                     rewardTokens[randomIndexReward].rewardActivationCount = rewardTokens[
                         randomIndexReward
-                    ].rewardActivationCount.add(1);
+                    ].rewardActivationCount + 1;
 
                     if (
                         rewardTokens[randomIndexReward].rewardActivationCount ==
                         rewardTokens[randomIndexReward].maxNumberAllowed
                     ) {
-                        rewardTokens[0].unlockRate = rewardTokens[0].unlockRate.add(
-                            rewardTokens[randomIndexReward].unlockRate
-                        );
+                        rewardTokens[0].unlockRate = rewardTokens[0].unlockRate +
+                            rewardTokens[randomIndexReward].unlockRate;
                         rewardTokens[randomIndexReward].unlockRate = 0;
                     }
                 }
@@ -3470,19 +3465,19 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         uint256[][] calldata _indexTokens,
         TypeToken[] calldata _typeTokens
     ) external onlyRole(CLOSE_GACHA_ROLE) {
-        require(_addresses.length > 0, "EMPTY BATCH.");
-        require(_addresses.length <= 10, "TOO MANY CONTRACTS.");
-        require(_addresses.length == _indexTokens.length, "INDEX TOKENS LENGTH MISMATCH.");
-        require(_addresses.length == _typeTokens.length, "TYPE TOKENS LENGTH MISMATCH.");
+        if (!(_addresses.length > 0)) revert EmptyBatch();
+        if (!(_addresses.length <= 10)) revert TooManyContracts();
+        if (!(_addresses.length == _indexTokens.length)) revert IndexTokensLengthMismatch();
+        if (!(_addresses.length == _typeTokens.length)) revert TypeTokensLengthMismatch();
 
         for (uint256 i = 0; i < _addresses.length; i++) {
             TypeToken currentType = _typeTokens[i];
             uint256 idsLen = _indexTokens[i].length;
-            require(idsLen <= 20, "TOO MANY IDS.");
+            if (!(idsLen <= 20)) revert TooManyIds();
 
             if (currentType == TypeToken.NATIVE_TOKEN) {
-                require(idsLen == 0, "NATIVE NO IDS.");
-                require(_addresses[i] == address(0), "ZERO ADDRESS.");
+                if (!(idsLen == 0)) revert NativeNoIds();
+                if (!(_addresses[i] == address(0))) revert ZeroAddress();
                 _findAndDeleteMatchingRewards(address(0), 0, TypeToken.NATIVE_TOKEN);
                 if (address(this).balance > 0) {
                     TransferHelper.saveTransferEth(
@@ -3491,8 +3486,8 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     );
                 }
             } else if (currentType == TypeToken.ERC20) {
-                require(_addresses[i] != address(0), "INVALID TOKEN.");
-                require(idsLen <= 1, "ERC20 MAX 1 ID.");
+                if (!(_addresses[i] != address(0))) revert InvalidToken();
+                if (!(idsLen <= 1)) revert Erc20Max1Id();
                 uint256 idLookup = idsLen == 1 ? _indexTokens[i][0] : 0;
                 _findAndDeleteMatchingRewards(_addresses[i], idLookup, TypeToken.ERC20);
                 uint256 bal = IERC20(_addresses[i]).balanceOf(address(this));
@@ -3500,8 +3495,8 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     TransferHelper.safeTransfer(_addresses[i], returnedNFTWallet, bal);
                 }
             } else if (currentType == TypeToken.ERC721) {
-                require(_addresses[i] != address(0), "INVALID TOKEN.");
-                require(idsLen > 0, "EMPTY IDS.");
+                if (!(_addresses[i] != address(0))) revert InvalidToken();
+                if (!(idsLen > 0)) revert EmptyIds();
                 // CEI: cleanup matching rewards first (ERC721 matches by addr+type only)
                 _findAndDeleteMatchingRewards(_addresses[i], 0, TypeToken.ERC721);
                 // Then transfers per id
@@ -3514,8 +3509,8 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     );
                 }
             } else if (currentType == TypeToken.ERC1155) {
-                require(_addresses[i] != address(0), "INVALID TOKEN.");
-                require(idsLen > 0, "EMPTY IDS.");
+                if (!(_addresses[i] != address(0))) revert InvalidToken();
+                if (!(idsLen > 0)) revert EmptyIds();
                 // CEI: cleanup all matching rewards (per-id strict match for ERC1155)
                 for (uint256 j = 0; j < idsLen; j++) {
                     _findAndDeleteMatchingRewards(
@@ -3556,7 +3551,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     );
                 }
             } else {
-                revert("UNSUPPORTED TYPE.");
+                revert UnsupportedType();
             }
         }
     }
@@ -3588,15 +3583,15 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
             (_addressToken == address(0) && _typeToken != TypeToken.NATIVE_TOKEN) ||
             (_addressToken != address(0) && _typeToken == TypeToken.NATIVE_TOKEN)
         ) {
-            revert("ZERO ADDRESS.");
+            revert ZeroAddress();
         }
 
         if (_typeToken == TypeToken.ERC721 && !_isMintNft) {
-            require(listNft.length > 0, "LIST NFT MUST BE EXIST");
+            if (!(listNft.length > 0)) revert ListNftMustBeExist();
         }
 
         // Require the reward value to be greater than zero.
-        require(_rewardValue > 0, "INVALID REWARD VALUE.");
+        if (!(_rewardValue > 0)) revert InvalidRewardValue();
 
         // Find the first empty slot in the list of rewards.
         uint256 indexOfTokenReward = 0;
@@ -3613,7 +3608,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
         // If there is no empty slot, increment the total number of rewards and use the new index.
         if (indexOfTokenReward == 0) {
-            indexOfTokenReward = listIdToken.length.add(1);
+            indexOfTokenReward = listIdToken.length + 1;
         }
 
         // Add the new reward to the list of rewards and update the list of reward IDs.
@@ -3656,7 +3651,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
         for (uint256 i = 0; i < listIdToken.length; i++) {
             if (listIdToken[i] == _indexOfTokenReward) {
-                listIdToken[i] = listIdToken[listIdToken.length.sub(1)];
+                listIdToken[i] = listIdToken[listIdToken.length - 1];
                 break;
             }
         }
@@ -3740,7 +3735,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         if (_indexOfReward != 0) {
             checkIndexOfTokenReward(_indexOfReward);
         } else {
-            require(_maxNumberAllowed == 0, "MAX NUMBER ALLOWED SHOULD BE EQUAL ZERO.");
+            if (!(_maxNumberAllowed == 0)) revert MaxNumberAllowedShouldBeEqualZero();
         }
         // Update the unlock rate and maximum number allowed for the reward token
         rewardTokens[_indexOfReward].unlockRate = _rateOfLost;
@@ -3869,8 +3864,8 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     // Check if the required days for the challenge is greater than or equal to the challenge duration minus the tolerated percentage of the challenge duration
                     if (
                         IChallenge(_challengeAddress).dayRequired() >=
-                        challengeDuration.sub(
-                            challengeDuration.div(currentChallengeInfo.toleranceAmount)
+                        challengeDuration - (
+                            challengeDuration / currentChallengeInfo.toleranceAmount
                         )
                     ) {
                         // This condition checks if the current challenge meets the criteria for paying dividends to the investors
@@ -3904,10 +3899,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                                 address donationAddress = IChallenge(
                                     IChallenge(_challengeAddress).erc721Address(0)
                                 ).donationWalletAddress();
-                                require(
-                                    donationAddress != address(0),
-                                    "DONATION ADDRESS SHOULD BE DEFINED."
-                                );
+                                if (!(donationAddress != address(0))) revert DonationAddressShouldBeDefined();
 
                                 // Check if the first award receiver is the donation address with 98% of the reward
                                 if (awardReceiversPercent[0] == 98) {
@@ -4036,7 +4028,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                 break;
             }
         }
-        require(isExistIndexToken, "INDEX OF TOKEN REWARD NOT EXIST.");
+        if (!(isExistIndexToken)) revert IndexOfTokenRewardNotExist();
     }
 
     /**
@@ -4049,7 +4041,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
         // Loop through the list of token IDs and sum up their corresponding unlock rates
         for (uint256 i = 0; i < listIdToken.length; i++) {
-            totalUnlockReward = totalUnlockReward.add(rewardTokens[listIdToken[i]].unlockRate);
+            totalUnlockReward = totalUnlockReward + rewardTokens[listIdToken[i]].unlockRate;
         }
 
         if (listIdToken.length == 0 || rewardTokens[0].unlockRate >= totalUnlockReward) {
@@ -4110,7 +4102,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                 idReward = listIdToken[i];
                 break;
             }
-            totalUnlock = totalUnlock.add(rewardTokens[listIdToken[i]].unlockRate);
+            totalUnlock = totalUnlock + rewardTokens[listIdToken[i]].unlockRate;
         }
         // Return the ID of the reward token to be given.
         return idReward;

@@ -11,7 +11,7 @@ describe('ExerciseSupplementNFT — Basic mint', function () {
       deployExerciseSupplementFixture
     );
     await expect(nft.connect(attacker).safeMint(other.address)).to.be
-      .revertedWith(/AccessControl/);
+      .revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
   });
 
   it('mints sequential token ids starting from 0', async function () {

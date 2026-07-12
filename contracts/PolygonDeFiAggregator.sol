@@ -1,6 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+// ==== custom errors (auto) ====
+error InvalidProtocolType();
+error NativeMaticOnlySupportedForAave();
+error FeeMustBeBetween0And100BasisPoints();
+error InvalidTokenAddress();
+error TokenAlreadySupported();
+error InvalidContractAddress();
+error ProtocolAlreadyExists();
+error MinimumLockDurationIs1Day();
+error MaximumLockDurationIs365Days();
+error ProtocolNotSupported();
+error CannotStake0Matic();
+error CannotStake0();
+error DonTSendMaticForErc20Staking();
+error TokenNotSupported();
+error InvalidStakeId();
+error PrincipalMaticTransferFailed();
+error RewardsMaticTransferFailed();
+error SystemFeeMaticTransferFailed();
+error ProtocolNotFound();
+error TokenNotFound();
+error AtokenAddressNotFoundForThisToken();
+
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -177,9 +200,8 @@ contract PolygonDeFiAggregator is
         string memory _symbol,
         uint8 _decimals
     ) internal {
-        require(_tokenAddress != address(0), "Invalid token address");
-        require(!supportedTokens[_tokenAddress].isActive, "Token already supported");
-
+        if (!(_tokenAddress != address(0))) revert InvalidTokenAddress();
+        if (!(!supportedTokens[_tokenAddress].isActive)) revert TokenAlreadySupported();
         supportedTokens[_tokenAddress] = SupportedToken({
             tokenAddress: _tokenAddress,
             symbol: _symbol,
@@ -200,14 +222,9 @@ contract PolygonDeFiAggregator is
         string memory _protocolType,
         uint256 _initialAPY
     ) external onlyOwner {
-        require(_contractAddress != address(0), "Invalid contract address");
-        require(!protocols[_name].isActive, "Protocol already exists");
-        require(
-            keccak256(bytes(_protocolType)) == keccak256(bytes("liquid")) ||
-                keccak256(bytes(_protocolType)) == keccak256(bytes("lending")) ||
-                keccak256(bytes(_protocolType)) == keccak256(bytes("compound")),
-            "Invalid protocol type"
-        );
+        if (!(_contractAddress != address(0))) revert InvalidContractAddress();
+        if (!(!protocols[_name].isActive)) revert ProtocolAlreadyExists();
+        if (!(keccak256(bytes(_protocolType)) == keccak256(bytes("liquid")) || keccak256(bytes(_protocolType)) == keccak256(bytes("lending")) || keccak256(bytes(_protocolType)) == keccak256(bytes("compound")))) revert InvalidProtocolType();
 
         protocols[_name] = ProtocolInfo({
             contractAddress: _contractAddress,
@@ -239,21 +256,16 @@ contract PolygonDeFiAggregator is
         string memory _protocol,
         uint256 _lockDuration
     ) external payable nonReentrant whenNotPaused returns (uint256 stakeId) {
-        require(_lockDuration >= 1 days, "Minimum lock duration is 1 day");
-        require(_lockDuration <= 365 days, "Maximum lock duration is 365 days");
-
+        if (!(_lockDuration >= 1 days)) revert MinimumLockDurationIs1Day();
+        if (!(_lockDuration <= 365 days)) revert MaximumLockDurationIs365Days();
         ProtocolInfo storage protocol = protocols[_protocol];
-        require(protocol.isActive, "Protocol not supported");
-
+        if (!(protocol.isActive)) revert ProtocolNotSupported();
         uint256 actualAmount;
 
         // Handle native MATIC staking
         if (_token == WMATIC_ADDRESS && msg.value > 0) {
-            require(msg.value > 0, "Cannot stake 0 MATIC");
-            require(
-                keccak256(bytes(_protocol)) == keccak256(bytes("aave_lending")),
-                "Native MATIC only supported for Aave"
-            );
+            if (!(msg.value > 0)) revert CannotStake0Matic();
+            if (!(keccak256(bytes(_protocol)) == keccak256(bytes("aave_lending")))) revert NativeMaticOnlySupportedForAave();
 
             actualAmount = msg.value;
 
@@ -262,10 +274,9 @@ contract PolygonDeFiAggregator is
             wmatic.deposit{ value: actualAmount }();
         } else {
             // Handle ERC20 token staking
-            require(_amount > 0, "Cannot stake 0");
-            require(msg.value == 0, "Don't send MATIC for ERC20 staking");
-            require(supportedTokens[_token].isActive, "Token not supported");
-
+            if (!(_amount > 0)) revert CannotStake0();
+            if (!(msg.value == 0)) revert DonTSendMaticForErc20Staking();
+            if (!(supportedTokens[_token].isActive)) revert TokenNotSupported();
             actualAmount = _amount;
 
             // Transfer tokens from user
@@ -331,8 +342,7 @@ contract PolygonDeFiAggregator is
         address systemFeeAddress
     ) external nonReentrant {
         UserPosition storage position = userPositions[msg.sender];
-        require(_stakeId < position.timeLockedStakes.length, "Invalid stake ID");
-
+        if (!(_stakeId < position.timeLockedStakes.length)) revert InvalidStakeId();
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
 
         ProtocolInfo storage protocol = protocols[stake.protocol];
@@ -372,20 +382,19 @@ contract PolygonDeFiAggregator is
             // Transfer principal amount
             wmatic.withdraw(stake.amount);
             (bool success1, ) = msg.sender.call{ value: stake.amount }("");
-            require(success1, "Principal MATIC transfer failed");
-
+            if (!(success1)) revert PrincipalMaticTransferFailed();
             // Transfer rewards if any
             if (rewards > 0) {
                 wmatic.withdraw(remaining);
                 (bool success2, ) = msg.sender.call{ value: remaining }("");
-                require(success2, "Rewards MATIC transfer failed");
+                if (!(success2)) revert RewardsMaticTransferFailed();
             }
 
             // Transfer system fee to specified address if any
             if (systemFeeAmount > 0) {
                 wmatic.withdraw(systemFeeAmount);
                 (bool success3, ) = systemFeeAddress.call{ value: systemFeeAmount }("");
-                require(success3, "System fee MATIC transfer failed");
+                if (!(success3)) revert SystemFeeMaticTransferFailed();
             }
         } else {
             // Transfer principal
@@ -633,7 +642,7 @@ contract PolygonDeFiAggregator is
             return 0xf329e36C7bF6E5E86ce2150875a84Ce77f477375; // aPolAAVE
         }
 
-        revert("aToken address not found for this token");
+        revert AtokenAddressNotFoundForThisToken();
     }
 
     // ===== ADMIN FUNCTIONS =====
@@ -642,7 +651,7 @@ contract PolygonDeFiAggregator is
      * @dev Update protocol APY
      */
     function updateProtocolAPY(string memory _protocol, uint256 _newAPY) external onlyOwner {
-        require(protocols[_protocol].isActive, "Protocol not found");
+        if (!(protocols[_protocol].isActive)) revert ProtocolNotFound();
         uint256 oldAPY = protocols[_protocol].currentAPY;
         protocols[_protocol].currentAPY = _newAPY;
         protocolLastUpdate[_protocol] = block.timestamp;
@@ -654,7 +663,7 @@ contract PolygonDeFiAggregator is
      * @dev Set token status
      */
     function setTokenStatus(address _token, bool _isActive) external onlyOwner {
-        require(supportedTokens[_token].tokenAddress != address(0), "Token not found");
+        if (!(supportedTokens[_token].tokenAddress != address(0))) revert TokenNotFound();
         supportedTokens[_token].isActive = _isActive;
     }
 
@@ -678,10 +687,7 @@ contract PolygonDeFiAggregator is
      * @param _percentFee New fee percentage (0-100 basis points)
      */
     function setPercentFeeForSystem(uint256 _percentFee) external onlyOwner {
-        require(
-            _percentFee >= 0 && _percentFee <= 100,
-            "Fee must be between 0 and 100 basis points"
-        );
+        if (!(_percentFee >= 0 && _percentFee <= 100)) revert FeeMustBeBetween0And100BasisPoints();
 
         uint256 oldFee = percentFeeForSystem;
         percentFeeForSystem = _percentFee;

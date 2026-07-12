@@ -75,7 +75,7 @@ describe('ExerciseSupplementNFT — checkValidSignature', function () {
 
     await expect(
       nft.connect(owner).checkValidSignature(day, stepIndex, data, sig)
-    ).to.be.revertedWith('Invalid signature');
+    ).to.be.revertedWithCustomError(nft, 'InvalidSignature');
   });
 
   it('reverts when deadline has passed', async function () {
@@ -127,20 +127,20 @@ describe('ExerciseSupplementNFT — checkValidSignature', function () {
     await nft.connect(owner).checkValidSignature(day, stepIndex, data, sig);
     await expect(
       nft.connect(owner).checkValidSignature(day, stepIndex, data, sig)
-    ).to.be.revertedWith('Hash was used');
+    ).to.be.revertedWithCustomError(nft, 'HashUsed');
   });
 
   it('non-ALLOWED_CONTRACTS_CHALLENGE caller reverts', async function () {
     const { nft, attacker } = await setup();
     await expect(
       nft.connect(attacker).checkValidSignature([1], [1], [1, 1], '0x')
-    ).to.be.revertedWith(/AccessControl/);
+    ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
   });
 
   it('reverts SECURITY ADDR NOT SET when securityAddress uninitialized', async function () {
     // Deploy fresh proxy without calling updateSecurityAddress
     const { upgrades } = hre as any;
-    const Factory = await ethers.getContractFactory('ExerciseSupplementNFT');
+    const Factory = await ethers.getContractFactory('contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT');
     const [a, b, c, d] = await ethers.getSigners();
     const fresh = await upgrades.deployProxy(
       Factory,
@@ -154,7 +154,7 @@ describe('ExerciseSupplementNFT — checkValidSignature', function () {
 
     await expect(
       fresh.connect(a).checkValidSignature([1], [1], [1, 1], '0x')
-    ).to.be.revertedWith('SECURITY ADDR NOT SET');
+    ).to.be.revertedWithCustomError(fresh, 'SecurityNotSet');
   });
 
   it('boundary: deadline exactly == block.timestamp + 10 minutes (max valid)', async function () {
@@ -247,7 +247,7 @@ describe('ExerciseSupplementNFT — checkValidSignature', function () {
     // Now attacker tries to use owner's signature → fails
     await expect(
       nft.connect(attacker).checkValidSignature(day, stepIndex, data, sig)
-    ).to.be.revertedWith('Invalid signature');
+    ).to.be.revertedWithCustomError(nft, 'InvalidSignature');
   });
 
   it('different chainId in digest → reverts', async function () {
@@ -270,7 +270,7 @@ describe('ExerciseSupplementNFT — checkValidSignature', function () {
 
     await expect(
       nft.connect(owner).checkValidSignature(day, stepIndex, data, sig)
-    ).to.be.revertedWith('Invalid signature');
+    ).to.be.revertedWithCustomError(nft, 'InvalidSignature');
   });
 
   it('different day array values produce different hash → reverts', async function () {
@@ -288,7 +288,7 @@ describe('ExerciseSupplementNFT — checkValidSignature', function () {
     // Submit with tampered day array
     await expect(
       nft.connect(owner).checkValidSignature([11], stepIndex, data, sig)
-    ).to.be.revertedWith('Invalid signature');
+    ).to.be.revertedWithCustomError(nft, 'InvalidSignature');
   });
 
   it('different stepIndex array values → reverts', async function () {
@@ -305,7 +305,7 @@ describe('ExerciseSupplementNFT — checkValidSignature', function () {
 
     await expect(
       nft.connect(owner).checkValidSignature(day, [9999], data, sig)
-    ).to.be.revertedWith('Invalid signature');
+    ).to.be.revertedWithCustomError(nft, 'InvalidSignature');
   });
 
   it('updateSecurityAddress switches accepted signer', async function () {
@@ -331,7 +331,7 @@ describe('ExerciseSupplementNFT — checkValidSignature', function () {
     const sigOld = await signMessage(signer, hashOld);
     await expect(
       nft.connect(owner).checkValidSignature(day, stepIndex, data, sigOld)
-    ).to.be.revertedWith('Invalid signature');
+    ).to.be.revertedWithCustomError(nft, 'InvalidSignature');
 
     // Signature signed by new signer (attacker) passes
     const sigNew = await signMessage(attacker, hashOld);

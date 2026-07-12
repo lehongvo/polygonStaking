@@ -303,7 +303,7 @@ describe('ExerciseSupplementNFT — Gacha integration', function () {
         nft
           .connect(attacker)
           .updateGachaContractAddress(other.address, SEND_TO_SPONSOR, true)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
   });
 

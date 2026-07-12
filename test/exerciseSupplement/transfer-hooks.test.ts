@@ -82,7 +82,7 @@ describe('ExerciseSupplementNFT — Transfer hooks (_beforeTokenTransfer)', func
       nft
         .connect(other)
         .transferFrom(other.address, await challenge.getAddress(), 0)
-    ).to.be.revertedWith('ERC721: CHALLENGE WAS FINISHED');
+    ).to.be.revertedWithCustomError(nft, 'ChallengeFinished');
   });
 
   it('multiple transfers user → user → user, ownership chain correct', async function () {

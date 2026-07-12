@@ -38,7 +38,7 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
             ethers.ZeroAddress,
             challenger.address
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -328,7 +328,7 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
             await normalNft.getAddress(),
             challenger.address
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
 
     it('Helper721 mints when caller has ALLOWED_CONTRACTS_GACHA', async function () {
@@ -741,7 +741,7 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
             donation.address,
             challenger.address
           )
-      ).to.be.revertedWith('MISSING SPECIAL NFT');
+      ).to.be.revertedWithCustomError(nft, 'MissingNft');
     });
 
     it('combined: SoulBound + special tier 1 → both mint', async function () {
@@ -837,7 +837,7 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
             donation.address,
             challenger.address
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -855,7 +855,7 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
             0,
             1
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(nft, 'AccessControlUnauthorizedAccount');
     });
   });
 });

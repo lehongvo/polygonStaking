@@ -74,7 +74,7 @@ describe('Gacha — access control & admin', function () {
             'X',
             'Y'
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -121,7 +121,7 @@ describe('Gacha — access control & admin', function () {
             0,
             0
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -169,7 +169,7 @@ describe('Gacha — access control & admin', function () {
             true,
             true
           )
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -187,7 +187,7 @@ describe('Gacha — access control & admin', function () {
       const { gacha, attacker } = await loadFixture(deployGachaFixture);
       await expect(
         gacha.connect(attacker).setGachaTime(0, 100)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -252,7 +252,7 @@ describe('Gacha — access control & admin', function () {
         gacha
           .connect(attacker)
           .withdrawBalances(await erc20Reward.getAddress(), 0, TypeToken.ERC20)
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
   });
 
@@ -276,7 +276,7 @@ describe('Gacha — access control & admin', function () {
 
       await expect(
         gacha.connect(attacker).upgradeTo(await newImpl.getAddress())
-      ).to.be.revertedWith(/AccessControl/);
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
     });
   });
 
