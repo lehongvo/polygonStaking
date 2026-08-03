@@ -44,8 +44,15 @@ async function buildSig(signer: any, addr: string, chainId: bigint, nonce: numbe
   const coder = hre.ethers.AbiCoder.defaultAbiCoder();
   const payload = hre.ethers.keccak256(
     coder.encode(
-      ['address', 'uint256', 'uint256', 'uint256', 'uint256[]', 'uint256[]', 'uint64[2]', 'uint64[2]', 'uint256[]', 'uint256[]', 'uint256[]'],
-      [addr, chainId, nonce, deadline, day, stepIndex, data, timeRange, mins, mets, glucose]
+      ['address', 'uint256', 'uint256', 'uint256', 'uint256[]', 'uint256[]', 'uint64[2]', 'uint64[2]', 'uint256[]', 'uint256[]', 'uint256[]', 'bytes32'],
+      [addr, chainId, nonce, deadline, day, stepIndex, data, timeRange, mins, mets, glucose,
+        // assetHash cho danh sách tài sản rỗng ('0x', [], [], [], [], []).
+        hre.ethers.keccak256(
+          coder.encode(
+            ['bytes', 'address[]', 'address[]', 'uint256[][]', 'address[][]', 'bool[]'],
+            ['0x', [], [], [], [], []]
+          )
+        )]
     )
   );
   return signer.signMessage(hre.ethers.getBytes(payload));

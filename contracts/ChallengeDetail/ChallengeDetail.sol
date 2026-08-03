@@ -1009,8 +1009,14 @@ contract ChallengeDetail is IERC721Receiver {
         if (!(block.timestamp <= _deadline)) revert RelayExpired();
         if (!(_nonce == relayNonce[challenger])) revert RelayBadNonce();
         // Hash gắn address(this)+chainid → chống replay xuyên contract/chain.
+        // Các tham số NFT/Gacha điều khiển việc CHUYỂN TÀI SẢN nên PHẢI nằm trong chữ ký.
+        // Nếu không, relayer có thể tái dùng chữ ký hợp lệ của challenger nhưng đổi
+        // địa chỉ NFT / người nhận / target Gacha. Hash riêng rồi nhét vào payload.
+        bytes32 assetHash = keccak256(
+            abi.encode(_signature, _listGachaAddress, _listNFTAddress, _listIndexNFT, _listSenderAddress, _statusTypeNft)
+        );
         bytes32 payload = keccak256(
-            abi.encode(address(this), block.chainid, _nonce, _deadline, _day, _stepIndex, _data, _timeRange)
+            abi.encode(address(this), block.chainid, _nonce, _deadline, _day, _stepIndex, _data, _timeRange, assetHash)
         );
         bytes32 ethHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", payload));
         if (!(_recoverRelaySigner(ethHash, _challengerSig) == challenger)) revert RelayBadSignature();

@@ -75,8 +75,15 @@ describe('ChallengeDetailV2 — fork polygon (WMATIC/Aave)', function () {
     const buildSig = (signer: any, nonce: number) => {
       const payload = ethers.keccak256(
         coder.encode(
-          ['address', 'uint256', 'uint256', 'uint256', 'uint256[]', 'uint256[]', 'uint64[2]', 'uint64[2]'],
-          [addr, chainId, nonce, deadline, day, stepIndex, data, timeRange]
+          ['address', 'uint256', 'uint256', 'uint256', 'uint256[]', 'uint256[]', 'uint64[2]', 'uint64[2]', 'bytes32'],
+          [addr, chainId, nonce, deadline, day, stepIndex, data, timeRange,
+            // assetHash cho danh sách tài sản rỗng ('0x', [], [], [], [], []).
+            hre.ethers.keccak256(
+              coder.encode(
+                ['bytes', 'address[]', 'address[]', 'uint256[][]', 'address[][]', 'bool[]'],
+                ['0x', [], [], [], [], []]
+              )
+            )]
         )
       );
       return signer.signMessage(ethers.getBytes(payload));

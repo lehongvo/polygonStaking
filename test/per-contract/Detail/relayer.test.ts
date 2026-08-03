@@ -46,10 +46,18 @@ async function buildChallengerSig(
   timeRange: [number, number]
 ) {
   const coder = hre.ethers.AbiCoder.defaultAbiCoder();
+  // Tham số NFT/Gacha nay được bind vào chữ ký qua assetHash. Các test này relay với
+  // danh sách tài sản rỗng nên hash tương ứng với ('0x', [], [], [], [], []).
+  const assetHash = hre.ethers.keccak256(
+    coder.encode(
+      ['bytes', 'address[]', 'address[]', 'uint256[][]', 'address[][]', 'bool[]'],
+      ['0x', [], [], [], [], []]
+    )
+  );
   const payload = hre.ethers.keccak256(
     coder.encode(
-      ['address', 'uint256', 'uint256', 'uint256', 'uint256[]', 'uint256[]', 'uint64[2]', 'uint64[2]'],
-      [challengeAddr, chainId, nonce, deadline, day, stepIndex, data, timeRange]
+      ['address', 'uint256', 'uint256', 'uint256', 'uint256[]', 'uint256[]', 'uint64[2]', 'uint64[2]', 'bytes32'],
+      [challengeAddr, chainId, nonce, deadline, day, stepIndex, data, timeRange, assetHash]
     )
   );
   // signMessage(getBytes(payload)) → ký keccak256("\x19Ethereum Signed Message:\n32" + payload) = ethHash contract
