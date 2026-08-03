@@ -12,9 +12,19 @@ import "./Initializable.sol";
 import "./UUPSUpgradeable.sol";
 import "./IChallenge.sol";
 
-contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable { 
+contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable {
+    // CHALLENGE-2702: this is the IMPLEMENTATION contract deployed behind a proxy. Without
+    // disabling initializers here, anyone could call initialize() directly on the
+    // implementation address itself (not through the proxy) and take owner/admin roles on
+    // that implementation instance. Matches the existing correct pattern in
+    // PolygonDeFiAggregator.sol.
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     // Contract size
-    uint256 private sizeContract; 
+    uint256 private sizeContract;
 
     /**
      * @dev Value send to contract should be equal with `amount`.

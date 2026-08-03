@@ -3837,6 +3837,16 @@ contract ExerciseSupplementNFT is
     AccessControlUpgradeable,
     UUPSUpgradeable
 {
+    // CHALLENGE-2702: this is the IMPLEMENTATION contract deployed behind a proxy. Without
+    // disabling initializers here, anyone could call initialize() directly on the
+    // implementation address itself (not through the proxy) and take owner/admin roles on
+    // that implementation instance. Matches the existing correct pattern in
+    // PolygonDeFiAggregator.sol.
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @title Importing Solidity Libraries
      * @dev In this section, we import various Solidity libraries that provide

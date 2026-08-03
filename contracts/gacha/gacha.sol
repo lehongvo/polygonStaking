@@ -2839,6 +2839,16 @@ library EnumerableSet {
 pragma solidity ^0.8.16;
 
 contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPSUpgradeable {
+    // CHALLENGE-2702: this is the IMPLEMENTATION contract deployed behind a proxy. Without
+    // disabling initializers here, anyone could call initialize() directly on the
+    // implementation address itself (not through the proxy) and take owner/admin roles on
+    // that implementation instance. Matches the existing correct pattern in
+    // PolygonDeFiAggregator.sol.
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     // Custom errors (thay require-string ở business logic — giảm bytecode size + gas, giữ nguyên điều kiện revert)
     error EmptyBatch();
     error TooManyContracts();

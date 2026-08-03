@@ -320,4 +320,34 @@ describe('Gacha — access control & admin', function () {
       expect(await gacha.checkExist()).to.equal(false);
     });
   });
+
+  // CHALLENGE-2702: the implementation constructor now calls _disableInitializers(), so
+  // calling initialize() directly on a bare (non-proxy) instance must revert -- otherwise an
+  // attacker could take owner/admin roles on the implementation address itself.
+  describe('CHALLENGE-2702 — initializers disabled on the bare implementation', function () {
+    it('initialize() on a directly-deployed (non-proxy) Gacha instance reverts', async function () {
+      const [, attacker, v1, v2, returnedNFTWallet, adminWallet] =
+        await ethers.getSigners();
+      const Gacha = await ethers.getContractFactory('Gacha');
+      const implementation = await Gacha.deploy();
+      await implementation.waitForDeployment();
+
+      await expect(
+        implementation.initialize(
+          defaultChallengeInfo,
+          [],
+          [],
+          100,
+          true,
+          TypeRandomReward.NORMAL,
+          TimeRandomReward.ONLY_TIME,
+          await v1.getAddress(),
+          await v2.getAddress(),
+          [returnedNFTWallet.address, adminWallet.address],
+          'g',
+          's'
+        )
+      ).to.be.reverted;
+    });
+  });
 });

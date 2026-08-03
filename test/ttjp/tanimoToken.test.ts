@@ -8,16 +8,24 @@ import hre from 'hardhat';
  * owner gate removed. Signature preserved (was never invoked on-chain). `mintToken` unchanged
  * (onlyOwner, used by ADMIN) — centralization noted separately.
  *
- * UUPS logic tested on the implementation deployed + initialized directly (proxy only needed for
- * upgradeability, not for mint/burn logic). sizeContract set non-zero so the challenge-finish
- * hook in _beforeTokenTransfer is skipped for EOA transfers.
+ * CHALLENGE-2702 added `_disableInitializers()` to the implementation's constructor, so
+ * calling `initialize()` directly on a bare `T.deploy()` instance (as this test used to do)
+ * now correctly reverts. Deploy through `upgrades.deployProxy` instead, matching the real
+ * production deployment (scripts/TTJP/deploy-tanimo-token-kaia.ts) -- proxy only needed for
+ * upgradeability, not for mint/burn logic, but it's also now required to initialize at all.
+ * sizeContract set non-zero so the challenge-finish hook in _beforeTokenTransfer is skipped
+ * for EOA transfers.
  */
 describe('TanimoToken — H4 burn confiscation fix', () => {
   async function deploy() {
     const [owner, alice, bob] = await hre.ethers.getSigners();
     const T = await hre.ethers.getContractFactory('TanimoToken');
-    const t = await T.deploy();
-    await t.initialize(owner.address, 99999n); // (_ownerOfToken, _sizeCodeContract)
+    const t = await (hre as any).upgrades.deployProxy(
+      T,
+      [owner.address, 99999n], // (_ownerOfToken, _sizeCodeContract)
+      { initializer: 'initialize', kind: 'uups' }
+    );
+    await t.waitForDeployment();
     return { t, owner, alice, bob };
   }
 
@@ -47,5 +55,16 @@ describe('TanimoToken — H4 burn confiscation fix', () => {
     const { t, owner, alice, bob } = await deploy();
     await t.mintToken(alice.address, 1000n);
     await expect(t.connect(bob).burnToken(alice.address, 100n)).to.be.reverted;
+  });
+
+  // CHALLENGE-2702: calling initialize() directly on a bare (non-proxy) implementation
+  // instance must revert -- otherwise an attacker could take owner/admin roles on the
+  // implementation address itself.
+  it('CHALLENGE-2702: initialize() on the bare implementation reverts (initializers disabled)', async () => {
+    const [attacker] = await hre.ethers.getSigners();
+    const T = await hre.ethers.getContractFactory('TanimoToken');
+    const implementation = await T.deploy();
+    await implementation.waitForDeployment();
+    await expect(implementation.initialize(attacker.address, 1n)).to.be.reverted;
   });
 });
