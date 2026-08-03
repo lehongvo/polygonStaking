@@ -35,8 +35,6 @@ error InvalidValue0();
 error InvalidValue1();
 error InvalidHiitResultsLength();
 error InsufficientMaticForNativeStaking();
-error PrincipalMaticTransferFailed();
-error RewardsMaticTransferFailed();
 error SystemFeeMaticTransferFailed();
 
 /**
@@ -1894,6 +1892,23 @@ contract ChallengeDetailV2 is IERC721Receiver {
      * @dev Withdraw from staking to have actual balance for transfers.
      * Applies fee system similar to PolygonDeFiAggregator
      */
+    /**
+     * CHALLENGE-2695: this used to transfer `totalReward` (the AWARD POOL -- see the
+     * constructor: `require(msg.value == _totalAmount, "Invalid award")`) plus any staking
+     * yield DIRECTLY to the challenger, unconditionally, on EVERY outcome (success, failure,
+     * give-up) before updateRewardSuccessAndfail() even computed who should get what. That's
+     * sponsor-funded prize money, not the challenger's own collateral -- sending it out here
+     * meant the subsequent outcome-based approvalSuccessOf/approvalFailOf distribution to
+     * awardReceivers ran against whatever (often much smaller) balance was left over.
+     *
+     * Fixed to ONLY withdraw the Aave position into THIS CONTRACT's own balance (unwrapping
+     * WMATIC to native MATIC for the native-token case, since the rest of the payout logic
+     * uses tranferCoinNative/address(this).balance) and never transfer anything to the
+     * challenger here. The withdrawn principal + yield (minus the staking system fee, which
+     * is fee revenue and still goes straight to feeAddress) becomes part of the contract's
+     * balance that the EXISTING outcome-based distribution in updateRewardSuccessAndfail
+     * already correctly splits among awardReceivers per success/fail percentages.
+     */
     function _withdrawFromStaking() private {
         uint256 currentStakeId = stakingStakeId;
 
@@ -1919,14 +1934,9 @@ contract ChallengeDetailV2 is IERC721Receiver {
             if (createByToken == address(0)) {
                 IWMATIC wmatic = IWMATIC(WMATIC_WPOC_ADDRESS);
 
-                wmatic.withdraw(totalReward);
-                (bool success1, ) = challenger.call{ value: totalReward }("");
-                if (!(success1)) revert PrincipalMaticTransferFailed();
-                if (rewards > 0) {
-                    wmatic.withdraw(remaining);
-                    (bool success2, ) = challenger.call{ value: remaining }("");
-                    if (!(success2)) revert RewardsMaticTransferFailed();
-                }
+                // Unwrap principal + net yield into this contract's own native balance --
+                // no transfer out. The existing outcome-based distribution pays it out.
+                wmatic.withdraw(totalReward + remaining);
 
                 if (systemFeeAmount > 0) {
                     wmatic.withdraw(systemFeeAmount);
@@ -1934,15 +1944,6 @@ contract ChallengeDetailV2 is IERC721Receiver {
                     if (!(success3)) revert SystemFeeMaticTransferFailed();
                 }
             } else {
-                IERC20(underlyingToken).transfer(
-                    challenger,
-                    actualWithdrawn <= totalReward ? actualWithdrawn : totalReward
-                );
-
-                if (rewards > 0) {
-                    IERC20(underlyingToken).transfer(challenger, remaining);
-                }
-
                 if (systemFeeAmount > 0) {
                     IERC20(underlyingToken).transfer(feeAddress, systemFeeAmount);
                 }
