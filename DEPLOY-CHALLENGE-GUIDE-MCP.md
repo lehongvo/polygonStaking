@@ -297,8 +297,13 @@ calls. Save `draft_id`, `contract_address`, and `tx_hash`.
 
 ### Key rules
 
-- **`receivers[]` percent sum must be ≤ 100.** `[50, 50]` works.
-  `[100, 100]` reverts on chain with `Sum of percents exceeds 100`.
+- **`receivers[]` percent sum must be ≤ 100 PER OUTCOME GROUP, not across the whole
+  array.** `type: 1` (success) and `type: 2` (fail) are two separate, mutually exclusive
+  payout groups on-chain (only one is ever paid) -- each group's percents must sum to
+  ≤ 100 independently. `[50, 50]` (one type-1, one type-2) works. `[100, 100]` (one
+  type-1 @ 100%, one type-2 @ 100%) also works -- it's the standard production shape.
+  It only reverts with `Sum of percents exceeds 100` if a SINGLE group's own percents
+  sum above 100 (e.g. two type-1 receivers at 60% each).
 - **Each receiver's effective amount must be > 0.** Don't include a
   receiver with `percent: "0"`.
 - **`token_type`**: 0 = native (ETH/MATIC), 2 = ERC20 (set `address` to the
@@ -438,7 +443,7 @@ funding, cron promotion — is handled server-side.
 |---|---|
 | `INVALID_API_KEY` on every call | `CPM_KEY` typo, or admin disabled the key. |
 | `wallet_not_registered` | Sponsor / challenger address has never logged into the BAP app. Onboard first. |
-| `Sum of percents exceeds 100` in `error_detail` | Receivers' `percent` total > 100. Contract enforces ≤ 100. |
+| `Sum of percents exceeds 100` in `error_detail` | One outcome group's (all `type: 1`, or all `type: 2`) `percent` total > 100 -- not the whole `receivers[]` array. Contract enforces ≤ 100 per group. |
 | Deploy returns `deployed` but never reaches `promoted` | Phase B failed — check `failure_reason` (usually `nft_role_grant` or `jpyc_funded`). |
 | Draft stuck on `deploying` for > 30 min | Tx never mined or RPC dropped. Cron will mark it `rejected` with `tx_stuck_30min`. |
 
