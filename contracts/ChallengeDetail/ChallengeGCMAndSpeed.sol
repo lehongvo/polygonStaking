@@ -1538,9 +1538,18 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
 
     /**
      * @dev Transfer NFTs back to the sender when the task fails.
+     * CHALLENGE-2694: recipient (and, for ERC1155, amount) now come ONLY from the authoritative
+     * erc721Depositor/erc1155DepositorBalance records populated in onERC721Received/
+     * onERC1155Received -- _listSenderAddress is accepted for ABI/signature-format compatibility
+     * (the relayer signing scheme already binds it, see CHALLENGE-2653) but its VALUES are no
+     * longer used to pick who receives anything. An entry with no recorded depositor (never
+     * deposited, or already returned) falls back to the challenge's own AUTHORITATIVE
+     * `challenger` address if this contract still holds the token (e.g. deposited via plain
+     * transferFrom, which never triggers onERC721Received) -- never an arbitrary caller-supplied
+     * address.
      * @param _listNFTAddress An array of NFT contract addresses.
      * @param _listIndexNFT An array of arrays containing indices of NFTs to transfer.
-     * @param _listSenderAddress An array of arrays containing sender addresses for each NFT.
+     * @param _listSenderAddress Unused for recipient selection -- kept for ABI/signature-format compatibility.
      * @param _statusTypeNft An array indicating the status type of each NFT.
      */
     function transferNFTForSenderWhenFailed(
@@ -1549,40 +1558,59 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) private {
+        _listSenderAddress; // silence unused-param warning -- kept for ABI/signature compatibility only
         // Iterate through the list of ERC721 contracts
         for (uint256 i = 0; i < _listNFTAddress.length; i++) {
             if (_statusTypeNft[i]) {
                 for (uint256 j = 0; j < _listIndexNFT[i].length; j++) {
-                    // Transfer the NFT to the sender
-                    TransferHelper.safeTransferFrom(
-                        _listNFTAddress[i],
-                        address(this),
-                        _listSenderAddress[i][j],
-                        _listIndexNFT[i][j]
-                    );
+                    uint256 tokenId = _listIndexNFT[i][j];
+                    address depositor = erc721Depositor[_listNFTAddress[i]][tokenId];
+                    if (depositor != address(0)) {
+                        delete erc721Depositor[_listNFTAddress[i]][tokenId]; // effects before external call (CEI)
+                        TransferHelper.safeTransferFrom(_listNFTAddress[i], address(this), depositor, tokenId);
+                        continue;
+                    }
+                    if (IExerciseSupplementNFT(_listNFTAddress[i]).ownerOf(tokenId) == address(this)) {
+                        TransferHelper.safeTransferFrom(_listNFTAddress[i], address(this), challenger, tokenId);
+                    }
                 }
             } else {
                 uint256 lengthListIndexNFT = _listIndexNFT[i].length / 2;
                 for (uint256 j = 0; j < lengthListIndexNFT; j++) {
-                    uint256 balanceTokenERC1155 = _listIndexNFT[i][j + lengthListIndexNFT];
+                    uint256 tokenId = _listIndexNFT[i][j];
+                    address[] memory depositors = erc1155Depositors[_listNFTAddress[i]][tokenId];
+                    if (depositors.length > 0) {
+                        for (uint256 d = 0; d < depositors.length; d++) {
+                            address depositor = depositors[d];
+                            uint256 amount = erc1155DepositorBalance[_listNFTAddress[i]][tokenId][depositor];
+                            if (amount == 0) continue; // already returned
 
-                    // Encode data transfer token
-                    bytes memory extraData = abi.encode(
-                        address(this),
-                        _listSenderAddress[i][j],
-                        _listIndexNFT[i][j],
-                        balanceTokenERC1155
-                    );
+                            erc1155DepositorBalance[_listNFTAddress[i]][tokenId][depositor] = 0; // CEI
 
-                    // Transfer the NFT to the sender
-                    TransferHelper.safeTransferNFT1155(
-                        _listNFTAddress[i],
-                        address(this),
-                        _listSenderAddress[i][j],
-                        _listIndexNFT[i][j],
-                        balanceTokenERC1155,
-                        extraData
-                    );
+                            bytes memory extraData = abi.encode(address(this), depositor, tokenId, amount);
+                            TransferHelper.safeTransferNFT1155(
+                                _listNFTAddress[i],
+                                address(this),
+                                depositor,
+                                tokenId,
+                                amount,
+                                extraData
+                            );
+                        }
+                    } else {
+                        uint256 heldBalance = IERC1155(_listNFTAddress[i]).balanceOf(address(this), tokenId);
+                        if (heldBalance > 0) {
+                            bytes memory extraData = abi.encode(address(this), challenger, tokenId, heldBalance);
+                            TransferHelper.safeTransferNFT1155(
+                                _listNFTAddress[i],
+                                address(this),
+                                challenger,
+                                tokenId,
+                                heldBalance,
+                                extraData
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -1815,28 +1843,44 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
         return awardReceivers[_index];
     }
 
+    // CHALLENGE-2694: authoritative on-chain custody records for deposited NFTs. Previously
+    // onERC721Received/onERC1155Received discarded `from` entirely -- transferNFTForSenderWhenFailed
+    // then trusted a CALLER-SUPPLIED _listSenderAddress for who gets the NFT back, with no check
+    // against who actually deposited it. Recording custody here lets the failure-path return use
+    // an authoritative record instead of caller input.
+    mapping(address => mapping(uint256 => address)) private erc721Depositor; // nft => tokenId => depositor
+    mapping(address => mapping(uint256 => mapping(address => uint256))) private erc1155DepositorBalance; // nft => tokenId => depositor => amount
+    mapping(address => mapping(uint256 => address[])) private erc1155Depositors; // nft => tokenId => depositor list (enumeration)
+
     /**
-     * @dev onERC721Received.
+     * @dev onERC721Received. Records `from` as the authoritative depositor for (msg.sender, tokenId) --
+     * msg.sender here is the NFT contract calling this hook, per the ERC721 standard.
      */
     function onERC721Received(
         address,
-        address,
-        uint256,
+        address from,
+        uint256 tokenId,
         bytes memory
     ) external virtual override returns (bytes4) {
+        erc721Depositor[msg.sender][tokenId] = from;
         return this.onERC721Received.selector;
     }
 
     /**
-     * @dev onERC1155Received.
+     * @dev onERC1155Received. Accumulates `from`'s balance for (msg.sender, tokenId); ERC1155 allows
+     * more than one depositor to hold the same tokenId, so balances are tracked per-depositor.
      */
     function onERC1155Received(
         address,
-        address,
-        uint256,
-        uint256,
+        address from,
+        uint256 tokenId,
+        uint256 amount,
         bytes memory
-    ) public pure returns (bytes4) {
+    ) public returns (bytes4) {
+        if (erc1155DepositorBalance[msg.sender][tokenId][from] == 0) {
+            erc1155Depositors[msg.sender][tokenId].push(from);
+        }
+        erc1155DepositorBalance[msg.sender][tokenId][from] += amount;
         return this.onERC1155Received.selector;
     }
 }
