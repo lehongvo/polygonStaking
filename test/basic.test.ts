@@ -71,20 +71,26 @@ async function deployBaseStep(opts: {
 }
 
 describe('ChallengeBaseStep — security fixes', function () {
-  describe('N1 — constructor enforces sum(awardReceiversPercent) <= 100', function () {
-    it('reverts when sum of percents > 100', async function () {
+  // CHALLENGE-2663: awardReceiversPercent holds 2 MUTUALLY EXCLUSIVE groups split by
+  // _index ([0,_index)=success, [_index,length)=fail) -- only one group is ever paid,
+  // so each group must be validated <=100 SEPARATELY, not by summing the whole array.
+  // deployBaseStep's default index=1, so with 2 receivers each group has exactly 1
+  // element -- it has to exceed 100 on its own (or use index=2 to merge both into one
+  // group) to trigger a revert.
+  describe('N1 — constructor enforces sum(awardReceiversPercent) <= 100 PER GROUP', function () {
+    it('reverts when the success group (index=2, both receivers) exceeds 100', async function () {
       await expect(
-        deployBaseStep({ awardReceiversPercent: [60, 50] })
+        deployBaseStep({ awardReceiversPercent: [60, 50], index: 2 })
       ).to.be.revertedWithCustomError(await hre.ethers.getContractFactory('ChallengeBaseStep'), 'SumOfPercentsExceeds100');
     });
 
-    it('reverts when sum of percents = 110', async function () {
+    it('reverts when a single element already exceeds 100', async function () {
       await expect(
-        deployBaseStep({ awardReceiversPercent: [50, 60] })
+        deployBaseStep({ awardReceiversPercent: [101, 50] })
       ).to.be.revertedWithCustomError(await hre.ethers.getContractFactory('ChallengeBaseStep'), 'SumOfPercentsExceeds100');
     });
 
-    it('accepts sum of percents = 100 exactly', async function () {
+    it('accepts sum of the WHOLE array = 100 exactly (1 element per group, index=1)', async function () {
       await expect(deployBaseStep({ awardReceiversPercent: [60, 40] })).not.to
         .be.reverted;
     });
@@ -92,6 +98,16 @@ describe('ChallengeBaseStep — security fixes', function () {
     it('accepts sum of percents < 100 (matches fee carve-out)', async function () {
       await expect(deployBaseStep({ awardReceiversPercent: [50, 40] })).not.to
         .be.reverted;
+    });
+
+    it('CHALLENGE-2663 regression: the real PROD config (index=1, [100,100]) must deploy', async function () {
+      // deployInfo/challenge-detail-v2-polygon.json and 3 other prod configs all use this
+      // exact pattern: each group ([100] and [100]) is valid on its own even though the
+      // whole array sums to 200. The old bug (summing the whole array) would revert this,
+      // blocking the redeploy meant to rescue the stuck JPYC.
+      await expect(
+        deployBaseStep({ awardReceiversPercent: [100, 100], index: 1 })
+      ).not.to.be.reverted;
     });
   });
 
@@ -168,8 +184,10 @@ describe('ChallengeDetail — security fixes', function () {
     );
   }
 
-  it('N1: reverts with sum of percents > 100', async function () {
-    await expect(deployDetail([60, 60])).to.be.revertedWithCustomError(
+  // CHALLENGE-2663: index is fixed at 1 -> each group (success/fail) has exactly 1
+  // element, so it has to exceed 100 on its own to revert (not the array sum).
+  it('N1: reverts when a single element already exceeds 100', async function () {
+    await expect(deployDetail([101, 50])).to.be.revertedWithCustomError(
       await hre.ethers.getContractFactory('ChallengeDetail'),
       'SumOfPercentsExceeds100'
     );
@@ -177,6 +195,10 @@ describe('ChallengeDetail — security fixes', function () {
 
   it('N1: accepts sum of percents = 100', async function () {
     await expect(deployDetail([50, 50])).not.to.be.reverted;
+  });
+
+  it('CHALLENGE-2663 regression: the real PROD config (index=1, [100,100]) must deploy', async function () {
+    await expect(deployDetail([100, 100])).not.to.be.reverted;
   });
 });
 
@@ -208,8 +230,10 @@ describe('ChallengeHIIT — security fixes', function () {
     );
   }
 
-  it('N1: reverts with sum of percents > 100', async function () {
-    await expect(deployHIIT([60, 60])).to.be.revertedWithCustomError(
+  // CHALLENGE-2663: index is fixed at 1 -> each group (success/fail) has exactly 1
+  // element, so it has to exceed 100 on its own to revert (not the array sum).
+  it('N1: reverts when a single element already exceeds 100', async function () {
+    await expect(deployHIIT([101, 50])).to.be.revertedWithCustomError(
       await hre.ethers.getContractFactory('ChallengeHIIT'),
       'SumOfPercentsExceeds100'
     );
@@ -217,6 +241,10 @@ describe('ChallengeHIIT — security fixes', function () {
 
   it('N1: accepts sum of percents = 100', async function () {
     await expect(deployHIIT([50, 50])).not.to.be.reverted;
+  });
+
+  it('CHALLENGE-2663 regression: the real PROD config (index=1, [100,100]) must deploy', async function () {
+    await expect(deployHIIT([100, 100])).not.to.be.reverted;
   });
 
   it('F6: onTimeSendResult upper bound now enforced (was missing entirely)', async function () {

@@ -894,11 +894,22 @@ contract ChallengeGCM is IERC721Receiver {
         uint256[] memory awardReceiversApprovalsTamp = new uint256[](_awardReceiversPercent.length); // Creating a new array with length equal to _awardReceiversPercent length.
 
         {
-            uint256 sumPercent;
-            for (uint256 k = 0; k < _awardReceiversPercent.length; k++) {
-                sumPercent += _awardReceiversPercent[k];
+            // CHALLENGE-2663: _awardReceiversPercent holds 2 MUTUALLY EXCLUSIVE groups split
+            // by _index -- [0,_index) pays out on SUCCESS, [_index,length) pays out on FAILURE --
+            // only one group is ever paid, so each group must be validated <=100 SEPARATELY.
+            // Summing the whole array (old bug) rejected a valid prod config (e.g. index=1,
+            // [100,100]), blocking redeploy.
+            uint256 successSumPercent;
+            uint256 failSumPercent;
+            uint256 splitAt = _index < _awardReceiversPercent.length ? _index : _awardReceiversPercent.length;
+            for (uint256 k = 0; k < splitAt; k++) {
+                successSumPercent += _awardReceiversPercent[k];
             }
-            if (!(sumPercent <= 100)) revert SumOfPercentsExceeds100();
+            for (uint256 k = splitAt; k < _awardReceiversPercent.length; k++) {
+                failSumPercent += _awardReceiversPercent[k];
+            }
+            if (!(successSumPercent <= 100)) revert SumOfPercentsExceeds100();
+            if (!(failSumPercent <= 100)) revert SumOfPercentsExceeds100();
         }
         for (uint256 j = 0; j < _awardReceiversPercent.length; j++) {
             awardReceiversApprovalsTamp[j] = (_awardReceiversPercent[j] * _totalAmount) / 100; // Calculating the award amount for each receiver.
