@@ -981,7 +981,10 @@ contract ChallengeGCM is IERC721Receiver {
      * @notice This function is triggered automatically when native coins are sent to the contract address.
      */
     receive() external payable {
-        if (isFinished) {
+        // CHALLENGE-2733: skip the refund branch while a nonReentrant call is in progress, to
+        // avoid mid-flow re-deposit loops now that CEI (see transferToListReceiverSuccess/Fail)
+        // sets isFinished early -- matching ChallengeDetail/ChallengeBaseStep/ChallengeHIIT.
+        if (isFinished && _reentrancyStatus != 2) {
             // Check if the sale is finished
             tranferCoinNative(payable(msg.sender), msg.value); // Transfer the native coins to the sender
         }
@@ -1349,7 +1352,7 @@ contract ChallengeGCM is IERC721Receiver {
         address[] memory _listNFTAddress,
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
-    ) external {
+    ) external nonReentrant {
         if (!(isFinished)) revert TheChallengeHasNotYetBeenFinished();
         if (!(returnedNFTWallet == msg.sender)) revert OnlyReturnedNftWalletAddress();
         // Transfer ERC20 tokens
@@ -1379,6 +1382,13 @@ contract ChallengeGCM is IERC721Receiver {
         uint256[][] memory _listIndexNFT,
         bool[] memory _statusTypeNft
     ) private {
+        // CHALLENGE-2733: EFFECTS — write success/finished flags before any external interaction
+        // (CEI), matching ChallengeDetail/ChallengeBaseStep/ChallengeHIIT. Was previously set at
+        // the END of this function (after every transfer), leaving this contract with only the
+        // nonReentrant guard as its single defensive layer instead of two.
+        isSuccess = true;
+        isFinished = true;
+
         updateRewardSuccessAndfail(true); // CHALLENGE-2696: success outcome -> amountSuccessFee (was always amountFailFee)
 
         tranferCoinNative(feeAddress, serverSuccessFee);
@@ -1424,9 +1434,6 @@ contract ChallengeGCM is IERC721Receiver {
         }
 
         transferNFTForSenderWhenFinish(_listNFTAddress, _listIndexNFT, _statusTypeNft, challenger);
-
-        isSuccess = true;
-        isFinished = true;
     }
 
     /**
@@ -1442,6 +1449,10 @@ contract ChallengeGCM is IERC721Receiver {
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
     ) private {
+        // CHALLENGE-2733: EFFECTS — write finished flag before any external interaction (CEI),
+        // matching ChallengeDetail/ChallengeBaseStep/ChallengeHIIT.
+        isFinished = true;
+
         updateRewardSuccessAndfail(false);
 
         // Transfer server failure fee to fee address
@@ -1478,9 +1489,8 @@ contract ChallengeGCM is IERC721Receiver {
             _statusTypeNft
         );
 
-        // Emit event and mark challenge as finished
+        // Emit event (challenge already marked finished at the start of this function)
         emit CloseChallenge(false);
-        isFinished = true;
     }
 
     /**
