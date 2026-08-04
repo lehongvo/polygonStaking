@@ -23,6 +23,9 @@ error SystemFeeMaticTransferFailed();
 error ProtocolNotFound();
 error TokenNotFound();
 error AtokenAddressNotFoundForThisToken();
+error StakeNotActive();
+error StakeNotMatured();
+error InvalidFeeRecipient();
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -139,6 +142,10 @@ contract PolygonDeFiAggregator is
     // Fee system
     uint256 public percentFeeForSystem = 20;
 
+    // CHALLENGE-2697: governed system-fee recipient. Was previously a caller-supplied parameter
+    // on withdrawTimeLockedStake, letting the withdrawer redirect the fee anywhere.
+    address public systemFeeAddress;
+
     // Aave Reward token (e.g., WMATIC on Polygon) - used for v3 getUserUnclaimedRewards
     address public AAVE_REWARD_TOKEN;
 
@@ -166,6 +173,8 @@ contract PolygonDeFiAggregator is
     event ProtocolAdded(string protocolName, address contractAddress, string protocolType);
     event APYUpdated(string protocolName, uint256 oldAPY, uint256 newAPY);
     event FeeUpdated(uint256 oldFee, uint256 newFee);
+    event SystemFeeAddressUpdated(address indexed oldAddress, address indexed newAddress);
+    event EmergencyWithdraw(address indexed token, address indexed to, uint256 amount);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -178,6 +187,9 @@ contract PolygonDeFiAggregator is
         __Pausable_init();
         __UUPSUpgradeable_init();
         WMATIC_ADDRESS = _wmaticAddress;
+        // CHALLENGE-2697: default the governed fee recipient to the owner so it's never
+        // address(0); the owner can repoint it later via setSystemFeeAddress.
+        systemFeeAddress = initialOwner;
     }
 
     // Accept native MATIC
@@ -334,28 +346,44 @@ contract PolygonDeFiAggregator is
     }
 
     /**
-     * @dev Withdraw time-locked stake
+     * @dev Withdraw time-locked stake.
+     * CHALLENGE-2697: the fee recipient is now the governed `systemFeeAddress` (set only by the
+     * owner) instead of a caller-supplied parameter -- the withdrawer could previously redirect
+     * the system fee anywhere. Also now requires the stake to still be active and matured, and
+     * applies ALL state effects (isActive=false, balance/shares/TVL updates) BEFORE the protocol
+     * withdrawal and token transfers (CEI) -- the isActive check + early flip to false is what
+     * rejects a second withdrawal of the same stake.
      * @param _stakeId ID of the stake to withdraw
      */
-    function withdrawTimeLockedStake(
-        uint256 _stakeId,
-        address systemFeeAddress
-    ) external nonReentrant {
+    function withdrawTimeLockedStake(uint256 _stakeId) external nonReentrant {
         UserPosition storage position = userPositions[msg.sender];
         if (!(_stakeId < position.timeLockedStakes.length)) revert InvalidStakeId();
         TimeLockedStake storage stake = position.timeLockedStakes[_stakeId];
 
+        if (!(stake.isActive)) revert StakeNotActive();
+        if (!(block.timestamp >= stake.endTime)) revert StakeNotMatured();
+
         ProtocolInfo storage protocol = protocols[stake.protocol];
 
-        // Withdraw from protocol
-        uint256 actualWithdrawn = _withdrawFromProtocol(
-            stake.stakingToken,
-            stake.protocol,
-            stake.shares
-        );
+        // Snapshot what the external calls below need, then apply every state effect BEFORE
+        // any external interaction (protocol withdrawal + token transfers) -- CEI.
+        address stakingToken = stake.stakingToken;
+        string memory protocolName = stake.protocol;
+        uint256 stakeAmount = stake.amount;
+        uint256 stakeShares = stake.shares;
+
+        stake.isActive = false;
+        position.tokenProtocolBalances[stakingToken][protocolName] -= stakeAmount;
+        position.tokenProtocolShares[stakingToken][protocolName] -= stakeShares;
+        position.totalDeposited -= stakeAmount;
+        protocol.totalDeposited -= stakeAmount;
+        tokenProtocolTVL[stakingToken][protocolName] -= stakeAmount;
+
+        // Withdraw from protocol (external interaction, after all effects above)
+        uint256 actualWithdrawn = _withdrawFromProtocol(stakingToken, protocolName, stakeShares);
 
         // Calculate rewards and ensure we don't lose principal
-        uint256 rewards = actualWithdrawn > stake.amount ? actualWithdrawn - stake.amount : 0;
+        uint256 rewards = actualWithdrawn > stakeAmount ? actualWithdrawn - stakeAmount : 0;
 
         // Calculate system fee from rewards only (not from principal)
         uint256 systemFeeAmount = 0;
@@ -365,23 +393,15 @@ contract PolygonDeFiAggregator is
             remaining = rewards - systemFeeAmount; // User gets rewards minus fee
         }
 
-        // Update state
-        stake.isActive = false;
-        position.tokenProtocolBalances[stake.stakingToken][stake.protocol] -= stake.amount;
-        position.tokenProtocolShares[stake.stakingToken][stake.protocol] -= stake.shares;
-        position.totalDeposited -= stake.amount;
-
-        // Update protocol stats
-        protocol.totalDeposited -= stake.amount;
-        tokenProtocolTVL[stake.stakingToken][stake.protocol] -= stake.amount;
+        address feeRecipient = systemFeeAddress;
 
         // Handle withdrawal - transfer principal and rewards separately for visibility
-        if (stake.stakingToken == WMATIC_ADDRESS) {
+        if (stakingToken == WMATIC_ADDRESS) {
             IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
 
             // Transfer principal amount
-            wmatic.withdraw(stake.amount);
-            (bool success1, ) = msg.sender.call{ value: stake.amount }("");
+            wmatic.withdraw(stakeAmount);
+            (bool success1, ) = msg.sender.call{ value: stakeAmount }("");
             if (!(success1)) revert PrincipalMaticTransferFailed();
             // Transfer rewards if any
             if (rewards > 0) {
@@ -390,32 +410,32 @@ contract PolygonDeFiAggregator is
                 if (!(success2)) revert RewardsMaticTransferFailed();
             }
 
-            // Transfer system fee to specified address if any
+            // Transfer system fee to the governed recipient if any
             if (systemFeeAmount > 0) {
                 wmatic.withdraw(systemFeeAmount);
-                (bool success3, ) = systemFeeAddress.call{ value: systemFeeAmount }("");
+                (bool success3, ) = feeRecipient.call{ value: systemFeeAmount }("");
                 if (!(success3)) revert SystemFeeMaticTransferFailed();
             }
         } else {
             // Transfer principal
-            IERC20(stake.stakingToken).safeTransfer(
+            IERC20(stakingToken).safeTransfer(
                 msg.sender,
-                actualWithdrawn <= stake.amount ? actualWithdrawn : stake.amount
+                actualWithdrawn <= stakeAmount ? actualWithdrawn : stakeAmount
             );
 
             // Transfer rewards if any
             if (rewards > 0) {
-                IERC20(stake.stakingToken).safeTransfer(msg.sender, remaining);
+                IERC20(stakingToken).safeTransfer(msg.sender, remaining);
             }
 
-            // Transfer system fee to specified address if any
+            // Transfer system fee to the governed recipient if any
             if (systemFeeAmount > 0) {
-                IERC20(stake.stakingToken).safeTransfer(systemFeeAddress, systemFeeAmount);
+                IERC20(stakingToken).safeTransfer(feeRecipient, systemFeeAmount);
             }
         }
 
         // Emit event with actual amounts
-        emit WithdrawTimeLockedStake(msg.sender, _stakeId, stake.amount, rewards, block.timestamp);
+        emit WithdrawTimeLockedStake(msg.sender, _stakeId, stakeAmount, rewards, block.timestamp);
     }
 
     /**
@@ -431,8 +451,22 @@ contract PolygonDeFiAggregator is
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             shares = ILiquidStaking(protocol.contractAddress).deposit(_amount);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            IAavePool(protocol.contractAddress).supply(_token, _amount, msg.sender, 0);
-            shares = _amount;
+            // CHALLENGE-2697: custody the aTokens on THIS contract (onBehalfOf = address(this)),
+            // not msg.sender -- Aave mints aTokens to onBehalfOf, so the old code let the USER
+            // hold them directly and this contract never actually owned what withdraw() later
+            // tried to pull back. Shares are computed proportionally against this contract's
+            // aToken balance (ERC4626-style: shares = received * totalShares / balanceBefore),
+            // so pooled deposits for the same token+protocol correctly share accrued yield and
+            // each stake can only ever claim its own proportional slice on withdrawal.
+            address aToken = _getATokenAddress(_token);
+            uint256 balanceBefore = IERC20(aToken).balanceOf(address(this));
+            IAavePool(protocol.contractAddress).supply(_token, _amount, address(this), 0);
+            uint256 received = IERC20(aToken).balanceOf(address(this)) - balanceBefore;
+
+            uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
+            shares = (totalSharesBefore == 0 || balanceBefore == 0)
+                ? received
+                : (received * totalSharesBefore) / balanceBefore;
             tokenProtocolTotalShares[_token][_protocol] += shares;
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             shares = ICompoundPool(protocol.contractAddress).mint(_amount);
@@ -454,13 +488,27 @@ contract PolygonDeFiAggregator is
         if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("liquid"))) {
             amount = ILiquidStaking(protocol.contractAddress).withdraw(_shares);
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("lending"))) {
-            // Withdraw from Aave - use type(uint256).max to withdraw all available
-            // This prevents precision loss issues with small amounts
-            amount = IAavePool(protocol.contractAddress).withdraw(
-                _token,
-                type(uint256).max, // Withdraw all available (Aave handles the calculation)
-                msg.sender
-            );
+            // CHALLENGE-2697: withdraw exactly THIS stake's proportional claim of the pooled
+            // aToken balance (principal + its share of accrued yield) -- never
+            // type(uint256).max, which would drain every other user's position in the same
+            // token+protocol pool along with this one. `to` is address(this) (not msg.sender),
+            // matching the liquid/compound branches above: the underlying lands on this
+            // contract, which then forwards it to the user in withdrawTimeLockedStake (same
+            // WMATIC-unwrap / safeTransfer path as the other two protocol types).
+            address aToken = _getATokenAddress(_token);
+            uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
+            uint256 aTokenBalance = IERC20(aToken).balanceOf(address(this));
+            uint256 amountToWithdraw = totalSharesBefore == 0
+                ? 0
+                : (_shares * aTokenBalance) / totalSharesBefore;
+            tokenProtocolTotalShares[_token][_protocol] = totalSharesBefore - _shares;
+            if (amountToWithdraw > 0) {
+                amount = IAavePool(protocol.contractAddress).withdraw(
+                    _token,
+                    amountToWithdraw,
+                    address(this)
+                );
+            }
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
             amount = ICompoundPool(protocol.contractAddress).redeem(_shares);
         }
@@ -695,11 +743,26 @@ contract PolygonDeFiAggregator is
         emit FeeUpdated(oldFee, _percentFee);
     }
 
+    /**
+     * @dev CHALLENGE-2697: set the governed system-fee recipient. withdrawTimeLockedStake no
+     * longer accepts this as a per-call parameter.
+     * @param _systemFeeAddress New fee recipient (must not be address(0))
+     */
+    function setSystemFeeAddress(address _systemFeeAddress) external onlyOwner {
+        if (!(_systemFeeAddress != address(0))) revert InvalidFeeRecipient();
+
+        address oldAddress = systemFeeAddress;
+        systemFeeAddress = _systemFeeAddress;
+
+        emit SystemFeeAddressUpdated(oldAddress, _systemFeeAddress);
+    }
+
     function emergencyWithdraw(address _token) external onlyOwner {
         IERC20 token = IERC20(_token);
         uint256 balance = token.balanceOf(address(this));
         if (balance > 0) {
             token.safeTransfer(owner(), balance);
+            emit EmergencyWithdraw(_token, owner(), balance);
         }
     }
 
