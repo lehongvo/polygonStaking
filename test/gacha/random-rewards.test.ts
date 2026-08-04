@@ -15,12 +15,39 @@ const { ethers } = hre as any;
 
 describe('Gacha — randomRewards full coverage', function () {
   describe('Eligibility checks', function () {
-    it('reverts if msg.sender != _challengeAddress', async function () {
+    // CHALLENGE-2672: randomRewards now requires the caller to hold CHALLENGE_ROLE (admin-
+    // governed, never self-grantable). An arbitrary/unregistered caller -- the old attack this
+    // ticket closes -- is rejected by that gate before it can even reach the internal
+    // _challengeAddress == msg.sender check.
+    it('reverts for an unregistered (no CHALLENGE_ROLE) caller, regardless of _challengeAddress', async function () {
       const { gacha, attacker, other } = await loadFixture(deployGachaFixture);
-      // Pass `other` as challengeAddress while calling from `attacker`.
+      await expect(
+        gacha.connect(attacker).randomRewards(other.address, [5000])
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
+
+      // Even calling "as itself" (the old, sole check) is rejected without the role.
+      await expect(
+        gacha.connect(attacker).randomRewards(attacker.address, [5000])
+      ).to.be.revertedWithCustomError(gacha, 'AccessControlUnauthorizedAccount');
+    });
+
+    it('reverts if msg.sender != _challengeAddress, even for a CHALLENGE_ROLE holder', async function () {
+      const { gacha, owner, attacker, other } = await loadFixture(deployGachaFixture);
+      const CHALLENGE_ROLE = await gacha.CHALLENGE_ROLE();
+      // Grant the role to `attacker` directly to isolate the internal self-consistency check
+      // from the role gate -- a REGISTERED caller still cannot claim to be a different address.
+      await gacha.connect(owner).grantRole(CHALLENGE_ROLE, attacker.address);
+
       await expect(
         gacha.connect(attacker).randomRewards(other.address, [5000])
       ).to.be.revertedWithCustomError(gacha, 'OnlyChallengeCanCallSendDailyResultWithGacha');
+    });
+
+    it('CHALLENGE_ROLE cannot be self-granted by an arbitrary caller (role admin is DEFAULT_ADMIN_ROLE)', async function () {
+      const { gacha, attacker } = await loadFixture(deployGachaFixture);
+      const CHALLENGE_ROLE = await gacha.CHALLENGE_ROLE();
+      await expect(gacha.connect(attacker).grantRole(CHALLENGE_ROLE, attacker.address)).to.be
+        .reverted;
     });
 
     it('reverts if isSendDailyResultWithGacha already set', async function () {
@@ -371,6 +398,98 @@ describe('Gacha — randomRewards full coverage', function () {
 
       const info = await gacha.userInfor(challenger.address);
       expect(info.statusRandom).to.equal(false);
+    });
+  });
+
+  // CHALLENGE-2672: an unregistered ("arbitrary") Challenge-shaped contract -- exactly the
+  // MockGachaChallenge used by the positive-path tests above, just NOT granted CHALLENGE_ROLE
+  // -- must be rejected before any reward transfer happens, for every reward type. Deploys a
+  // SEPARATE, unregistered instance per test (the fixture's own `challenge` IS granted the
+  // role, so it can't demonstrate this).
+  describe('Unregistered caller rejected for every reward type (negative, CHALLENGE-2672)', function () {
+    async function deployUnregisteredChallenge(challenger: any, supplement: any) {
+      const Factory = await ethers.getContractFactory('MockGachaChallenge');
+      const unregistered = await Factory.deploy(challenger.address, await supplement.getAddress());
+      await unregistered.waitForDeployment();
+      return unregistered;
+    }
+
+    it('NATIVE_TOKEN reward: reverts, contract balance untouched', async function () {
+      const { gacha, owner, challenger, supplement, vrfClassic } =
+        await loadFixture(deployGachaFixture);
+      const unregistered = await deployUnregisteredChallenge(challenger, supplement);
+
+      await gacha.connect(owner).updateRewardRateAndMaxAllowed(0, 0, 0);
+      await gacha
+        .connect(owner)
+        .addNewReward(ethers.ZeroAddress, 100, ethers.parseEther('0.1'), 0, TypeToken.NATIVE_TOKEN, false, 5, []);
+      await owner.sendTransaction({ to: await gacha.getAddress(), value: ethers.parseEther('1') });
+      await setRandomResult(vrfClassic, 0);
+
+      const gachaBalanceBefore = await ethers.provider.getBalance(await gacha.getAddress());
+      await expect(callRandomRewards(unregistered, gacha)).to.be.revertedWithCustomError(
+        gacha,
+        'AccessControlUnauthorizedAccount'
+      );
+      expect(await ethers.provider.getBalance(await gacha.getAddress())).to.equal(gachaBalanceBefore);
+    });
+
+    it('ERC20 reward: reverts, gacha token balance untouched, challenger receives nothing', async function () {
+      const { gacha, owner, challenger, supplement, erc20Reward, vrfClassic } =
+        await loadFixture(deployGachaFixture);
+      const unregistered = await deployUnregisteredChallenge(challenger, supplement);
+
+      await gacha.connect(owner).updateRewardRateAndMaxAllowed(0, 0, 0);
+      await addERC20Reward(gacha, owner, erc20Reward, 100, 75n, 3);
+      await erc20Reward.mint(await gacha.getAddress(), 500n);
+      await setRandomResult(vrfClassic, 0);
+
+      await expect(callRandomRewards(unregistered, gacha)).to.be.revertedWithCustomError(
+        gacha,
+        'AccessControlUnauthorizedAccount'
+      );
+      expect(await erc20Reward.balanceOf(await gacha.getAddress())).to.equal(500n);
+      expect(await erc20Reward.balanceOf(challenger.address)).to.equal(0n);
+    });
+
+    it('ERC721 reward: reverts, no NFT minted or transferred', async function () {
+      const { gacha, owner, challenger, supplement, erc721Reward, vrfClassic } =
+        await loadFixture(deployGachaFixture);
+      const unregistered = await deployUnregisteredChallenge(challenger, supplement);
+
+      await gacha.connect(owner).updateRewardRateAndMaxAllowed(0, 0, 0);
+      await gacha
+        .connect(owner)
+        .addNewReward(await erc721Reward.getAddress(), 100, 3, 0, TypeToken.ERC721, true, 5, []);
+      await setRandomResult(vrfClassic, 0);
+
+      await expect(callRandomRewards(unregistered, gacha)).to.be.revertedWithCustomError(
+        gacha,
+        'AccessControlUnauthorizedAccount'
+      );
+      expect(await erc721Reward.balanceOf(challenger.address)).to.equal(0n);
+    });
+
+    it('ERC1155 reward: reverts, gacha token balance untouched', async function () {
+      const { gacha, owner, challenger, supplement, erc1155Reward, vrfClassic } =
+        await loadFixture(deployGachaFixture);
+      const unregistered = await deployUnregisteredChallenge(challenger, supplement);
+      const gachaAddr = await gacha.getAddress();
+      const indexToken = 7;
+      await erc1155Reward.mint(gachaAddr, indexToken, 50);
+
+      await gacha.connect(owner).updateRewardRateAndMaxAllowed(0, 0, 0);
+      await gacha
+        .connect(owner)
+        .addNewReward(await erc1155Reward.getAddress(), 100, 5, indexToken, TypeToken.ERC1155, false, 3, []);
+      await setRandomResult(vrfClassic, 0);
+
+      await expect(callRandomRewards(unregistered, gacha)).to.be.revertedWithCustomError(
+        gacha,
+        'AccessControlUnauthorizedAccount'
+      );
+      expect(await erc1155Reward.balanceOf(gachaAddr, indexToken)).to.equal(50n);
+      expect(await erc1155Reward.balanceOf(challenger.address, indexToken)).to.equal(0n);
     });
   });
 });

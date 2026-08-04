@@ -3092,6 +3092,13 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     // Define the role that can close gạcha
     bytes32 public constant CLOSE_GACHA_ROLE = keccak256("CLOSE_GACHA_ROLE");
 
+    // CHALLENGE-2672: role held ONLY by Challenge contracts the admin has explicitly registered
+    // (granted per-deployment, mirroring ExerciseSupplementNFT's ALLOWED_CONTRACTS_CHALLENGE
+    // pattern -- see scripts/challenge/grantChallengeRole.ts). Membership is admin-governed via
+    // the standard grantRole/revokeRole (role admin defaults to DEFAULT_ADMIN_ROLE) and can
+    // never be self-granted by an arbitrary caller contract.
+    bytes32 public constant CHALLENGE_ROLE = keccak256("CHALLENGE_ROLE");
+
     /**
      * @dev Initialize the contract with ChallengeInfo and other necessary data.
      * @param _challengeInfo Challenge information including the target steps, duration, etc.
@@ -3170,13 +3177,19 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
     /**
      * @dev Function to generate random rewards for the user who has completed the daily step challenge.
+     * CHALLENGE-2672: previously only checked `_challengeAddress == msg.sender` -- an arbitrary,
+     * unregistered contract could call this directly as "itself", self-report favorable state
+     * via IChallenge (challenger/sponsor/isSuccess/erc721Address are all read from the CALLER'S
+     * OWN contract), and drain Gacha reward inventory. onlyRole(CHALLENGE_ROLE) now requires
+     * msg.sender to be a Challenge contract the admin has explicitly registered -- an attacker
+     * cannot self-grant this role by deploying a new contract.
      * @param _challengeAddress The address of the daily step challenge contract.
      * @return A boolean value indicating whether the function was successful or not.
      */
     function randomRewards(
         address _challengeAddress,
         uint256[] memory _dataStep
-    ) external returns (bool) {
+    ) external onlyRole(CHALLENGE_ROLE) returns (bool) {
         // Modifier to restrict access to only admins
         if (!(!isSendDailyResultWithGacha[msg.sender][_challengeAddress])) revert AlreadySendDailyResultWithGacha();
 

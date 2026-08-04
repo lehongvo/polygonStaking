@@ -138,6 +138,13 @@ export async function deployGachaFixture() {
   );
   await challenge.waitForDeployment();
 
+  // CHALLENGE-2672: randomRewards now requires the caller to hold CHALLENGE_ROLE. Register
+  // this fixture's mock challenge as an "authorized" Challenge so existing positive-path tests
+  // (which exercise randomRewards through it) keep passing -- mirrors the admin granting the
+  // role to a real, newly-deployed Challenge contract after deployment.
+  const CHALLENGE_ROLE = await gacha.CHALLENGE_ROLE();
+  await gacha.connect(owner).grantRole(CHALLENGE_ROLE, await challenge.getAddress());
+
   return {
     gacha,
     supplement,
