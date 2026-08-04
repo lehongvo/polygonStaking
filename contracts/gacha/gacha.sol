@@ -3080,6 +3080,22 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     // A public variable to store the address of the wallet that will receive the funds
     address public receiveAdminWallet;
 
+    // CHALLENGE-2733: minimal reentrancy guard, appended as a NEW storage slot (safe for this
+    // already-deployed UUPS proxy -- never inserted between existing variables). Hand-rolled
+    // instead of importing OpenZeppelin's ReentrancyGuardUpgradeable to avoid colliding with the
+    // Initializable/etc. contracts already flattened into this file under the same names, and to
+    // stay within this contract's tight EIP-170 headroom. Uses 0 (default/never entered) and 2
+    // (entered) as the two states -- unlike OZ's guard, this needs NO initializer call: the
+    // proxy's storage already defaults this slot to 0, which correctly means "not entered".
+    uint256 private _reentrancyStatus;
+
+    modifier nonReentrant() {
+        require(_reentrancyStatus != 2, "ReentrancyGuard: reentrant call");
+        _reentrancyStatus = 2;
+        _;
+        _reentrancyStatus = 0;
+    }
+
     // Define the role that can upgrade the contract
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
@@ -3189,7 +3205,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     function randomRewards(
         address _challengeAddress,
         uint256[] memory _dataStep
-    ) external onlyRole(CHALLENGE_ROLE) returns (bool) {
+    ) external onlyRole(CHALLENGE_ROLE) nonReentrant returns (bool) {
         // Modifier to restrict access to only admins
         if (!(!isSendDailyResultWithGacha[msg.sender][_challengeAddress])) revert AlreadySendDailyResultWithGacha();
 
@@ -3249,6 +3265,32 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                 ) {
                     // Get the address of the selected reward token
                     address currentTokenAddress = currentRewardToken.addressToken;
+
+                    // CHALLENGE-2733: commit every counter/flag that BOUNDS payouts BEFORE any
+                    // external transfer call below (CEI). Previously rewardActivationCount, the
+                    // unlockRate redistribution, and isSendDailyResultWithGacha were all written
+                    // AFTER the transfers -- a reentrant call re-entering randomRewards mid-
+                    // transfer would re-read the stale (not-yet-incremented) count and could pass
+                    // the same maxNumberAllowed cap check again in the same transaction. Moving
+                    // these here means a reentrant call now sees the POST-increment state.
+                    // (indexTokenReward/userInfor are informational display state, not a spending
+                    // bound, and are still finalized after the transfers below since the ERC721/
+                    // ERC1155 branches only learn the actual minted/transferred token id there.)
+                    isWonThePrize = true;
+                    rewardTokens[randomIndexReward].rewardActivationCount = rewardTokens[
+                        randomIndexReward
+                    ].rewardActivationCount + 1;
+                    if (
+                        rewardTokens[randomIndexReward].rewardActivationCount ==
+                        rewardTokens[randomIndexReward].maxNumberAllowed
+                    ) {
+                        rewardTokens[0].unlockRate = rewardTokens[0].unlockRate +
+                            rewardTokens[randomIndexReward].unlockRate;
+                        rewardTokens[randomIndexReward].unlockRate = 0;
+                    }
+                    if (IChallenge(_challengeAddress).isFinished()) {
+                        isSendDailyResultWithGacha[msg.sender][_challengeAddress] = true;
+                    }
 
                     // Check if the current reward token is an ERC20 token
                     if (currentRewardToken.typeToken == TypeToken.ERC20) {
@@ -3338,9 +3380,6 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                         );
                     }
 
-                    // Set isWonThePrize to true to indicate that the user has won a prize
-                    isWonThePrize = true;
-
                     // Determine the name of the token, depending on whether it's a native token or an ERC20/ERC721/ERC1155 token
                     string memory tokenName;
                     if (currentRewardToken.typeToken == TypeToken.NATIVE_TOKEN) {
@@ -3349,7 +3388,9 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                         tokenName = IChallenge(currentTokenAddress).name();
                     }
 
-                    // Store the user's information into the userInfor mapping
+                    // Store the user's information into the userInfor mapping (informational
+                    // display state, finalized here since indexTokenReward for ERC721/ERC1155 is
+                    // only known after the transfer branches above run).
                     userInfor[challengerAddress] = UserInfor(
                         true, // Set the user's flag to indicate that they have won the challenge
                         randomIndexReward, // Store the index of the reward token that the user has won
@@ -3358,27 +3399,8 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                         currentRewardToken.rewardValue, // Store the amount of the token that the user has won
                         tokenName // Store the name of the token that the user has won
                     );
-
-                    // Increment the max number allowed for the selected reward token
-                    rewardTokens[randomIndexReward].rewardActivationCount = rewardTokens[
-                        randomIndexReward
-                    ].rewardActivationCount + 1;
-
-                    if (
-                        rewardTokens[randomIndexReward].rewardActivationCount ==
-                        rewardTokens[randomIndexReward].maxNumberAllowed
-                    ) {
-                        rewardTokens[0].unlockRate = rewardTokens[0].unlockRate +
-                            rewardTokens[randomIndexReward].unlockRate;
-                        rewardTokens[randomIndexReward].unlockRate = 0;
-                    }
                 }
             }
-        }
-
-        // If the user won the prize and the challenge is finished, mark the user as having received the daily result with gacha for this challenge
-        if (isWonThePrize && IChallenge(_challengeAddress).isFinished()) {
-            isSendDailyResultWithGacha[msg.sender][_challengeAddress] = true;
         }
 
         // Emit an event indicating that the daily result with gacha has been sent to the user
