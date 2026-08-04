@@ -434,6 +434,7 @@ interface IExerciseSupplementNFT {
         uint256[] memory _day,
         uint256[] memory _stepIndex,
         uint64[2] memory _data,
+        bytes32 _extraDataHash,
         bytes memory _signature
     ) external;
 }
@@ -1154,10 +1155,15 @@ contract ChallengeBaseStep is IERC721Receiver {
         uint256[] memory _minutesAtTargetSpeed,
         uint256[] memory _metsWalkingSpeed
     ) private {
+        // CHALLENGE-2673: bind walking-speed (_minutesAtTargetSpeed/_metsWalkingSpeed) and
+        // optional embedded HIIT (_intervals/_totalSeconds) into the signed payload -- these
+        // were previously accepted unsigned after the common signature check, letting a
+        // challenger/relayer alter them post-signing without invalidating the signature.
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
             _stepIndex,
             _data,
+            keccak256(abi.encode(_minutesAtTargetSpeed, _metsWalkingSpeed, _intervals, _totalSeconds)),
             _signature
         );
 

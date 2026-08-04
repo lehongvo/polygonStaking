@@ -4328,15 +4328,28 @@ contract ExerciseSupplementNFT is
 
     /**
      * @dev Check if a given signature is valid based on certain criteria.
+     * CHALLENGE-2673: `_extraDataHash` binds every specialized achievement metric (HIIT
+     * intervals/totalSeconds, walking-speed minutes/METs, GCM glucose levels, ...) that this
+     * common signature previously left unsigned -- callers compute
+     * keccak256(abi.encode(<their variant-specific fields>)) and pass it here; the backend must
+     * independently compute and sign the SAME value from the values it actually approved.
+     * Tampering with any specialized metric after signing changes _extraDataHash, which changes
+     * the final signed hash, which fails verification below. Variants with no specialized
+     * metrics (Detail/DetailV2) pass keccak256(abi.encode()) as a fixed sentinel. Also switched
+     * from abi.encodePacked to abi.encode for the day/stepIndex arrays -- packed encoding of
+     * multiple dynamic arrays back-to-back has no length delimiters, so distinct
+     * (day, stepIndex) splits of the same flat word sequence could hash identically.
      * @param _day An array of uint256 values representing days.
      * @param _stepIndex An array of uint256 values representing step indices.
      * @param _data A tuple of two uint64 values.
+     * @param _extraDataHash keccak256 of the variant-specific fields also covered by this signature.
      * @param _signature The signature to be validated.
      */
     function checkValidSignature(
         uint256[] memory _day,
         uint256[] memory _stepIndex,
         uint64[2] memory _data,
+        bytes32 _extraDataHash,
         bytes memory _signature
     ) public onlyRole(ALLOWED_CONTRACTS_CHALLENGE) {
         if (securityAddress == address(0)) revert SecurityNotSet();
@@ -4351,7 +4364,7 @@ contract ExerciseSupplementNFT is
             chainId := chainid()
         }
 
-        bytes32 hash = keccak256(abi.encodePacked(msg.sender, _day, _stepIndex, _data, chainId));
+        bytes32 hash = keccak256(abi.encode(msg.sender, _day, _stepIndex, _data, chainId, _extraDataHash));
         bytes32 messageHash = hash.toEthSignedMessageHash();
 
         if (messageHash.recover(_signature) != securityAddress) revert InvalidSignature();

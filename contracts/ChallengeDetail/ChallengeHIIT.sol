@@ -430,6 +430,7 @@ interface IExerciseSupplementNFT {
         uint256[] memory _day,
         uint256[] memory _stepIndex,
         uint64[2] memory _data,
+        bytes32 _extraDataHash,
         bytes memory _signature
     ) external;
 }
@@ -1070,10 +1071,14 @@ contract ChallengeHIIT is IERC721Receiver {
         uint64[2] memory _timeRange
     ) private {
         uint256[] memory emptyArr = new uint256[](0);
+        // CHALLENGE-2673: bind _intervals/_totalSeconds into the signed payload -- previously
+        // accepted unsigned after the common signature check, letting a challenger/relayer
+        // alter HIIT achievement evidence post-signing without invalidating the signature.
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
             emptyArr,
             _data,
+            keccak256(abi.encode(_intervals, _totalSeconds)),
             _signature
         );
 

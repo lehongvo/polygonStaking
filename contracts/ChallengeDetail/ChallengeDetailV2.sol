@@ -430,6 +430,7 @@ interface IExerciseSupplementNFT {
         uint256[] memory _day,
         uint256[] memory _stepIndex,
         uint64[2] memory _data,
+        bytes32 _extraDataHash,
         bytes memory _signature
     ) external;
 }
@@ -1158,10 +1159,13 @@ contract ChallengeDetailV2 is IERC721Receiver {
         bool[] memory _statusTypeNft,
         uint64[2] memory _timeRange
     ) private {
+        // CHALLENGE-2673: no specialized achievement metrics for this variant -- fixed sentinel
+        // hash, matching what the backend signs for ChallengeDetail/ChallengeDetailV2.
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
             _day,
             _stepIndex,
             _data,
+            keccak256(abi.encode()),
             _signature
         );
 

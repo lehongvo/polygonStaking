@@ -54,6 +54,7 @@ contract MockExerciseSupplementNFT {
         uint256[] memory,
         uint256[] memory,
         uint64[2] memory,
+        bytes32,
         bytes memory
     ) external view {
         require(!revertSignature, "MOCK: bad signature");
