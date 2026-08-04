@@ -28,6 +28,7 @@ error OnlyReturnedNftWalletAddress();
 error InsufficientContractBalance();
 error InvalidDayLength();
 error InvalidStepIndexLength();
+error UnsortedOrDuplicateDays();
 error InvalidAllowGiveUp();
 error InvalidHiitData();
 error InvalidAward();
@@ -737,6 +738,12 @@ contract ChallengeBaseStep is IERC721Receiver {
      */
     mapping(uint256 => uint256) private stepOn;
 
+    /** @dev CHALLENGE-2698: tracks whether a canonical day has already counted toward
+     *  currentStatus, independent of history-array bookkeeping/caller-supplied _timeRange --
+     *  guarantees a day can only ever increment progress once, however many times it (or an
+     *  overlapping signed batch covering it) is resubmitted. */
+    mapping(uint256 => bool) private processedDay;
+
     // Instance of the ChallengeState contract
     ChallengeState private stateInstance;
 
@@ -1157,6 +1164,12 @@ contract ChallengeBaseStep is IERC721Receiver {
         uint dayLength = _day.length;
         if (!(dayLength > 0)) revert InvalidDayLength();
         if (!(_stepIndex.length == dayLength)) revert InvalidStepIndexLength();
+        // CHALLENGE-2698: reject a batch with duplicate/unsorted days outright -- a strictly
+        // increasing _day array means the "last day" special-casing below (indices computed
+        // from dayLength-1) can never be confused by an out-of-order or repeated entry.
+        for (uint256 k = 1; k < dayLength; k++) {
+            if (!(_day[k] > _day[k - 1])) revert UnsortedOrDuplicateDays();
+        }
         bool isWalkingSpeedEnabled = walkingSpeedData.length >= 3;
         if (isWalkingSpeedEnabled) {
             if (!(_minutesAtTargetSpeed.length == dayLength && _metsWalkingSpeed.length == dayLength)) revert InvalidWalkingSpeedDataLength();
@@ -1243,8 +1256,13 @@ contract ChallengeBaseStep is IERC721Receiver {
             // Count day only when step achieved AND (if HIIT enabled) HIIT achieved for that day
             bool stepAchieved = _stepIndex[i] >= goal;
             bool hiitOk = !isHiitEnabled || hiitAchieved[i] == 1;
-            if (stepAchieved && hiitOk && currentStatus < dayRequired) {
+            // CHALLENGE-2698: processedDay guards against counting the same canonical day
+            // twice, independent of the isSendSameDay/history bookkeeping above and of
+            // whatever _timeRange the caller supplies -- a resubmission (same or different
+            // signature) of an already-processed day can never increment currentStatus again.
+            if (stepAchieved && hiitOk && currentStatus < dayRequired && !processedDay[_day[i]]) {
                 currentStatus = currentStatus + 1;
+                processedDay[_day[i]] = true;
             }
         }
 

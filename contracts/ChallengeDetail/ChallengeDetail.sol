@@ -25,6 +25,7 @@ error TheChallengeHasNotYetBeenFinished();
 error OnlyReturnedNftWalletAddress();
 error InsufficientContractBalance();
 error InvalidDayLength();
+error UnsortedOrDuplicateDays();
 error InvalidStepIndexLength();
 error InvalidAllowGiveUp();
 error InvalidHiitData();
@@ -697,6 +698,12 @@ contract ChallengeDetail is IERC721Receiver {
      */
     mapping(uint256 => uint256) private stepOn;
 
+    /** @dev CHALLENGE-2698: tracks whether a canonical day has already counted toward
+     *  currentStatus, independent of history-array bookkeeping/caller-supplied _timeRange --
+     *  guarantees a day can only ever increment progress once, however many times it (or an
+     *  overlapping signed batch covering it) is resubmitted. */
+    mapping(uint256 => bool) private processedDay;
+
     // Instance of the ChallengeState contract
     ChallengeState private stateInstance;
 
@@ -1073,6 +1080,12 @@ contract ChallengeDetail is IERC721Receiver {
         );
 
         uint dayLength = _day.length;
+        // CHALLENGE-2698: reject a batch with duplicate/unsorted days outright -- a strictly
+        // increasing _day array means the "last day" special-casing below (indices computed
+        // from dayLength-1) can never be confused by an out-of-order or repeated entry.
+        for (uint256 k = 1; k < dayLength; k++) {
+            if (!(_day[k] > _day[k - 1])) revert UnsortedOrDuplicateDays();
+        }
         bool isSendSameDay;
         bool isSendFailWithSameDay;
         uint256 lastIndex = totalReward;
@@ -1103,8 +1116,13 @@ contract ChallengeDetail is IERC721Receiver {
                 stepOn[_day[i]] = _stepIndex[i];
             }
 
-            if (_stepIndex[i] >= goal && currentStatus < dayRequired) {
+            // CHALLENGE-2698: processedDay guards against counting the same canonical day
+            // twice, independent of the isSendSameDay/history bookkeeping above and of
+            // whatever _timeRange the caller supplies -- a resubmission (same or different
+            // signature) of an already-processed day can never increment currentStatus again.
+            if (_stepIndex[i] >= goal && currentStatus < dayRequired && !processedDay[_day[i]]) {
                 currentStatus = currentStatus + 1;
+                processedDay[_day[i]] = true;
             }
         }
 

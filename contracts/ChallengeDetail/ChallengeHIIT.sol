@@ -26,6 +26,7 @@ error TheChallengeHasNotYetBeenFinished();
 error OnlyReturnedNftWalletAddress();
 error InsufficientContractBalance();
 error InvalidDayLength();
+error UnsortedOrDuplicateDays();
 error InvalidStepIndexLength();
 error InvalidAllowGiveUp();
 error InvalidHiitData();
@@ -705,6 +706,12 @@ contract ChallengeHIIT is IERC721Receiver {
      */
     mapping(uint256 => uint256) private hiitAchievedOn;
 
+    /** @dev CHALLENGE-2698: tracks whether a canonical day has already counted toward
+     *  currentStatus, independent of history-array bookkeeping/caller-supplied _timeRange --
+     *  guarantees a day can only ever increment progress once, however many times it (or an
+     *  overlapping signed batch covering it) is resubmitted. */
+    mapping(uint256 => bool) private processedDay;
+
     ChallengeState private stateInstance;
 
     uint256[] private awardReceiversPercent;
@@ -1073,6 +1080,12 @@ contract ChallengeHIIT is IERC721Receiver {
         uint dayLength = _day.length;
         if (!(dayLength > 0)) revert InvalidHiitResultsLength();
         if (!(_intervals.length == dayLength && _totalSeconds.length == dayLength)) revert InvalidHiitResultsLength();
+        // CHALLENGE-2698: reject a batch with duplicate/unsorted days outright -- a strictly
+        // increasing _day array means the "last day" special-casing below (indices computed
+        // from dayLength-1) can never be confused by an out-of-order or repeated entry.
+        for (uint256 k = 1; k < dayLength; k++) {
+            if (!(_day[k] > _day[k - 1])) revert UnsortedOrDuplicateDays();
+        }
 
         uint256[] memory achieved = new uint256[](dayLength);
         for (uint256 i = 0; i < dayLength; i++) {
@@ -1135,9 +1148,20 @@ contract ChallengeHIIT is IERC721Receiver {
             }
 
             uint256 achievedValue = thisDayIsSameDay ? achieved[dayLength - 1] : achieved[i];
-            if (achievedValue == 1 && !dayAlreadyAchieved && currentStatus < dayRequired) {
+            // CHALLENGE-2698: processedDay is an independent, guaranteed-correct backstop on
+            // top of the existing dayAlreadyAchieved history scan above -- it guards against
+            // counting the same canonical day twice regardless of _timeRange or how the
+            // history-array bookkeeping branches, however many times the day is resubmitted.
+            uint256 dayForProgress = thisDayIsSameDay ? _day[dayLength - 1] : _day[i];
+            if (
+                achievedValue == 1 &&
+                !dayAlreadyAchieved &&
+                currentStatus < dayRequired &&
+                !processedDay[dayForProgress]
+            ) {
                 if (!thisDayIsSameDay || i == dayLength - 1) {
                     currentStatus = currentStatus + 1;
+                    processedDay[dayForProgress] = true;
                 }
             }
         }
