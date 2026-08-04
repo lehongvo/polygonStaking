@@ -39,8 +39,9 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
     };
   }
 
-  // 成功時、feeAddr へ 10% の手数料（100 TKN1）が送られる
-  it('feeAddr receives 10% of TKN1 on success', async function () {
+  // CHALLENGE-2696: on success, the fee must use amountSuccessFee (5%, 50 TKN1) -- before the
+  // fix this unconditionally used amountFailFee (10%, 100 TKN1) even on a success settlement.
+  it('feeAddr receives 5% of TKN1 on success (amountSuccessFee, not amountFailFee)', async function () {
     const { tkn1, challenge, signers, startTime } = await setup();
     const challenger = signers[1];
     const feeAddr = signers[2];
@@ -53,12 +54,14 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
       });
     }
     expect(await tkn1.balanceOf(feeAddr.address)).to.equal(
-      hre.ethers.parseEther('100')
+      hre.ethers.parseEther('50')
     );
   });
 
-  // 成功時、成功側受取人 recv0 へ 50% 配分（500 TKN1）が送られる
-  it('recv0 receives 50% of TKN1 on success', async function () {
+  // CHALLENGE-2696: recv0's nominal share is 50% of gross (500 TKN1), but the actual payout is
+  // scaled by the fee complement (100-5)/100 so fee(50) + receiver(475) never exceeds the gross
+  // balance (1000) that both are paid from -- see the comment in transferToListReceiverSuccess.
+  it('recv0 receives 50% of gross scaled by (100-fee)/100 = 475 TKN1 on success', async function () {
     const { tkn1, challenge, signers, startTime } = await setup();
     const challenger = signers[1];
     const recv0 = signers[4];
@@ -71,7 +74,7 @@ describe('T9 – ERC20 success payout (ChallengeBaseStep)', function () {
       });
     }
     expect(await tkn1.balanceOf(recv0.address)).to.equal(
-      hre.ethers.parseEther('500')
+      hre.ethers.parseEther('475')
     );
   });
 

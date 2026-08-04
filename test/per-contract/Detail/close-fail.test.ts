@@ -46,7 +46,7 @@ async function deploy() {
 
 describe('T5-C2 — closeChallenge + fail trigger (ChallengeDetail)', function () {
   // (a) 終了 + 2 日後に closeChallenge → CLOSED(4) / recv2 = 4 ETH / fee = 1 ETH
-  it('(a) closeChallenge after endTime+2days: state=CLOSED, recv2=4 ETH, fee=1 ETH', async function () {
+  it('(a) closeChallenge after endTime+2days: state=CLOSED, recv2=3.6 ETH, fee=1 ETH', async function () {
     const { sponsor, feeAddr, recv2, challenge, endTime } = await deploy();
 
     await time.increaseTo(endTime + 2 * 86400 + 100);
@@ -60,7 +60,7 @@ describe('T5-C2 — closeChallenge + fail trigger (ChallengeDetail)', function (
     expect(await challenge.getState()).to.equal(4n);
     expect(
       (await hre.ethers.provider.getBalance(recv2.address)) - recv2Before
-    ).to.equal(hre.ethers.parseEther('4'));
+    ).to.equal(hre.ethers.parseEther('3.6')); // CHALLENGE-2696: 4 ETH * (100-FAIL_FEE)/100
     expect(
       (await hre.ethers.provider.getBalance(feeAddr.address)) - feeBefore
     ).to.equal(hre.ethers.parseEther('1'));
@@ -118,7 +118,7 @@ describe('T5-C2 — closeChallenge + fail trigger (ChallengeDetail)', function (
     expect(await challenge.getState()).to.equal(2n);
     expect(
       (await hre.ethers.provider.getBalance(recv2.address)) - recv2Before
-    ).to.equal(hre.ethers.parseEther('4'));
+    ).to.equal(hre.ethers.parseEther('3.6')); // CHALLENGE-2696: 4 ETH * (100-FAIL_FEE)/100
     expect(
       (await hre.ethers.provider.getBalance(feeAddr.address)) - feeBefore
     ).to.equal(hre.ethers.parseEther('1'));

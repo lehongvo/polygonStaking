@@ -107,12 +107,14 @@ describe('T5 — closeChallenge + fail trigger', function () {
       'state = CLOSED enum index 4'
     );
 
-    // recv2 is fail-side (index 1, percent=40), gets payout
+    // recv2 is fail-side (index 1, percent=40). CHALLENGE-2696: receiver shares are now scaled
+    // by the fee complement (100-FAIL_FEE)/100 so fee+shares never exceed gross -- nominal 40%
+    // of 10 ETH (4 ETH) scaled by (100-10)/100 = 3.6 ETH.
     const recv2Gain =
       (await hre.ethers.provider.getBalance(recv2.address)) - recv2Before;
     expect(recv2Gain).to.equal(
-      hre.ethers.parseEther('4'),
-      'recv2 (fail-side, 40%) receives exactly 4 ETH'
+      hre.ethers.parseEther('3.6'),
+      'recv2 (fail-side, 40% of net-of-fee) receives exactly 3.6 ETH'
     );
 
     // feeAddr gets serverFailureFee = 10 * 10/100 = 1
@@ -203,9 +205,10 @@ describe('T5 — closeChallenge + fail trigger', function () {
       'state = FAILED enum index 2'
     );
 
+    // CHALLENGE-2696: nominal 40% of 10 ETH (4 ETH) scaled by (100-FAIL_FEE)/100 = 3.6 ETH.
     const recv2Gain =
       (await hre.ethers.provider.getBalance(recv2.address)) - recv2Before;
-    expect(recv2Gain).to.equal(hre.ethers.parseEther('4'));
+    expect(recv2Gain).to.equal(hre.ethers.parseEther('3.6'));
 
     const feeGain =
       (await hre.ethers.provider.getBalance(feeAddr.address)) - feeBefore;

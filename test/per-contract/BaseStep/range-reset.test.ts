@@ -131,15 +131,17 @@ describe('T6 — F1-B range + N2 reset', function () {
     const recv2Gain =
       (await hre.ethers.provider.getBalance(recv2.address)) - recv2Before;
 
-    // recv0 = 10 * 30/100 = 3 ETH
+    // CHALLENGE-2696: receiver shares are now scaled by the fee complement
+    // (100-SUCCESS_FEE)/100 so fee+shares never exceed gross.
+    // recv0 = 10 * 30/100 * (100-5)/100 = 2.85 ETH
     expect(recv0Gain).to.equal(
-      hre.ethers.parseEther('3'),
-      '[F-A7] success-side recv0 receives exact 30%'
+      hre.ethers.parseEther('2.85'),
+      '[F-A7] success-side recv0 receives exact 30% of net-of-fee'
     );
-    // recv1 = 10 * 25/100 = 2.5 ETH
+    // recv1 = 10 * 25/100 * (100-5)/100 = 2.375 ETH
     expect(recv1Gain).to.equal(
-      hre.ethers.parseEther('2.5'),
-      '[F-A7] success-side recv1 receives exact 25%'
+      hre.ethers.parseEther('2.375'),
+      '[F-A7] success-side recv1 receives exact 25% of net-of-fee'
     );
     // recv2 (fail-side) NOT paid in success path
     expect(recv2Gain).to.equal(

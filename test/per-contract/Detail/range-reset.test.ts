@@ -91,12 +91,13 @@ describe('T6-C2 — F1-B range + N2 reset (ChallengeDetail)', function () {
 
     expect(await challenge.isSuccess()).to.be.true;
 
+    // CHALLENGE-2696: receiver shares scaled by (100-SUCCESS_FEE)/100.
     expect(
       (await hre.ethers.provider.getBalance(recv0.address)) - recv0Before
-    ).to.equal(hre.ethers.parseEther('3'));
+    ).to.equal(hre.ethers.parseEther('2.85')); // 3 * (100-5)/100
     expect(
       (await hre.ethers.provider.getBalance(recv1.address)) - recv1Before
-    ).to.equal(hre.ethers.parseEther('2.5'));
+    ).to.equal(hre.ethers.parseEther('2.375')); // 2.5 * (100-5)/100
     expect(
       (await hre.ethers.provider.getBalance(recv2.address)) - recv2Before
     ).to.equal(0n);

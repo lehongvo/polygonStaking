@@ -1211,7 +1211,7 @@ contract ChallengeHIIT is IERC721Receiver {
         selectGiveUpStatus = true;
         stateInstance = ChallengeState.GAVE_UP;
 
-        updateRewardSuccessAndfail();
+        updateRewardSuccessAndfail(false); // give-up is fail-like: uses amountFailFee, same as before
 
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
 
@@ -1368,20 +1368,30 @@ contract ChallengeHIIT is IERC721Receiver {
         isSuccess = true;
         isFinished = true;
 
-        updateRewardSuccessAndfail();
+        updateRewardSuccessAndfail(true); // CHALLENGE-2696: success outcome -> amountSuccessFee (was always amountFailFee)
 
         tranferCoinNative(feeAddress, serverSuccessFee);
         emit FundTransfer(feeAddress, serverSuccessFee);
 
+        // CHALLENGE-2696: approvalSuccessOf/awardTokenReceivers are GROSS-based (percent[i] *
+        // balance / 100) -- unchanged, so giveUp()'s use of approvalSuccessOf as a weighting
+        // source is unaffected. The fee (serverSuccessFee, paid above) is ALSO gross-based, so
+        // paying both in full would double-count the same balance whenever the success group's
+        // percentages sum close to 100. Scale what's actually PAID here by the fee's complement
+        // (100-amountSuccessFee)/100 -- fee + sum(scaled shares) <= gross is then guaranteed for
+        // any percent-sum <= 100, without changing what's stored or touching giveUp()'s math.
         for (uint256 i = 0; i < index; i++) {
-            tranferCoinNative(awardReceivers[i], approvalSuccessOf[awardReceivers[i]]);
+            tranferCoinNative(
+                awardReceivers[i],
+                (approvalSuccessOf[awardReceivers[i]] * (100 - amountSuccessFee)) / 100
+            );
 
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
                     TransferHelper.safeTransfer(
                         erc20ListAddress[j],
                         awardReceivers[i],
-                        awardTokenReceivers[erc20ListAddress[j]][i]
+                        (awardTokenReceivers[erc20ListAddress[j]][i] * (100 - amountSuccessFee)) / 100
                     );
                 }
             }
@@ -1421,20 +1431,25 @@ contract ChallengeHIIT is IERC721Receiver {
         // EFFECTS — write finished flag before any external interaction (CEI)
         isFinished = true;
 
-        updateRewardSuccessAndfail();
+        updateRewardSuccessAndfail(false);
 
         tranferCoinNative(feeAddress, serverFailureFee);
         emit FundTransfer(feeAddress, serverFailureFee);
 
+        // CHALLENGE-2696: same fee-complement scaling as transferToListReceiverSuccess, using
+        // amountFailFee -- see the comment there for why this is safe and giveUp()-neutral.
         for (uint256 i = index; i < awardReceivers.length; i++) {
-            tranferCoinNative(awardReceivers[i], approvalFailOf[awardReceivers[i]]);
+            tranferCoinNative(
+                awardReceivers[i],
+                (approvalFailOf[awardReceivers[i]] * (100 - amountFailFee)) / 100
+            );
 
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
                     TransferHelper.safeTransfer(
                         erc20ListAddress[j],
                         awardReceivers[i],
-                        awardTokenReceivers[erc20ListAddress[j]][i]
+                        (awardTokenReceivers[erc20ListAddress[j]][i] * (100 - amountFailFee)) / 100
                     );
                 }
             }
@@ -1577,7 +1592,15 @@ contract ChallengeHIIT is IERC721Receiver {
         }
     }
 
-    function updateRewardSuccessAndfail() private {
+    // CHALLENGE-2696: `_isSuccessOutcome` selects which fee percent (amountSuccessFee vs
+    // amountFailFee) applies to the ERC20 fee below -- previously it was ALWAYS amountFailFee,
+    // so a successful ERC20-funded settlement was charged the failure fee. The native side is
+    // unaffected (it already computes both serverSuccessFee/serverFailureFee and both
+    // approvalSuccessOf/approvalFailOf candidates unconditionally; giveUp() depends on
+    // approvalSuccessOf as a weighting source regardless of outcome). Insufficient-balance
+    // reverts (never a silent skip) plus the constructor's percent+fee<=100 invariant guarantee
+    // neither fee nor receiver shares can ever exceed the available gross balance.
+    function updateRewardSuccessAndfail(bool _isSuccessOutcome) private {
         // Reset constructor-populated accumulators so the += below sums correctly.
         // listBalanceAllToken / awardTokenReceivers are guaranteed empty here
         // (single-call lifecycle enforced by nonReentrant + isFinished CEI).
@@ -1629,7 +1652,10 @@ contract ChallengeHIIT is IERC721Receiver {
                     awardTokenReceivers[erc20ListAddress[i]].push(awardAmount);
                 }
 
-                uint256 realAmountFee = (listBalanceAllToken[i] * amountFailFee) / 100;
+                // CHALLENGE-2696: use the fee percent matching the ACTUAL outcome being settled
+                // (was always amountFailFee, overcharging/undercharging success settlements).
+                uint8 tokenFeePercent = _isSuccessOutcome ? amountSuccessFee : amountFailFee;
+                uint256 realAmountFee = (listBalanceAllToken[i] * tokenFeePercent) / 100;
                 if (realAmountFee > 0) {
                     TransferHelper.safeTransfer(erc20ListAddress[i], feeAddress, realAmountFee);
                 }
