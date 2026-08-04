@@ -1,4 +1,4 @@
-// CHALLENGE-2733: Gacha.randomRewards performed every reward transfer BEFORE updating the
+// CHALLENGE-2732: Gacha.randomRewards performed every reward transfer BEFORE updating the
 // counters meant to bound those transfers (rewardActivationCount, the unlockRate
 // redistribution, isSendDailyResultWithGacha), and Gacha inherited no reentrancy guard at all.
 // A reentrant call arriving mid-transfer (e.g. from an ERC1155 receiver hook fired during the
@@ -22,7 +22,7 @@ import {
 
 const { ethers } = hre as any;
 
-describe('Gacha.randomRewards — reentrancy guard (CHALLENGE-2733)', function () {
+describe('Gacha.randomRewards — reentrancy guard (CHALLENGE-2732)', function () {
   async function setupMalicious() {
     const ctx = await loadFixture(deployGachaFixture);
     const { gacha, owner, supplement, erc1155Reward, vrfClassic } = ctx;
@@ -34,7 +34,7 @@ describe('Gacha.randomRewards — reentrancy guard (CHALLENGE-2733)', function (
     await malicious.setGacha(await gacha.getAddress());
 
     // Register the malicious contract as an "authorized" Challenge (CHALLENGE-2672's gate) --
-    // this test specifically isolates the SEPARATE CHALLENGE-2733 reentrancy defect, assuming
+    // this test specifically isolates the SEPARATE CHALLENGE-2732 reentrancy defect, assuming
     // the caller has already legitimately (or via a compromised admin key) obtained the role.
     const CHALLENGE_ROLE = await gacha.CHALLENGE_ROLE();
     await gacha.connect(owner).grantRole(CHALLENGE_ROLE, maliciousAddr);

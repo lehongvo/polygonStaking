@@ -16,7 +16,7 @@ interface IERC1155ReceiverMock {
  * @notice ERC1155 mock with name() (Gacha calls IChallenge(token).name() on
  *         reward tokens regardless of standard) and nextTokenIdToMint() used
  *         by checkBalanceNft for ERC1155 require-balance NFTs.
- *         CHALLENGE-2733: safeTransferFrom now calls onERC1155Received when `to` is a contract,
+ *         CHALLENGE-2732: safeTransferFrom now calls onERC1155Received when `to` is a contract,
  *         matching real (standards-compliant) ERC1155 behavior -- needed to test that Gacha's
  *         nonReentrant guard actually blocks a reentrant randomRewards() call made from within
  *         that hook. The prior version never invoked the hook at all, so this path was

@@ -3080,7 +3080,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     // A public variable to store the address of the wallet that will receive the funds
     address public receiveAdminWallet;
 
-    // CHALLENGE-2733: minimal reentrancy guard, appended as a NEW storage slot (safe for this
+    // CHALLENGE-2732: minimal reentrancy guard, appended as a NEW storage slot (safe for this
     // already-deployed UUPS proxy -- never inserted between existing variables). Hand-rolled
     // instead of importing OpenZeppelin's ReentrancyGuardUpgradeable to avoid colliding with the
     // Initializable/etc. contracts already flattened into this file under the same names, and to
@@ -3266,7 +3266,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     // Get the address of the selected reward token
                     address currentTokenAddress = currentRewardToken.addressToken;
 
-                    // CHALLENGE-2733: commit every counter/flag that BOUNDS payouts BEFORE any
+                    // CHALLENGE-2732: commit every counter/flag that BOUNDS payouts BEFORE any
                     // external transfer call below (CEI). Previously rewardActivationCount, the
                     // unlockRate redistribution, and isSendDailyResultWithGacha were all written
                     // AFTER the transfers -- a reentrant call re-entering randomRewards mid-

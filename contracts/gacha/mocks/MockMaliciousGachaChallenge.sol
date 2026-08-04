@@ -3,7 +3,7 @@ pragma solidity ^0.8.16;
 
 /**
  * @title MockMaliciousGachaChallenge
- * @notice CHALLENGE-2733: simulates a registered (CHALLENGE_ROLE-holding) but compromised
+ * @notice CHALLENGE-2732: simulates a registered (CHALLENGE_ROLE-holding) but compromised
  *         Challenge contract that attempts to reenter Gacha.randomRewards from the
  *         onERC1155Received hook fired during its own ERC1155 reward payout. Used to prove
  *         Gacha's nonReentrant guard actually blocks the reentrant call -- the reentrant
