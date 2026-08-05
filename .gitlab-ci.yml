@@ -1,0 +1,39 @@
+stages:
+    - test
+
+# CHALLENGE-2760 acceptance criterion 7: full-graph dependency/SBOM scanning in the MR pipeline.
+#
+# This repo had NO .gitlab-ci.yml at all before this change (confirmed: no CI config file of any
+# kind existed here, unlike CRONJOB/BACKEND/ADMIN/challenge_ai which all already had a pipeline).
+# Scope is intentionally limited to what CHALLENGE-2760 itself asks for -- a dependency-audit gate
+# -- not a full compile/test/deploy pipeline, which is a separate architectural decision (build
+# reproducibility, deploy-credential handling, runner trust boundaries) this ticket does not make
+# and isn't this pass's call to design from scratch.
+#
+# `yarn audit --level high` reports high+critical findings (65 total post-safe-fix, 0 critical,
+# see docs/SECURITY_ADVISORIES_CHALLENGE-2760.md) -- a hard-blocking gate today would immediately
+# red every pipeline for the pre-existing findings that need major-version bumps, not this MR's own
+# diff, per the same staged-activation rationale as CRONJOB's CHALLENGE-2711, ADMIN's
+# CHALLENGE-2758, and challenge_ai's CHALLENGE-2759 dependency-audit jobs. `allow_failure: true`
+# for this initial rollout; real fail-closed enforcement per the ticket's "except for documented,
+# time-limited, reviewed exceptions" wording needs a baseline/allowlist tool, same follow-up noted
+# in those other repos' CI comments.
+#
+# `tags: [dev]` is inferred from CRONJOB's and ADMIN's own test-stage jobs (both use a `dev`-tagged
+# runner for non-deploy jobs) since there is no existing pipeline in this repo to confirm the
+# correct runner tag directly -- unverified against a live pipeline run for the same reason noted
+# in every other repo's CI change in this remediation effort (no network access to
+# `gitlab-new.bap.jp` from this sandbox). Once a human confirms this job executes on a real runner,
+# removing `allow_failure: true` (after also adding the baseline/allowlist tool above) is the
+# remaining step to make it a true gate.
+dependency-audit:
+    stage: test
+    image: node:20-alpine
+    before_script:
+        - corepack enable
+        - yarn install --frozen-lockfile --ignore-engines
+    script:
+        - yarn audit --level high
+    tags:
+        - dev
+    allow_failure: true

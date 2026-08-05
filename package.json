@@ -38,6 +38,17 @@
     "@openzeppelin/contracts": "^5.4.0",
     "@openzeppelin/contracts-upgradeable": "5.0.2"
   },
+  "resolutions": {
+    "axios": "^1.19.0",
+    "bn.js": "^5.2.5",
+    "fast-uri": "^3.1.5",
+    "fast-xml-builder": "^1.3.0",
+    "form-data": "^4.0.6",
+    "immutable": "^4.3.9",
+    "lodash": "^4.18.1",
+    "@openzeppelin/hardhat-upgrades/undici": "^6.28.0",
+    "hardhat/ws": "^7.5.13"
+  },
   "scripts": {
     "compile": "hardhat compile",
     "flatten": "mkdir -p flattened && for f in ChallengeBaseStep ChallengeDetail ChallengeHIIT; do hardhat flatten contracts/ChallengeDetail/$f.sol | sed '/^WARNING:/d' > flattened/$f.flat.sol; done",
@@ -79,6 +90,7 @@
     "interact:soulbound:amoy": "hardhat run scripts/interact-soulbound-nft.ts --network amoy",
     "interact:soulbound:polygon": "hardhat run scripts/interact-soulbound-nft.ts --network polygon",
     "interact:soulbound:localhost": "hardhat run scripts/interact-soulbound-nft.ts --network localhost",
+    "sbom": "node scripts/utils/generate-sbom.js",
     "clean": "hardhat clean",
     "node": "hardhat node",
     "coverage": "hardhat coverage",
