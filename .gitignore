@@ -61,6 +61,12 @@ package-lock.json
 .env*
 !.env.example
 
+# Ad-hoc local key/secret files (CHALLENGE-2665: key.dev.txt was committed with real
+# private keys and explorer API keys). Never track files matching this pattern again -
+# use .env (gitignored) with .env.example as the sanitized template instead.
+key*.txt
+key.*.env
+
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 deployment-info.json
