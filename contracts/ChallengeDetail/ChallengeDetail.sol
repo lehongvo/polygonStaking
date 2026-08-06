@@ -874,6 +874,16 @@ contract ChallengeDetail is IERC721Receiver {
         require(_allowGiveUp.length == 3, "Invalid allow give up"); // Checking if _allowGiveUp array length is 3.
         // CHALLENGE-2817: [duration, startTime, endTime, goal, dayRequired] indexed up to [4] below.
         require(_primaryRequired.length >= 5, "Invalid primary required length");
+        // CHALLENGE-2811: sponsor/challenger/feeAddress are relied on as payout/authorization
+        // targets throughout settlement; a zero address here could burn native value or brick
+        // access control.
+        require(_stakeHolders.length >= 3, "Invalid stakeholders length");
+        require(
+            _stakeHolders[0] != address(0) &&
+                _stakeHolders[1] != address(0) &&
+                _stakeHolders[2] != address(0),
+            "Invalid stakeholder address"
+        );
 
         if (_allowGiveUp[1]) {
             require(msg.value == _totalAmount, "Invalid award"); // Checking if msg.value is equal to _totalAmount when _allowGiveUp[1] is true.
@@ -912,12 +922,24 @@ contract ChallengeDetail is IERC721Receiver {
         require(_awardReceivers.length == awardReceiversApprovalsTamp.length, "Invalid lists"); // Checking if _awardReceivers length is equal to awardReceiversApprovalsTamp length.
 
         for (i = 0; i < _index; i++) {
+            // CHALLENGE-2811: approvalSuccessOf is an address-keyed mapping, but the payout loop
+            // (transferToListReceiverSuccess) re-reads it once per array index -- a duplicate
+            // address in this group would overwrite the mapping entry yet still get paid once per
+            // occurrence, double-spending the (possibly wrong) overwritten amount. Mapping value
+            // is guaranteed 0 until first written (fresh contract storage, amounts required >0
+            // below), so re-visiting the same address is detected here without extra storage.
+            require(_awardReceivers[i] != address(0), "Invalid receiver address");
+            require(approvalSuccessOf[_awardReceivers[i]] == 0, "Duplicate receiver address");
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value0"); // Checking if the award amount for each receiver is greater than 0.
             approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for successful participants.
             sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for successful participants.
         }
 
         for (i = _index; i < _awardReceivers.length; i++) {
+            // CHALLENGE-2811: same duplicate/zero-address protection as the success loop above,
+            // applied to the failure-side mapping (approvalFailOf).
+            require(_awardReceivers[i] != address(0), "Invalid receiver address");
+            require(approvalFailOf[_awardReceivers[i]] == 0, "Duplicate receiver address");
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value1"); // Checking if the award amount for each receiver is greater than 0.
             approvalFailOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for failed participants.
             sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for failed participants.

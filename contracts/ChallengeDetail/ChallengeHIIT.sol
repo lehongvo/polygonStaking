@@ -33,6 +33,10 @@ error InvalidHiitData();
 error InvalidDuration(); // CHALLENGE-2817
 error InvalidDayRequired(); // CHALLENGE-2817
 error InvalidTimeRange(); // CHALLENGE-2817
+error InvalidStakeholdersLength(); // CHALLENGE-2811
+error InvalidStakeholderAddress(); // CHALLENGE-2811
+error InvalidReceiverAddress(); // CHALLENGE-2811
+error DuplicateReceiverAddress(); // CHALLENGE-2811
 error InvalidAward();
 error InvalidValue();
 error InvalidLists();
@@ -881,6 +885,15 @@ contract ChallengeHIIT is IERC721Receiver {
     ) payable {
         if (!(_allowGiveUp.length == 3)) revert InvalidAllowGiveUp();
         if (!(_primaryRequired.length >= 6)) revert InvalidHiitData();
+        // CHALLENGE-2811: sponsor/challenger/feeAddress are relied on as payout/authorization
+        // targets throughout settlement; a zero address here could burn native value or brick
+        // access control.
+        if (!(_stakeHolders.length >= 3)) revert InvalidStakeholdersLength();
+        if (
+            !(_stakeHolders[0] != address(0) &&
+                _stakeHolders[1] != address(0) &&
+                _stakeHolders[2] != address(0))
+        ) revert InvalidStakeholderAddress();
         if (_allowGiveUp[1]) {
             if (!(msg.value == _totalAmount)) revert InvalidAward();
         }
@@ -916,12 +929,24 @@ contract ChallengeHIIT is IERC721Receiver {
 
         if (!(_awardReceivers.length == awardReceiversApprovalsTamp.length)) revert InvalidLists();
         for (i = 0; i < _index; i++) {
+            // CHALLENGE-2811: approvalSuccessOf is an address-keyed mapping, but the payout loop
+            // re-reads it once per array index -- a duplicate address in this group would
+            // overwrite the mapping entry yet still get paid once per occurrence, double-spending
+            // the (possibly wrong) overwritten amount. Mapping value is guaranteed 0 until first
+            // written (fresh contract storage, amounts required >0 below), so re-visiting the
+            // same address is detected here without extra storage.
+            if (!(_awardReceivers[i] != address(0))) revert InvalidReceiverAddress();
+            if (!(approvalSuccessOf[_awardReceivers[i]] == 0)) revert DuplicateReceiverAddress();
             if (!(awardReceiversApprovalsTamp[i] > 0)) revert InvalidValue0();
             approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i];
             sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i];
         }
 
         for (i = _index; i < _awardReceivers.length; i++) {
+            // CHALLENGE-2811: same duplicate/zero-address protection as the success loop above,
+            // applied to the failure-side mapping (approvalFailOf).
+            if (!(_awardReceivers[i] != address(0))) revert InvalidReceiverAddress();
+            if (!(approvalFailOf[_awardReceivers[i]] == 0)) revert DuplicateReceiverAddress();
             if (!(awardReceiversApprovalsTamp[i] > 0)) revert InvalidValue1();
             approvalFailOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i];
             sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i];
