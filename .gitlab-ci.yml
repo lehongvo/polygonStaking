@@ -1,6 +1,44 @@
 stages:
     - test
 
+# CHALLENGE-2659: mandatory MR pipeline jobs for compile/test/lint (in addition to the
+# CHALLENGE-2760 dependency-audit gate added earlier). Staged activation via allow_failure.
+unit-tests:
+    stage: test
+    image: node:20-alpine
+    before_script:
+        - corepack enable
+        - yarn install --frozen-lockfile --ignore-engines
+    script:
+        - yarn test
+    tags:
+        - dev
+    allow_failure: true
+
+lint:
+    stage: test
+    image: node:20-alpine
+    before_script:
+        - corepack enable
+        - yarn install --frozen-lockfile --ignore-engines
+    script:
+        - yarn lint
+    tags:
+        - dev
+    allow_failure: true
+
+compile:
+    stage: test
+    image: node:20-alpine
+    before_script:
+        - corepack enable
+        - yarn install --frozen-lockfile --ignore-engines
+    script:
+        - yarn compile
+    tags:
+        - dev
+    allow_failure: true
+
 # CHALLENGE-2760 acceptance criterion 7: full-graph dependency/SBOM scanning in the MR pipeline.
 #
 # This repo had NO .gitlab-ci.yml at all before this change (confirmed: no CI config file of any
