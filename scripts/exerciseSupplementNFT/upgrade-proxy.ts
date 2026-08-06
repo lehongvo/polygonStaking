@@ -16,7 +16,7 @@ const ACCESS_CONTROL_ABI = [
   'function hasRole(bytes32 role, address account) view returns (bool)',
 ];
 const SECURITY_ADDR_ABI = [
-  'function securityAddress() view returns (address)',
+  'function getSecurityAddress() view returns (address)',
 ];
 
 interface ExerciseSupplementEntry {
@@ -56,7 +56,7 @@ async function hasUpgraderRole(
 
 async function readSecurityAddress(proxyAddr: string): Promise<string> {
   const c = new ethers.Contract(proxyAddr, SECURITY_ADDR_ABI, ethers.provider);
-  return c.securityAddress();
+  return c.getSecurityAddress();
 }
 
 async function main() {

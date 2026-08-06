@@ -4184,6 +4184,14 @@ contract ExerciseSupplementNFT is
     }
 
     /**
+     * @dev Exposes the backend signature verifier for post-upgrade readiness scripts.
+     * The underlying storage slot is private, so upgrade tooling must call this view.
+     */
+    function getSecurityAddress() external view returns (address) {
+        return securityAddress;
+    }
+
+    /**
      * @dev Update the special condition information for the NFT.
      * @param targetStepPerDay The target step count per day for the challenge.
      * @param challengeDuration The duration of the challenge in days.
@@ -4542,7 +4550,8 @@ contract ExerciseSupplementNFT is
                         return sponsorAddress;
                     }
 
-                    return _gachaAddress;
+                    // In-flight challenge: deliver to the challenge contract, not the Gacha itself.
+                    return _challengeContract;
                 }
                 if (
                     gachaInfosCus.gachaRewardDestination[i] == GachaRewardDestination.sendToSponsor
