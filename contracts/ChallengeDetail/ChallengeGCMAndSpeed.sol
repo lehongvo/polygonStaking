@@ -39,6 +39,7 @@ error InsufficientMaticForNativeStaking();
 error PrincipalMaticTransferFailed();
 error RewardsMaticTransferFailed();
 error SystemFeeMaticTransferFailed();
+error NoPendingNativeClaim();
 
 /**
  * @dev Interface for the ChallengeFee contract.
@@ -777,6 +778,17 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
     event CloseChallenge(bool indexed challengeStatus);
 
     /**
+     * @dev CHALLENGE-2825: emitted when a native payout push fails and the amount is credited
+     * for later pull-claim instead of reverting the whole settlement transaction.
+     */
+    event NativePayoutCredited(address indexed recipient, uint256 amount);
+
+    /**
+     * @dev CHALLENGE-2825: emitted when a credited native payout is successfully claimed.
+     */
+    event NativePayoutClaimed(address indexed recipient, uint256 amount);
+
+    /**
      * @dev Action should be called in challenge time.
      */
     modifier onTime() {
@@ -809,6 +821,10 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
      */
     /** @dev Reentrancy guard status (1 = unlocked, 2 = locked). Mirror ChallengeDetail. */
     uint256 private _reentrancyStatus = 1;
+
+    // CHALLENGE-2825: pull-claim ledger for native payouts whose recipient rejected a push
+    // transfer during settlement -- appended after existing storage (live UUPS proxies).
+    mapping(address => uint256) private _pendingNativeClaims;
 
     /**
      * @dev Reentrancy guard (mirror ChallengeDetail) — blocks re-entering settlement
@@ -1803,7 +1819,37 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
     // shortfall aborts the whole settlement instead of silently completing without payment.
     function tranferCoinNative(address payable from, uint256 value) private {
         if (!(getContractBalance() >= value)) revert InsufficientContractBalance();
-        TransferHelper.saveTransferEth(from, value);
+        // CHALLENGE-2825: a rejecting recipient must not revert the whole settlement -- credit
+        // for later pull-claim instead of using TransferHelper.saveTransferEth (which reverts).
+        (bool success, ) = from.call{value: value}("");
+        if (!success) {
+            _pendingNativeClaims[from] += value;
+            emit NativePayoutCredited(from, value);
+            return;
+        }
+    }
+
+    /**
+     * @dev CHALLENGE-2825: view the caller's credited native balance awaiting pull-claim.
+     */
+    function pendingNativeClaim(address account) external view returns (uint256) {
+        return _pendingNativeClaims[account];
+    }
+
+    /**
+     * @dev CHALLENGE-2825: pull-claim a previously credited native payout. Checks-effects-interactions:
+     * zero the claim before the external call; restore on failure so the balance stays retryable.
+     */
+    function claimPendingNative() external nonReentrant {
+        uint256 amount = _pendingNativeClaims[msg.sender];
+        if (amount == 0) revert NoPendingNativeClaim();
+        _pendingNativeClaims[msg.sender] = 0;
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) {
+            _pendingNativeClaims[msg.sender] = amount;
+            revert AddressUnableToSendValueRecipientMayHaveReverted();
+        }
+        emit NativePayoutClaimed(msg.sender, amount);
     }
 
     // Private function to get balance of a specific ERC20 token in the contract
