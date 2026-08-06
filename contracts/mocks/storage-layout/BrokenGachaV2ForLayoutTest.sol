@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: MIT
 
+// CHALLENGE-2774 storage-layout regression test fixture.
+// Verbatim copy of contracts/gacha/gacha.sol as it existed at commit d974624 (CHALLENGE-2733) --
+// i.e. BEFORE the CHALLENGE-2774 fix -- with only the outer contract name changed. This is the
+// storage-INCOMPATIBLE layout: `_reentrancyStatus` was inserted between `receiveAdminWallet` and
+// `value`, which would have shifted `value` (the gacha open/close time window) into a slot it
+// never occupied on an already-deployed proxy. Used only by
+// test/security/storage-layout-upgrade.test.ts to prove upgrades.validateUpgrade() actually
+// rejects this layout (mutation-test evidence that the check is meaningful). Never deploy this
+// contract for any other purpose.
+
 /**
  * @title MIT License
  * @copyright 2024 Hiroshi Tanimoto / Sense It Smart Corporation
@@ -2838,7 +2848,7 @@ library EnumerableSet {
 
 pragma solidity ^0.8.16;
 
-contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPSUpgradeable {
+contract BrokenGachaV2ForLayoutTest is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPSUpgradeable {
     // CHALLENGE-2702: this is the IMPLEMENTATION contract deployed behind a proxy. Without
     // disabling initializers here, anyone could call initialize() directly on the
     // implementation address itself (not through the proxy) and take owner/admin roles on
@@ -3080,18 +3090,15 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     // A public variable to store the address of the wallet that will receive the funds
     address public receiveAdminWallet;
 
-    // CHALLENGE-2732 / CHALLENGE-2774: minimal reentrancy guard. The storage slot for
-    // `_reentrancyStatus` is declared at the very end of the contract (see bottom of file,
-    // after `value`) instead of here, so it is APPENDED after every pre-existing storage
-    // variable rather than inserted between `receiveAdminWallet` and `value`. Solidity assigns
-    // storage slots by declaration order, so inserting a new variable here would have shifted
-    // `value` (the gacha open/close time range) into a slot that never held it on the
-    // already-deployed proxy, corrupting it on upgrade. Hand-rolled instead of importing
-    // OpenZeppelin's ReentrancyGuardUpgradeable to avoid colliding with the Initializable/etc.
-    // contracts already flattened into this file under the same names, and to stay within this
-    // contract's tight EIP-170 headroom. Uses 0 (default/never entered) and 2 (entered) as the
-    // two states -- unlike OZ's guard, this needs NO initializer call: the proxy's storage
-    // already defaults this slot to 0, which correctly means "not entered".
+    // CHALLENGE-2732: minimal reentrancy guard, appended as a NEW storage slot (safe for this
+    // already-deployed UUPS proxy -- never inserted between existing variables). Hand-rolled
+    // instead of importing OpenZeppelin's ReentrancyGuardUpgradeable to avoid colliding with the
+    // Initializable/etc. contracts already flattened into this file under the same names, and to
+    // stay within this contract's tight EIP-170 headroom. Uses 0 (default/never entered) and 2
+    // (entered) as the two states -- unlike OZ's guard, this needs NO initializer call: the
+    // proxy's storage already defaults this slot to 0, which correctly means "not entered".
+    uint256 private _reentrancyStatus;
+
     modifier nonReentrant() {
         require(_reentrancyStatus != 2, "ReentrancyGuard: reentrant call");
         _reentrancyStatus = 2;
@@ -4369,12 +4376,4 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
         return false;
     }
-
-    // CHALLENGE-2774: storage slot for the `nonReentrant` modifier's guard flag (declared and
-    // documented near `receiveAdminWallet` above). MUST remain the last state variable declared
-    // in this contract -- it is appended after `value`, the final variable that existed on the
-    // already-deployed proxy, so that upgrading preserves every pre-existing variable's slot
-    // unchanged. Never insert a new variable above this line; append further new variables
-    // below it instead.
-    uint256 private _reentrancyStatus;
 }

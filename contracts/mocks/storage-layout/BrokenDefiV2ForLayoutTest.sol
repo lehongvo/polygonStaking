@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+// CHALLENGE-2774 storage-layout regression test fixture.
+// Verbatim copy of contracts/PolygonDeFiAggregator.sol as it existed at commit 342f0b1
+// (CHALLENGE-2697) -- i.e. BEFORE the CHALLENGE-2774 fix -- with only the outer contract name
+// changed. This is the storage-INCOMPATIBLE layout: `systemFeeAddress` was inserted between
+// `percentFeeForSystem` and `AAVE_REWARD_TOKEN`, which would shift `AAVE_REWARD_TOKEN` (and every
+// following variable) into a slot it never occupied on an already-deployed proxy. Used only by
+// test/security/storage-layout-upgrade.test.ts to prove upgrades.validateUpgrade() actually
+// rejects this layout (mutation-test evidence that the check is meaningful). Never deploy this
+// contract for any other purpose.
+
 // ==== custom errors (auto) ====
 error InvalidProtocolType();
 error NativeMaticOnlySupportedForAave();
@@ -78,7 +88,7 @@ interface IWMATIC {
  * @dev DeFi staking aggregator contract for Polygon PoS
  * Enhanced with time-locking features and multi-token support
  */
-contract PolygonDeFiAggregator is
+contract BrokenDefiV2ForLayoutTest is
     Initializable,
     OwnableUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -142,16 +152,12 @@ contract PolygonDeFiAggregator is
     // Fee system
     uint256 public percentFeeForSystem = 20;
 
-    // Aave Reward token (e.g., WMATIC on Polygon) - used for v3 getUserUnclaimedRewards
-    address public AAVE_REWARD_TOKEN;
-
     // CHALLENGE-2697: governed system-fee recipient. Was previously a caller-supplied parameter
     // on withdrawTimeLockedStake, letting the withdrawer redirect the fee anywhere.
-    // CHALLENGE-2774: declared AFTER every pre-existing variable (consuming one slot from the
-    // `__gap` reserved below, which is shrunk from 50 to 49 accordingly) instead of between
-    // `percentFeeForSystem` and `AAVE_REWARD_TOKEN` where it previously shifted `AAVE_REWARD_TOKEN`
-    // and every following variable into the wrong slot on the already-deployed UUPS proxy.
     address public systemFeeAddress;
+
+    // Aave Reward token (e.g., WMATIC on Polygon) - used for v3 getUserUnclaimedRewards
+    address public AAVE_REWARD_TOKEN;
 
     // Events
     event TokenAdded(address indexed token, string symbol, uint8 decimals);
@@ -775,7 +781,6 @@ contract PolygonDeFiAggregator is
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    // Storage gap for future upgrades. Reduced from 50 to 49 slots: CHALLENGE-2774 consumed one
-    // slot to add `systemFeeAddress` above without shifting any pre-existing variable.
-    uint256[49] private __gap;
+    // Storage gap for future upgrades
+    uint256[50] private __gap;
 }

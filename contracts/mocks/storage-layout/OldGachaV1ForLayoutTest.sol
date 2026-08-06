@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: MIT
 
+// CHALLENGE-2774 storage-layout regression test fixture.
+// Verbatim copy of contracts/gacha/gacha.sol as it existed at commit 507e662^ (the last commit
+// before the CHALLENGE-2732/2733 reentrancy guard was added), with only the outer contract name
+// changed so it can compile alongside the real Gacha contract. This mirrors the storage layout
+// that is ACTUALLY live on Polygon mainnet today (see docs/contractAddress/gachaAddress.json --
+// NewImplementAddress 0xeA48C0b3... was deployed 2026-05-01, before this file's variable was
+// introduced). Used only by test/security/storage-layout-upgrade.test.ts via
+// upgrades.validateUpgrade() to prove the current contracts/gacha/gacha.sol is upgrade-safe from
+// this exact on-chain baseline. Never deploy this contract for any other purpose.
+
 /**
  * @title MIT License
  * @copyright 2024 Hiroshi Tanimoto / Sense It Smart Corporation
@@ -2838,7 +2848,7 @@ library EnumerableSet {
 
 pragma solidity ^0.8.16;
 
-contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPSUpgradeable {
+contract OldGachaV1ForLayoutTest is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPSUpgradeable {
     // CHALLENGE-2702: this is the IMPLEMENTATION contract deployed behind a proxy. Without
     // disabling initializers here, anyone could call initialize() directly on the
     // implementation address itself (not through the proxy) and take owner/admin roles on
@@ -3080,25 +3090,6 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     // A public variable to store the address of the wallet that will receive the funds
     address public receiveAdminWallet;
 
-    // CHALLENGE-2732 / CHALLENGE-2774: minimal reentrancy guard. The storage slot for
-    // `_reentrancyStatus` is declared at the very end of the contract (see bottom of file,
-    // after `value`) instead of here, so it is APPENDED after every pre-existing storage
-    // variable rather than inserted between `receiveAdminWallet` and `value`. Solidity assigns
-    // storage slots by declaration order, so inserting a new variable here would have shifted
-    // `value` (the gacha open/close time range) into a slot that never held it on the
-    // already-deployed proxy, corrupting it on upgrade. Hand-rolled instead of importing
-    // OpenZeppelin's ReentrancyGuardUpgradeable to avoid colliding with the Initializable/etc.
-    // contracts already flattened into this file under the same names, and to stay within this
-    // contract's tight EIP-170 headroom. Uses 0 (default/never entered) and 2 (entered) as the
-    // two states -- unlike OZ's guard, this needs NO initializer call: the proxy's storage
-    // already defaults this slot to 0, which correctly means "not entered".
-    modifier nonReentrant() {
-        require(_reentrancyStatus != 2, "ReentrancyGuard: reentrant call");
-        _reentrancyStatus = 2;
-        _;
-        _reentrancyStatus = 0;
-    }
-
     // Define the role that can upgrade the contract
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
 
@@ -3208,7 +3199,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     function randomRewards(
         address _challengeAddress,
         uint256[] memory _dataStep
-    ) external onlyRole(CHALLENGE_ROLE) nonReentrant returns (bool) {
+    ) external onlyRole(CHALLENGE_ROLE) returns (bool) {
         // Modifier to restrict access to only admins
         if (!(!isSendDailyResultWithGacha[msg.sender][_challengeAddress])) revert AlreadySendDailyResultWithGacha();
 
@@ -3268,32 +3259,6 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                 ) {
                     // Get the address of the selected reward token
                     address currentTokenAddress = currentRewardToken.addressToken;
-
-                    // CHALLENGE-2732: commit every counter/flag that BOUNDS payouts BEFORE any
-                    // external transfer call below (CEI). Previously rewardActivationCount, the
-                    // unlockRate redistribution, and isSendDailyResultWithGacha were all written
-                    // AFTER the transfers -- a reentrant call re-entering randomRewards mid-
-                    // transfer would re-read the stale (not-yet-incremented) count and could pass
-                    // the same maxNumberAllowed cap check again in the same transaction. Moving
-                    // these here means a reentrant call now sees the POST-increment state.
-                    // (indexTokenReward/userInfor are informational display state, not a spending
-                    // bound, and are still finalized after the transfers below since the ERC721/
-                    // ERC1155 branches only learn the actual minted/transferred token id there.)
-                    isWonThePrize = true;
-                    rewardTokens[randomIndexReward].rewardActivationCount = rewardTokens[
-                        randomIndexReward
-                    ].rewardActivationCount + 1;
-                    if (
-                        rewardTokens[randomIndexReward].rewardActivationCount ==
-                        rewardTokens[randomIndexReward].maxNumberAllowed
-                    ) {
-                        rewardTokens[0].unlockRate = rewardTokens[0].unlockRate +
-                            rewardTokens[randomIndexReward].unlockRate;
-                        rewardTokens[randomIndexReward].unlockRate = 0;
-                    }
-                    if (IChallenge(_challengeAddress).isFinished()) {
-                        isSendDailyResultWithGacha[msg.sender][_challengeAddress] = true;
-                    }
 
                     // Check if the current reward token is an ERC20 token
                     if (currentRewardToken.typeToken == TypeToken.ERC20) {
@@ -3383,6 +3348,9 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                         );
                     }
 
+                    // Set isWonThePrize to true to indicate that the user has won a prize
+                    isWonThePrize = true;
+
                     // Determine the name of the token, depending on whether it's a native token or an ERC20/ERC721/ERC1155 token
                     string memory tokenName;
                     if (currentRewardToken.typeToken == TypeToken.NATIVE_TOKEN) {
@@ -3391,9 +3359,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                         tokenName = IChallenge(currentTokenAddress).name();
                     }
 
-                    // Store the user's information into the userInfor mapping (informational
-                    // display state, finalized here since indexTokenReward for ERC721/ERC1155 is
-                    // only known after the transfer branches above run).
+                    // Store the user's information into the userInfor mapping
                     userInfor[challengerAddress] = UserInfor(
                         true, // Set the user's flag to indicate that they have won the challenge
                         randomIndexReward, // Store the index of the reward token that the user has won
@@ -3402,8 +3368,27 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                         currentRewardToken.rewardValue, // Store the amount of the token that the user has won
                         tokenName // Store the name of the token that the user has won
                     );
+
+                    // Increment the max number allowed for the selected reward token
+                    rewardTokens[randomIndexReward].rewardActivationCount = rewardTokens[
+                        randomIndexReward
+                    ].rewardActivationCount + 1;
+
+                    if (
+                        rewardTokens[randomIndexReward].rewardActivationCount ==
+                        rewardTokens[randomIndexReward].maxNumberAllowed
+                    ) {
+                        rewardTokens[0].unlockRate = rewardTokens[0].unlockRate +
+                            rewardTokens[randomIndexReward].unlockRate;
+                        rewardTokens[randomIndexReward].unlockRate = 0;
+                    }
                 }
             }
+        }
+
+        // If the user won the prize and the challenge is finished, mark the user as having received the daily result with gacha for this challenge
+        if (isWonThePrize && IChallenge(_challengeAddress).isFinished()) {
+            isSendDailyResultWithGacha[msg.sender][_challengeAddress] = true;
         }
 
         // Emit an event indicating that the daily result with gacha has been sent to the user
@@ -4369,12 +4354,4 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
         return false;
     }
-
-    // CHALLENGE-2774: storage slot for the `nonReentrant` modifier's guard flag (declared and
-    // documented near `receiveAdminWallet` above). MUST remain the last state variable declared
-    // in this contract -- it is appended after `value`, the final variable that existed on the
-    // already-deployed proxy, so that upgrading preserves every pre-existing variable's slot
-    // unchanged. Never insert a new variable above this line; append further new variables
-    // below it instead.
-    uint256 private _reentrancyStatus;
 }
