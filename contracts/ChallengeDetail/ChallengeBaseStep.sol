@@ -991,6 +991,12 @@ contract ChallengeBaseStep is IERC721Receiver {
         endTime = _primaryRequired[2]; // Setting the end time of the challenge.
         goal = _primaryRequired[3]; // Setting the goal of the challenge.
         dayRequired = _primaryRequired[4]; // Setting the required number of days for the challenge.
+        // CHALLENGE-2817: settlement (duration - dayRequired for failure detection, division by
+        // dayRequired for partial give-up payout) assumes 0 < dayRequired <= duration; enforce it
+        // here so a malformed/direct deployment cannot underflow or divide by zero later.
+        require(duration > 0, "Invalid duration");
+        require(dayRequired > 0 && dayRequired <= duration, "Invalid dayRequired");
+        require(endTime > startTime, "Invalid time range");
         stateInstance = ChallengeState.PROCESSING; // Setting the challenge state to PROCESSING.
         awardReceivers = _awardReceivers; // Setting the list of award receivers.
         awardReceiversApprovals = awardReceiversApprovalsTamp; // Setting the awardReceiversApprovals

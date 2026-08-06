@@ -30,6 +30,9 @@ error UnsortedOrDuplicateDays();
 error InvalidStepIndexLength();
 error InvalidAllowGiveUp();
 error InvalidHiitData();
+error InvalidDuration(); // CHALLENGE-2817
+error InvalidDayRequired(); // CHALLENGE-2817
+error InvalidTimeRange(); // CHALLENGE-2817
 error InvalidAward();
 error InvalidValue();
 error InvalidLists();
@@ -936,6 +939,12 @@ contract ChallengeHIIT is IERC721Receiver {
         highIntensityIntervals = _primaryRequired[3];
         totalHighIntensityTime = _primaryRequired[4];
         dayRequired = _primaryRequired[5];
+        // CHALLENGE-2817: settlement (duration - dayRequired for failure detection, division by
+        // dayRequired for partial give-up payout) assumes 0 < dayRequired <= duration; enforce it
+        // here so a malformed/direct deployment cannot underflow or divide by zero later.
+        if (!(duration > 0)) revert InvalidDuration();
+        if (!(dayRequired > 0 && dayRequired <= duration)) revert InvalidDayRequired();
+        if (!(endTime > startTime)) revert InvalidTimeRange();
         stateInstance = ChallengeState.PROCESSING;
         awardReceivers = _awardReceivers;
         awardReceiversApprovals = awardReceiversApprovalsTamp;

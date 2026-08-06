@@ -167,7 +167,9 @@ describe('CHALLENGE-2696: settlement fee/receiver accounting invariants', functi
         awardReceiversPercent: [1, 100], // [0]=dummy success-side (never paid), [1]=100% fail-side
         index: 1,
         goal: 1000,
-        dayRequired: 20,
+        // CHALLENGE-2817: dayRequired must be <= duration now; no daily result is ever
+        // submitted below, so the challenge still fails deterministically (currentStatus stays 0).
+        dayRequired: 5,
         duration: 5,
         totalAmount: hre.ethers.parseEther('100'),
       });
@@ -284,7 +286,9 @@ describe('CHALLENGE-2696: settlement fee/receiver accounting invariants', functi
         awardReceiversPercent: [1, 100],
         index: 1,
         goal: 1000,
-        dayRequired: 20,
+        // CHALLENGE-2817: dayRequired must be <= duration now; no daily result is ever
+        // submitted below, so the challenge still fails deterministically (currentStatus stays 0).
+        dayRequired: 5,
         duration: 5,
         erc20List: [tknAddr],
       });
