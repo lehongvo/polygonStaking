@@ -3025,6 +3025,19 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
      */
     event SendDailyResultGacha(address indexed _caller, address _gachaAddress);
 
+    /**
+     * @dev Canonical reward delivery record for off-chain display/name resolution.
+     * CHALLENGE-2830: settlement must not depend on optional token metadata such as name().
+     */
+    event GachaRewardDelivered(
+        address indexed challenger,
+        address indexed tokenAddress,
+        TypeToken tokenType,
+        uint256 indexToken,
+        uint256 rewardValue,
+        uint256 rewardIndex
+    );
+
     // Mapping to store information about reward tokens
     mapping(uint256 => RewardToken) public rewardTokens;
 
@@ -3383,24 +3396,29 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                         );
                     }
 
-                    // Determine the name of the token, depending on whether it's a native token or an ERC20/ERC721/ERC1155 token
-                    string memory tokenName;
-                    if (currentRewardToken.typeToken == TypeToken.NATIVE_TOKEN) {
-                        tokenName = "Native Token";
-                    } else {
-                        tokenName = IChallenge(currentTokenAddress).name();
-                    }
+                    // Informational display state only. Token names are resolved off-chain from
+                    // GachaRewardDelivered (CHALLENGE-2830) — settlement must not call optional
+                    // metadata such as IERC20/ERC1155 name() which can revert or be absent.
+                    string memory tokenName = currentRewardToken.typeToken == TypeToken.NATIVE_TOKEN
+                        ? "Native Token"
+                        : "";
 
-                    // Store the user's information into the userInfor mapping (informational
-                    // display state, finalized here since indexTokenReward for ERC721/ERC1155 is
-                    // only known after the transfer branches above run).
                     userInfor[challengerAddress] = UserInfor(
-                        true, // Set the user's flag to indicate that they have won the challenge
-                        randomIndexReward, // Store the index of the reward token that the user has won
-                        indexTokenReward, // Store the index of the specific token within the ERC721/ERC1155 contract that the user has won (if applicable)
-                        currentTokenAddress, // Store the address of the token that the user has won
-                        currentRewardToken.rewardValue, // Store the amount of the token that the user has won
-                        tokenName // Store the name of the token that the user has won
+                        true,
+                        randomIndexReward,
+                        indexTokenReward,
+                        currentTokenAddress,
+                        currentRewardToken.rewardValue,
+                        tokenName
+                    );
+
+                    emit GachaRewardDelivered(
+                        challengerAddress,
+                        currentTokenAddress,
+                        currentRewardToken.typeToken,
+                        indexTokenReward,
+                        currentRewardToken.rewardValue,
+                        randomIndexReward
                     );
                 }
             }
