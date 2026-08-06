@@ -781,7 +781,9 @@ contract ChallengeGCM is IERC721Receiver {
      * @dev Action should be called in required time.
      */
     modifier onTimeSendResult() {
-        // require(block.timestamp <= endTime + 2 days, "Challenge was finished");
+        // CHALLENGE-2792: restore the two-day post-endTime submission deadline (was disabled),
+        // matching ChallengeDetail/ChallengeBaseStep/ChallengeHIIT's onTimeSendResult.
+        if (!(block.timestamp <= endTime + 2 days)) revert ChallengeWasFinished();
         if (!(block.timestamp >= startTime)) revert ChallengeHasNotStartedYet();
         _;
     }
