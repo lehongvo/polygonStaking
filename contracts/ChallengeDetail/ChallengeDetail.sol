@@ -1279,13 +1279,15 @@ contract ChallengeDetail is IERC721Receiver {
 
             tranferCoinNative(sponsor, amount - amountToReceiverList);
 
+            // CHALLENGE-2795: index by the original ERC20 list position — never push a
+            // compressed array and later read it with the full-list index.
+            uint256[] memory amountTokenToReceiverByIndex = new uint256[](erc20ListAddress.length);
             for (uint256 i = 0; i < erc20ListAddress.length; i++) {
-                uint256 amountTokenToReceiver;
                 uint256 totalTokenRewardSubtractFee =
                     (listBalanceAllToken[i] * remainningAmountFee) / 100;
 
                 if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
-                    amountTokenToReceiver =
+                    uint256 amountTokenToReceiver =
                         (totalTokenRewardSubtractFee * currentStatus) / dayRequired;
 
                     uint256 amountNativeToSponsor =
@@ -1297,7 +1299,7 @@ contract ChallengeDetail is IERC721Receiver {
                         amountNativeToSponsor
                     );
 
-                    amountTokenToReceiverList.push(amountTokenToReceiver);
+                    amountTokenToReceiverByIndex[i] = amountTokenToReceiver;
                 }
             }
 
@@ -1310,11 +1312,15 @@ contract ChallengeDetail is IERC721Receiver {
                 }
 
                 for (uint256 j = 0; j < erc20ListAddress.length; j++) {
+                    uint256 tokenDenom = (listBalanceAllToken[j] * remainningAmountFee) / 100;
+                    uint256 receiverShare = amountTokenToReceiverByIndex[j];
+                    if (tokenDenom == 0 || receiverShare == 0) {
+                        continue;
+                    }
                     if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
                         uint256 amountTokenTmp =
-                            (awardTokenReceivers[erc20ListAddress[j]][i] *
-                                amountTokenToReceiverList[j]) /
-                                ((listBalanceAllToken[j] * remainningAmountFee) / 100);
+                            (awardTokenReceivers[erc20ListAddress[j]][i] * receiverShare) /
+                            tokenDenom;
 
                         TransferHelper.safeTransfer(
                             erc20ListAddress[j],
