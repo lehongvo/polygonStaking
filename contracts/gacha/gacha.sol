@@ -2865,6 +2865,10 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     error InvalidRewardValue();
     error MaxNumberAllowedShouldBeEqualZero();
     error IndexOfTokenRewardNotExist();
+    error Erc721DeliveryFailed();
+
+    // Upper bound for ERC1155 eligibility scans in checkBalanceNft (gas DoS guard).
+    uint256 private constant MAX_ERC1155_ID_SCAN = 256;
 
     // Import necessary libraries
     // EnumerableSet for managing sets of addresses and uints
@@ -3197,8 +3201,17 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         VRFConsumerBaseOnlyTime = _VRFConsumerBaseOnlyTime;
 
         // Set the receiveWallet wallet address
+        _requireNonZeroAddress(receiveWallet[0]);
+        _requireNonZeroAddress(receiveWallet[1]);
         returnedNFTWallet = receiveWallet[0];
         receiveAdminWallet = receiveWallet[1];
+
+        if (_VRFConsumerBaseMultipleTime != address(0)) {
+            _requireContractAddress(_VRFConsumerBaseMultipleTime);
+        }
+        if (_VRFConsumerBaseOnlyTime != address(0)) {
+            _requireContractAddress(_VRFConsumerBaseOnlyTime);
+        }
     }
 
     /**
@@ -3394,6 +3407,15 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                             payable(challengerAddress),
                             currentRewardToken.rewardValue
                         );
+                    }
+
+                    // Non-mint ERC721 must have transferred a configured token ID.
+                    if (
+                        currentRewardToken.typeToken == TypeToken.ERC721 &&
+                        !currentRewardToken.isMintNft &&
+                        indexTokenReward == 0
+                    ) {
+                        revert Erc721DeliveryFailed();
                     }
 
                     // Informational display state only. Token names are resolved off-chain from
@@ -3654,6 +3676,8 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
         if (_typeToken == TypeToken.ERC721 && !_isMintNft) {
             if (!(listNft.length > 0)) revert ListNftMustBeExist();
+            // Non-mint ERC721 rewards must deliver exactly one configured token ID.
+            if (!(_rewardValue == 1)) revert InvalidRewardValue();
         }
 
         // Require the reward value to be greater than zero.
@@ -3825,6 +3849,8 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         string memory _gachaName,
         string memory _gachaSponsor
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
+        _requireNonZeroAddress(_receiveAdminWallet);
+        _requireNonZeroAddress(_returnedNFTWallet);
         challengeInfo = _challengeInfo;
         isDefaultGachaContract = _isDefaultGachaContract;
 
@@ -3854,6 +3880,13 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         TypeRandomReward _typeRandomReward,
         TimeRandomReward _timeRandomReward
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
+        if (_typeRandomReward == TypeRandomReward.NORMAL_RANDOM_NUMBER) {
+            _requireContractAddress(_randomClassicAddress);
+        } else if (_timeRandomReward == TimeRandomReward.RANDOM_MUTIPLE_TIME) {
+            _requireContractAddress(_VRFConsumerBaseMultipleTime);
+        } else {
+            _requireContractAddress(_VRFConsumerBaseOnlyTime);
+        }
         VRFConsumerBaseMultipleTime = _VRFConsumerBaseMultipleTime;
         VRFConsumerBaseOnlyTime = _VRFConsumerBaseOnlyTime;
         randomClassicAddress = _randomClassicAddress;
@@ -3875,6 +3908,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         bool _isTypeErc721
     ) external onlyRole(UPDATER_ACTIVITIES_ROLE) {
         if (_flag) {
+            _requireContractAddress(_nftAddress);
             requireBalanceNftAddress.add(_nftAddress);
         } else {
             requireBalanceNftAddress.remove(_nftAddress);
@@ -4070,7 +4104,15 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         } else if (typeToken == TypeToken.ERC20) {
             return IERC20(tokenAddress).balanceOf(address(this)) >= rewardValue;
         } else if (typeToken == TypeToken.ERC721) {
-            return IERC721(tokenAddress).balanceOf(address(this)) >= 1;
+            for (uint256 k = 0; k < currentRewardToken.listNft.length; k++) {
+                if (
+                    IERC721(tokenAddress).ownerOf(currentRewardToken.listNft[k]) ==
+                    address(this)
+                ) {
+                    return true;
+                }
+            }
+            return false;
         } else if (typeToken == TypeToken.ERC1155) {
             return
                 IERC1155(tokenAddress).balanceOf(address(this), currentRewardToken.indexToken) >=
@@ -4194,8 +4236,13 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                 uint256 currentIndexToken = IERC1155(requireBalanceNftAddress.values()[i])
                     .nextTokenIdToMint();
 
-                // Loop through all the tokens for this NFT that the address has a balance of
-                for (uint256 j = 0; j < currentIndexToken; j++) {
+                uint256 scanLimit = currentIndexToken;
+                if (scanLimit > MAX_ERC1155_ID_SCAN) {
+                    scanLimit = MAX_ERC1155_ID_SCAN;
+                }
+
+                // Loop through token IDs up to the scan cap
+                for (uint256 j = 0; j < scanLimit; j++) {
                     if (
                         IERC1155(requireBalanceNftAddress.values()[i]).balanceOf(_fromAddress, j) >
                         0
@@ -4337,6 +4384,21 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         bytes memory
     ) public pure returns (bytes4) {
         return this.onERC1155Received.selector;
+    }
+
+    /**
+     * @dev Rejects the zero address for custody/admin wallets.
+     */
+    function _requireNonZeroAddress(address addr) private pure {
+        if (addr == address(0)) revert ZeroAddress();
+    }
+
+    /**
+     * @dev Rejects zero addresses and EOAs for contract-only configuration slots.
+     */
+    function _requireContractAddress(address addr) private view {
+        if (addr == address(0)) revert ZeroAddress();
+        if (!AddressUpgradeable.isContract(addr)) revert AddressCallToNonContract();
     }
 
     /**
