@@ -129,7 +129,7 @@ describe('ExerciseSupplementNFT — Gacha integration', function () {
       expect(dest).to.equal(sponsor);
     });
 
-    it('SEND_TO_CHALLENGE_CONTRACT + !isSuccess + !isFinished → returns _gachaAddress', async function () {
+    it('SEND_TO_CHALLENGE_CONTRACT + !isSuccess + !isFinished → returns challenge contract', async function () {
       const { nft, owner, other, challenger } = await loadFixture(
         deployExerciseSupplementFixture
       );
@@ -149,7 +149,7 @@ describe('ExerciseSupplementNFT — Gacha integration', function () {
         await challenge.getAddress(),
         other.address
       );
-      expect(dest).to.equal(other.address);
+      expect(dest).to.equal(await challenge.getAddress());
     });
 
     it('SEND_TO_SPONSOR → always returns sponsor', async function () {
@@ -308,7 +308,7 @@ describe('ExerciseSupplementNFT — Gacha integration', function () {
   });
 
   describe('getDestinationAddress edge cases', function () {
-    it('SEND_TO_CHALLENGE_CONTRACT + isSuccess=false + isFinished=false → returns _gachaAddress', async function () {
+    it('SEND_TO_CHALLENGE_CONTRACT + isSuccess=false + isFinished=false → returns challenge contract', async function () {
       const { nft, owner, other, challenger } = await loadFixture(
         deployExerciseSupplementFixture
       );
@@ -328,7 +328,7 @@ describe('ExerciseSupplementNFT — Gacha integration', function () {
         await challenge.getAddress(),
         other.address
       );
-      expect(dest).to.equal(other.address);
+      expect(dest).to.equal(await challenge.getAddress());
     });
 
     it('SEND_TO_SPONSOR + isSuccess + sponsor = challenger (default mock) → returns sponsor', async function () {
