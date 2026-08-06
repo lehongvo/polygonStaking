@@ -42,6 +42,11 @@ error PrincipalMaticTransferFailed();
 error RewardsMaticTransferFailed();
 error SystemFeeMaticTransferFailed();
 error NoPendingNativeClaim();
+error ZeroErc1155Deposit();
+error ExceedsMaxDailyBatch();
+error TooManyGachaCalls();
+error TooManyNftContracts();
+error TooManyNftIds();
 
 /**
  * @dev Interface for the ChallengeFee contract.
@@ -577,6 +582,12 @@ contract ChallengeBaseStep is IERC721Receiver {
         GAVE_UP,
         CLOSED
     }
+
+    // Gas DoS guards for daily-result and settlement array inputs.
+    uint256 private constant MAX_DAILY_BATCH_DAYS = 31;
+    uint256 private constant MAX_GACHA_CALLS_PER_TX = 10;
+    uint256 private constant MAX_NFT_CONTRACTS_PER_TX = 10;
+    uint256 private constant MAX_NFT_IDS_PER_CONTRACT = 20;
 
     /** @dev returnedNFTWallet received NFT when Success
      */
@@ -1213,6 +1224,12 @@ contract ChallengeBaseStep is IERC721Receiver {
 
         uint dayLength = _day.length;
         if (!(dayLength > 0)) revert InvalidDayLength();
+        if (dayLength > MAX_DAILY_BATCH_DAYS) revert ExceedsMaxDailyBatch();
+        if (_listGachaAddress.length > MAX_GACHA_CALLS_PER_TX) revert TooManyGachaCalls();
+        if (_listNFTAddress.length > MAX_NFT_CONTRACTS_PER_TX) revert TooManyNftContracts();
+        for (uint256 boundCheck = 0; boundCheck < _listNFTAddress.length; boundCheck++) {
+            if (_listIndexNFT[boundCheck].length > MAX_NFT_IDS_PER_CONTRACT) revert TooManyNftIds();
+        }
         if (!(_stepIndex.length == dayLength)) revert InvalidStepIndexLength();
         // CHALLENGE-2698: reject a batch with duplicate/unsorted days outright -- a strictly
         // increasing _day array means the "last day" special-casing below (indices computed
@@ -2198,6 +2215,7 @@ contract ChallengeBaseStep is IERC721Receiver {
         uint256 amount,
         bytes memory
     ) public returns (bytes4) {
+        if (amount == 0) revert ZeroErc1155Deposit();
         if (erc1155DepositorBalance[msg.sender][tokenId][from] == 0) {
             erc1155Depositors[msg.sender][tokenId].push(from);
         }
