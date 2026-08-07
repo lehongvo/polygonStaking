@@ -43,6 +43,8 @@ error NoPendingNativeClaim();
 error ZeroErc1155Deposit();
 error NoPendingErc1155Claim();
 error Erc1155ClaimTransferFailed();
+error NoPendingErc20Claim();
+error Erc20ClaimTransferFailed();
 error ExceedsMaxDailyBatch();
 error TooManyGachaCalls();
 error TooManyNftContracts();
@@ -756,6 +758,9 @@ contract ChallengeDetail is IERC721Receiver {
     mapping(address => mapping(address => mapping(uint256 => uint256))) private _pendingErc1155Claims;
     mapping(address => mapping(uint256 => mapping(address => bool))) private _erc1155DepositorRegistered;
 
+    // CHALLENGE-2832: pull-claim ledger for ERC20 payouts whose push failed or under-delivered.
+    mapping(address => mapping(address => uint256)) private _pendingErc20Claims;
+
     /**
      * @dev Prevents a contract from calling itself, directly or indirectly.
      */
@@ -822,6 +827,16 @@ contract ChallengeDetail is IERC721Receiver {
         address indexed recipient,
         uint256 amount
     );
+
+    /**
+     * @dev CHALLENGE-2832: emitted when an ERC20 payout push fails or under-delivers.
+     */
+    event Erc20PayoutCredited(address indexed recipient, address indexed token, uint256 amount);
+
+    /**
+     * @dev CHALLENGE-2832: emitted when a credited ERC20 payout is successfully claimed.
+     */
+    event Erc20PayoutClaimed(address indexed recipient, address indexed token, uint256 amount);
 
     /**
      * @dev Action should be called in challenge time.
@@ -1308,7 +1323,7 @@ contract ChallengeDetail is IERC721Receiver {
                     address(this)
                 );
                 if (remainningAmountFee > 0 && realBalanceToken > 0) {
-                    TransferHelper.safeTransfer(
+                    _transferErc20OrCredit(
                         erc20ListAddress[i],
                         sponsor,
                         (listBalanceAllToken[i] * remainningAmountFee) / 100
@@ -1336,7 +1351,7 @@ contract ChallengeDetail is IERC721Receiver {
                     uint256 amountNativeToSponsor =
                         totalTokenRewardSubtractFee - amountTokenToReceiver;
 
-                    TransferHelper.safeTransfer(
+                    _transferErc20OrCredit(
                         erc20ListAddress[i],
                         sponsor,
                         amountNativeToSponsor
@@ -1365,7 +1380,7 @@ contract ChallengeDetail is IERC721Receiver {
                             (awardTokenReceivers[erc20ListAddress[j]][i] * receiverShare) /
                             tokenDenom;
 
-                        TransferHelper.safeTransfer(
+                        _transferErc20OrCredit(
                             erc20ListAddress[j],
                             awardReceivers[i],
                             amountTokenTmp
@@ -1436,7 +1451,7 @@ contract ChallengeDetail is IERC721Receiver {
             address tokenErc20 = _listTokenErc20[i];
             uint256 balanceErc20 = IERC20(tokenErc20).balanceOf(address(this));
 
-            TransferHelper.safeTransfer(tokenErc20, returnedNFTWallet, balanceErc20);
+            _transferErc20OrCredit(tokenErc20, returnedNFTWallet, balanceErc20);
         }
 
         transferNFTForSenderWhenFinish(
@@ -1482,7 +1497,7 @@ contract ChallengeDetail is IERC721Receiver {
 
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
-                    TransferHelper.safeTransfer(
+                    _transferErc20OrCredit(
                         erc20ListAddress[j],
                         awardReceivers[i],
                         (awardTokenReceivers[erc20ListAddress[j]][i] * (100 - amountSuccessFee)) / 100
@@ -1544,7 +1559,7 @@ contract ChallengeDetail is IERC721Receiver {
             // Transfer ERC20 token rewards to receiver
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
-                    TransferHelper.safeTransfer(
+                    _transferErc20OrCredit(
                         erc20ListAddress[j],
                         awardReceivers[i],
                         (awardTokenReceivers[erc20ListAddress[j]][i] * (100 - amountFailFee)) / 100
@@ -1768,7 +1783,7 @@ contract ChallengeDetail is IERC721Receiver {
                 uint8 tokenFeePercent = _isSuccessOutcome ? amountSuccessFee : amountFailFee;
                 uint256 realAmountFee = (listBalanceAllToken[i] * tokenFeePercent) / (100);
                 if (realAmountFee > 0) {
-                    TransferHelper.safeTransfer(erc20ListAddress[i], feeAddress, realAmountFee);
+                    _transferErc20OrCredit(erc20ListAddress[i], feeAddress, realAmountFee);
                 }
             }
         }
@@ -1865,6 +1880,75 @@ contract ChallengeDetail is IERC721Receiver {
     }
 
     // Private function to get balance of a specific ERC20 token in the contract
+
+    /**
+     * @dev CHALLENGE-2832: attempt an ERC20 payout; credit pull-claim balance on failure or
+     * fee-on-transfer shortfall instead of reverting the whole settlement transaction.
+     */
+    function _transferErc20OrCredit(address token, address to, uint256 amount) private {
+        if (amount == 0) {
+            return;
+        }
+        uint256 recipientBefore = IERC20(token).balanceOf(to);
+        uint256 senderBefore = IERC20(token).balanceOf(address(this));
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSelector(0xa9059cbb, to, amount)
+        );
+        bool callOk = success && (data.length == 0 || abi.decode(data, (bool)));
+        uint256 recipientAfter = IERC20(token).balanceOf(to);
+        uint256 senderAfter = IERC20(token).balanceOf(address(this));
+        uint256 delivered = recipientAfter > recipientBefore ? recipientAfter - recipientBefore : 0;
+        uint256 spent = senderBefore > senderAfter ? senderBefore - senderAfter : 0;
+
+        if (!callOk || delivered == 0 || spent == 0) {
+            _pendingErc20Claims[to][token] += amount;
+            emit Erc20PayoutCredited(to, token, amount);
+            return;
+        }
+        if (delivered < amount) {
+            uint256 shortfall = amount - delivered;
+            _pendingErc20Claims[to][token] += shortfall;
+            emit Erc20PayoutCredited(to, token, shortfall);
+        }
+    }
+
+    /**
+     * @dev CHALLENGE-2832: view the caller's credited ERC20 balance awaiting pull-claim.
+     */
+    function pendingErc20Claim(address account, address token) external view returns (uint256) {
+        return _pendingErc20Claims[account][token];
+    }
+
+    /**
+     * @dev CHALLENGE-2832: pull-claim a previously credited ERC20 payout.
+     */
+    function claimPendingErc20(address token) external nonReentrant {
+        uint256 amount = _pendingErc20Claims[msg.sender][token];
+        if (amount == 0) revert NoPendingErc20Claim();
+        _pendingErc20Claims[msg.sender][token] = 0;
+
+        uint256 recipientBefore = IERC20(token).balanceOf(msg.sender);
+        uint256 senderBefore = IERC20(token).balanceOf(address(this));
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSelector(0xa9059cbb, msg.sender, amount)
+        );
+        bool callOk = success && (data.length == 0 || abi.decode(data, (bool)));
+        uint256 recipientAfter = IERC20(token).balanceOf(msg.sender);
+        uint256 senderAfter = IERC20(token).balanceOf(address(this));
+        uint256 delivered = recipientAfter > recipientBefore ? recipientAfter - recipientBefore : 0;
+        uint256 spent = senderBefore > senderAfter ? senderBefore - senderAfter : 0;
+
+        if (!callOk || delivered == 0 || spent == 0) {
+            _pendingErc20Claims[msg.sender][token] = amount;
+            revert Erc20ClaimTransferFailed();
+        }
+        if (delivered < amount) {
+            _pendingErc20Claims[msg.sender][token] = amount - delivered;
+            revert Erc20ClaimTransferFailed();
+        }
+        emit Erc20PayoutClaimed(msg.sender, token, amount);
+    }
+
     function getBalanceTokenOfContract(
         address _erc20Address,
         address _fromAddress
