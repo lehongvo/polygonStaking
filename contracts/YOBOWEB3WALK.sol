@@ -73,6 +73,8 @@ error NoSbtOwned();
 error Erc721metadataUriQueryForNonexistentToken();
 error UpdateadminInvalidAddress();
 error UpdateadminCannotRemoveLastAdmin();
+error NoPendingOwner();
+error OwnershipTransferUnauthorized();
 
 /**
  * @dev Interface of the ERC165 standard, as defined in the
@@ -1634,7 +1636,14 @@ contract YOBOWEB3WALK is ERC721, Ownable {
     EnumerableSet.AddressSet private admins;
     bool private transferEnabled = false; // Soul Bound: transfers disabled by default
 
+    // CHALLENGE-2803: two-step ownership rotation; appended storage (new deployments only).
+    address private _pendingOwner;
+
     // Events
+    event OwnershipTransferProposed(address indexed currentOwner, address indexed pendingOwner);
+    event OwnershipTransferAccepted(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferCancelled(address indexed currentOwner, address indexed cancelledPendingOwner);
+    event AdminAuthorityRotated(address indexed previousOwner, address indexed newOwner);
     event TransferStatusChanged(bool enabled);
     event SoulBoundMint(address indexed to, uint256 indexed tokenId);
     event ChallengeCompleted(address indexed participant, uint256 indexed tokenId);
@@ -1824,6 +1833,49 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      */
     function setBaseExtension(string memory _newBaseExtension) public onlyOwner {
         baseExtension = _newBaseExtension;
+    }
+
+    /**
+     * @dev CHALLENGE-2803: propose ownership transfer; the pending address must accept.
+     */
+    function transferOwnership(address newOwner) public override onlyOwner {
+        if (!(newOwner != address(0))) revert OwnableNewOwnerIsTheZeroAddress();
+        _pendingOwner = newOwner;
+        emit OwnershipTransferProposed(owner(), newOwner);
+    }
+
+    /**
+     * @dev CHALLENGE-2803: accept ownership and rotate operational admin authority atomically.
+     */
+    function acceptOwnership() external {
+        if (msg.sender != _pendingOwner || _pendingOwner == address(0)) {
+            revert OwnershipTransferUnauthorized();
+        }
+        address previousOwner = owner();
+        address newOwner = _pendingOwner;
+        _pendingOwner = address(0);
+
+        admins.add(newOwner);
+        if (admins.contains(previousOwner) && admins.length() > 1) {
+            admins.remove(previousOwner);
+        }
+        _transferOwnership(newOwner);
+        emit OwnershipTransferAccepted(previousOwner, newOwner);
+        emit AdminAuthorityRotated(previousOwner, newOwner);
+    }
+
+    /**
+     * @dev CHALLENGE-2803: cancel a pending ownership transfer.
+     */
+    function cancelOwnershipTransfer() external onlyOwner {
+        if (_pendingOwner == address(0)) revert NoPendingOwner();
+        address cancelled = _pendingOwner;
+        _pendingOwner = address(0);
+        emit OwnershipTransferCancelled(owner(), cancelled);
+    }
+
+    function pendingOwner() external view returns (address) {
+        return _pendingOwner;
     }
 
     /**
