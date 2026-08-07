@@ -41,6 +41,8 @@ error RewardsMaticTransferFailed();
 error SystemFeeMaticTransferFailed();
 error NoPendingNativeClaim();
 error ZeroErc1155Deposit();
+error NoPendingErc1155Claim();
+error Erc1155ClaimTransferFailed();
 error ExceedsMaxDailyBatch();
 error TooManyGachaCalls();
 error TooManyNftContracts();
@@ -750,6 +752,10 @@ contract ChallengeDetail is IERC721Receiver {
     // transfer during settlement -- appended after existing storage (live UUPS proxies).
     mapping(address => uint256) private _pendingNativeClaims;
 
+    // CHALLENGE-2791: pull-claim ledger for ERC1155 fail-path returns.
+    mapping(address => mapping(address => mapping(uint256 => uint256))) private _pendingErc1155Claims;
+    mapping(address => mapping(uint256 => mapping(address => bool))) private _erc1155DepositorRegistered;
+
     /**
      * @dev Prevents a contract from calling itself, directly or indirectly.
      */
@@ -795,6 +801,27 @@ contract ChallengeDetail is IERC721Receiver {
      * @dev CHALLENGE-2825: emitted when a credited native payout is successfully claimed.
      */
     event NativePayoutClaimed(address indexed recipient, uint256 amount);
+
+    /**
+     * @dev CHALLENGE-2791: emitted when an ERC1155 fail-path return is credited for pull-claim
+     * instead of being pushed during terminal settlement.
+     */
+    event Erc1155ReturnCredited(
+        address indexed token,
+        uint256 indexed tokenId,
+        address indexed recipient,
+        uint256 amount
+    );
+
+    /**
+     * @dev CHALLENGE-2791: emitted when a credited ERC1155 return is successfully claimed.
+     */
+    event Erc1155ReturnClaimed(
+        address indexed token,
+        uint256 indexed tokenId,
+        address indexed recipient,
+        uint256 amount
+    );
 
     /**
      * @dev Action should be called in challenge time.
@@ -1631,42 +1658,36 @@ contract ChallengeDetail is IERC721Receiver {
                 }
             } else {
                 uint256 lengthListIndexNFT = _listIndexNFT[i].length / 2;
+                address nft = _listNFTAddress[i];
                 for (uint256 j = 0; j < lengthListIndexNFT; j++) {
-                    uint256 tokenId = _listIndexNFT[i][j];
-                    address[] memory depositors = erc1155Depositors[_listNFTAddress[i]][tokenId];
-                    if (depositors.length > 0) {
-                        for (uint256 d = 0; d < depositors.length; d++) {
-                            address depositor = depositors[d];
-                            uint256 amount = erc1155DepositorBalance[_listNFTAddress[i]][tokenId][depositor];
-                            if (amount == 0) continue; // already returned
-
-                            erc1155DepositorBalance[_listNFTAddress[i]][tokenId][depositor] = 0; // CEI
-
-                            bytes memory extraData = abi.encode(address(this), depositor, tokenId, amount);
-                            TransferHelper.safeTransferNFT1155(
-                                _listNFTAddress[i],
-                                address(this),
-                                depositor,
-                                tokenId,
-                                amount,
-                                extraData
-                            );
-                        }
-                    } else {
-                        uint256 heldBalance = IERC1155(_listNFTAddress[i]).balanceOf(address(this), tokenId);
-                        if (heldBalance > 0) {
-                            bytes memory extraData = abi.encode(address(this), challenger, tokenId, heldBalance);
-                            TransferHelper.safeTransferNFT1155(
-                                _listNFTAddress[i],
-                                address(this),
-                                challenger,
-                                tokenId,
-                                heldBalance,
-                                extraData
-                            );
-                        }
-                    }
+                    _creditErc1155ReturnsForSettlement(nft, _listIndexNFT[i][j]);
                 }
+            }
+        }
+    }
+
+    /**
+     * @dev CHALLENGE-2791: credit ERC1155 fail-path returns for pull-claim instead of pushing
+     * in an unbounded loop during terminal settlement. One reverting receiver cannot block others.
+     */
+    function _creditErc1155ReturnsForSettlement(address nft, uint256 tokenId) private {
+        address[] memory depositors = erc1155Depositors[nft][tokenId];
+        if (depositors.length > 0) {
+            for (uint256 d = 0; d < depositors.length; d++) {
+                address depositor = depositors[d];
+                uint256 amount = erc1155DepositorBalance[nft][tokenId][depositor];
+                if (amount == 0) continue;
+                erc1155DepositorBalance[nft][tokenId][depositor] = 0;
+                _erc1155DepositorRegistered[nft][tokenId][depositor] = false;
+                _pendingErc1155Claims[depositor][nft][tokenId] += amount;
+                emit Erc1155ReturnCredited(nft, tokenId, depositor, amount);
+            }
+            delete erc1155Depositors[nft][tokenId];
+        } else {
+            uint256 heldBalance = IERC1155(nft).balanceOf(address(this), tokenId);
+            if (heldBalance > 0) {
+                _pendingErc1155Claims[challenger][nft][tokenId] += heldBalance;
+                emit Erc1155ReturnCredited(nft, tokenId, challenger, heldBalance);
             }
         }
     }
@@ -1813,6 +1834,36 @@ contract ChallengeDetail is IERC721Receiver {
         emit NativePayoutClaimed(msg.sender, amount);
     }
 
+    /**
+     * @dev CHALLENGE-2791: view the caller's credited ERC1155 balance awaiting pull-claim.
+     */
+    function pendingErc1155Claim(
+        address account,
+        address token,
+        uint256 tokenId
+    ) external view returns (uint256) {
+        return _pendingErc1155Claims[account][token][tokenId];
+    }
+
+    /**
+     * @dev CHALLENGE-2791: pull-claim a previously credited ERC1155 fail-path return.
+     * Checks-effects-interactions: zero the claim before the external transfer; restore on failure.
+     */
+    function claimPendingErc1155(address token, uint256 tokenId) external nonReentrant {
+        uint256 amount = _pendingErc1155Claims[msg.sender][token][tokenId];
+        if (amount == 0) revert NoPendingErc1155Claim();
+        _pendingErc1155Claims[msg.sender][token][tokenId] = 0;
+        bytes memory extraData = abi.encode(address(this), msg.sender, tokenId, amount);
+        (bool success, bytes memory data) = token.call(
+            abi.encodeWithSelector(0xf242432a, address(this), msg.sender, tokenId, amount, extraData)
+        );
+        if (!(success && (data.length == 0 || abi.decode(data, (bool))))) {
+            _pendingErc1155Claims[msg.sender][token][tokenId] = amount;
+            revert Erc1155ClaimTransferFailed();
+        }
+        emit Erc1155ReturnClaimed(token, tokenId, msg.sender, amount);
+    }
+
     // Private function to get balance of a specific ERC20 token in the contract
     function getBalanceTokenOfContract(
         address _erc20Address,
@@ -1906,7 +1957,8 @@ contract ChallengeDetail is IERC721Receiver {
         bytes memory
     ) public returns (bytes4) {
         if (amount == 0) revert ZeroErc1155Deposit();
-        if (erc1155DepositorBalance[msg.sender][tokenId][from] == 0) {
+        if (!_erc1155DepositorRegistered[msg.sender][tokenId][from]) {
+            _erc1155DepositorRegistered[msg.sender][tokenId][from] = true;
             erc1155Depositors[msg.sender][tokenId].push(from);
         }
         erc1155DepositorBalance[msg.sender][tokenId][from] += amount;
