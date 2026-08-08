@@ -8,54 +8,11 @@
  */
 import 'dotenv/config';
 import { network, run, ethers } from 'hardhat';
-
-interface Target {
-  name: string;
-  address: string;
-  contract?: string; // fully-qualified, needed when the contract name is ambiguous
-  args: any[];
-}
-
-const TARGETS: Target[] = [
-  {
-    name: 'ChallengeFee',
-    address: '0x074a133a378b04FA936A53DAC4049aAa687FB16E',
-    contract: 'contracts/ChallengeFee/ChallengeFee.sol:ChallengeFee',
-    args: [0, 0],
-  },
-  {
-    name: 'HistoryChallenges',
-    address: '0x8B4a723d12FEe6a45f9FbF3d400FDc8517bB0E9A',
-    contract: 'contracts/HistoryChallenges/HistoryChallenges.sol:HistoryChallenges',
-    args: [],
-  },
-  {
-    name: 'TanimoToken (impl)',
-    address: '0xac514803F4Abb05bAA5462b9223EBD848ff256ce',
-    contract: 'contracts/TTJP/TanimoToken.sol:TanimoToken',
-    args: [],
-  },
-  {
-    name: 'ExerciseSupplementNFT (impl)',
-    address: '0xe4a82DB54684fd12189Af10eC121CF917428A8b3',
-    contract: 'contracts/ExerciseSupplementNFT.sol:ExerciseSupplementNFT',
-    args: [],
-  },
-  {
-    name: 'ExerciseSupplementNFTSpecial1',
-    address: '0x4aEcd6bdb4DCAb9beb8a49F93c04c0C65d060530',
-    contract:
-      'contracts/ExerciseSupplementNFTSpecial1/ExerciseSupplementNFTSpecial1.sol:ExerciseSupplementNFTSpecial1',
-    args: [],
-  },
-  {
-    name: 'ExerciseSupplementNFTSpecial2',
-    address: '0xC1849D39bb4003039089cC46AC55D480EfF045F0',
-    contract:
-      'contracts/ExerciseSupplementNFTSpecial2/ExerciseSupplementNFTSpecial2.sol:ExerciseSupplementNFTSpecial2',
-    args: [],
-  },
-];
+// CHALLENGE-2709: TARGETS lives in a pure-data module (no 'hardhat' import) so
+// test/scripts/verify-all-kaia-fqns.test.ts can import the exact same list without pulling in
+// this script's `import ... from 'hardhat'` (only valid under Hardhat's script-runner injection,
+// not from an ordinary test-side import).
+import { Target, TARGETS } from './kaia-verify-targets.ts';
 
 async function verifyOne(t: Target): Promise<string> {
   const code = await ethers.provider.getCode(t.address);
@@ -92,14 +49,21 @@ async function main() {
     console.log(`\n🔍 ${t.name} @ ${t.address}`);
     const r = await verifyOne(t);
     console.log(`   → ${r}`);
-    results.push(`${r.startsWith('✅') ? '✅' : '❌'} ${t.name.padEnd(32)} ${r}`);
+    results.push(
+      `${r.startsWith('✅') ? '✅' : '❌'} ${t.name.padEnd(32)} ${r}`
+    );
   }
   console.log('\n======== SUMMARY ========');
   results.forEach(r => console.log(r));
+  // CHALLENGE-2709: previously always exited 0 even when a target's verification failed --
+  // silent in CI/automation. Fail closed if anything in this run didn't verify.
+  if (results.some(r => r.startsWith('❌'))) {
+    process.exitCode = 1;
+  }
 }
 
 main()
-  .then(() => process.exit(0))
+  .then(() => process.exit(process.exitCode ?? 0))
   .catch(err => {
     console.error('💥', err);
     process.exit(1);
