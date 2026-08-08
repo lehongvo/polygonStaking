@@ -1,6 +1,10 @@
 // 概要（JP）: ChallengeHIIT の giveUp フロー検証。
 // (a) allAwardToSponsor=true: sponsor +9 / fee +1、二重 giveUp は revert。
-// (b) HIIT 1 日達成（cs=1）/ 必要 4 日 → sponsor 6.75 / recv1 1.25 / fee 1。
+// (b) HIIT 1 日達成（cs=1）/ 必要 4 日 → sponsor 6.75 / recv1 1.125 / fee 1。
+// CHALLENGE-2696 (TANIMOTO re-review): recv1 was 1.25 pre-fix -- the old formula
+// (approvalSuccessOf[recv1] * amountToReceiverList) / amount canceled out the fee complement.
+// Fixed: approvalSuccessOf[recv1] * currentStatus * remainningAmountFee / (dayRequired * 100)
+// = 5 * 1 * 90 / (4 * 100) = 1.125 (1.25 * the 90% fee complement).
 import { expect } from 'chai';
 import hre from 'hardhat';
 import { time } from '@nomicfoundation/hardhat-toolbox/network-helpers.js';
@@ -85,8 +89,8 @@ describe('T4-C3 — giveUp flow (ChallengeHIIT)', function () {
       .reverted;
   });
 
-  // (b) HIIT 1 日達成 / 必要 4 日 → 比率に応じて sponsor 6.75 / recv1 1.25 / fee 1
-  it('(b) choiceAwardToSponsor=false: cs=1 / dayRequired=4 → sponsor=6.75, recv1=1.25, fee=1', async function () {
+  // (b) HIIT 1 日達成 / 必要 4 日 → 比率に応じて sponsor 6.75 / recv1 1.125 / fee 1
+  it('(b) choiceAwardToSponsor=false: cs=1 / dayRequired=4 → sponsor=6.75, recv1=1.125, fee=1', async function () {
     const {
       challenger,
       sponsor,
@@ -136,7 +140,7 @@ describe('T4-C3 — giveUp flow (ChallengeHIIT)', function () {
 
     expect(
       (await hre.ethers.provider.getBalance(recv1.address)) - recv1Before
-    ).to.equal(hre.ethers.parseEther('1.25'));
+    ).to.equal(hre.ethers.parseEther('1.125'));
 
     expect(
       (await hre.ethers.provider.getBalance(feeAddr.address)) - feeBefore

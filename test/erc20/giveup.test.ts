@@ -99,8 +99,12 @@ describe('T10 – ERC20 giveUp split', function () {
       );
     });
 
-    // 成功側受取人 recv0 は達成日数比例で 25 TKN1 を受け取る
-    it('recv0 receives 25 TKN1', async function () {
+    // 成功側受取人 recv0 は達成日数比例 × fee complement (100-10%=90%) で 22.5 TKN1 を受け取る
+    // CHALLENGE-2696 (TANIMOTO re-review): the old formula's receiverShare/tokenDenom division
+    // canceled out the fee complement (25 TKN1 = 50% gross share * 1/20 progress, no fee scaling
+    // applied) -- now correctly scaled by remainningAmountFee too: 500 (50% of 1000 gross) *
+    // 1/20 progress * 90% fee complement = 22.5 TKN1.
+    it('recv0 receives 22.5 TKN1 (net of the 10% fee)', async function () {
       const { tkn1, challenge, signers, startTime } = await setupB();
       await moveToStart(startTime);
       await sendStep(challenge, 'ChallengeBaseStep', signers[1], {
@@ -109,7 +113,7 @@ describe('T10 – ERC20 giveUp split', function () {
       });
       await challenge.connect(signers[1]).giveUp([], [], [], []);
       expect(await tkn1.balanceOf(signers[4].address)).to.equal(
-        hre.ethers.parseEther('25')
+        hre.ethers.parseEther('22.5')
       );
     });
   });

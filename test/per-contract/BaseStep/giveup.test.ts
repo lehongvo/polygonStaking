@@ -161,20 +161,24 @@ describe('T4 — giveUp flow', function () {
     expect(await challenge.isFinished()).to.be.true;
     expect(await challenge.getState()).to.equal(3n); // GAVE_UP
 
-    // Math:
+    // Math (CHALLENGE-2696 TANIMOTO re-review fix: recv1's payout is now scaled by the fee
+    // complement directly instead of via amountToReceiverList/amount, which used to cancel it):
     //   balance = 10
     //   amount = 10 * (100 - 10) / 100 = 9
     //   amountToReceiverList = amount * currentStatus / dayRequired = 9 * 1 / 4 = 2.25
-    //   sponsor gets amount - amountToReceiverList = 9 - 2.25 = 6.75
-    //   recv1 gets approvalSuccessOf[recv1] * amountToReceiverList / amount
+    //   sponsor gets amount - amountToReceiverList = 9 - 2.25 = 6.75 (unchanged by this fix)
+    //   recv1 gets approvalSuccessOf[recv1] * currentStatus * remainningAmountFee / (dayRequired * 100)
     //     approvalSuccessOf[recv1] = balance * 50 / 100 = 5
-    //     recv1 = 5 * 2.25 / 9 = 1.25
+    //     recv1 = 5 * 1 * 90 / (4 * 100) = 1.125 (was 1.25 pre-fix -- 1.25 * 0.9 fee complement)
     //   serverFailureFee = balance * 10 / 100 = 1
     //
     // The contract balance flow:
-    //   tranferCoinNative(sponsor, 6.75) → balance = 10 - 6.75 = 3.25
-    //   tranferCoinNative(recv1, 1.25)   → balance = 3.25 - 1.25 = 2
-    //   tranferCoinNative(feeAddr, 1)    → balance = 2 - 1 = 1 (residual stays in contract)
+    //   tranferCoinNative(sponsor, 6.75)  → balance = 10 - 6.75 = 3.25
+    //   tranferCoinNative(recv1, 1.125)   → balance = 3.25 - 1.125 = 2.125
+    //   tranferCoinNative(feeAddr, 1)     → balance = 2.125 - 1 = 1.125 (residual stays in
+    //     contract -- this fixture's receiver percent (50%) doesn't sum to 100%, so some
+    //     residual is expected regardless of this fix; see CHALLENGE-2696's separate
+    //     unallocated-percentage finding, not addressed by this fix)
 
     const sponsorGain =
       (await hre.ethers.provider.getBalance(sponsor.address)) - sponsorBefore;
@@ -184,7 +188,7 @@ describe('T4 — giveUp flow', function () {
       (await hre.ethers.provider.getBalance(feeAddr.address)) - feeBefore;
 
     expect(sponsorGain).to.equal(hre.ethers.parseEther('6.75'));
-    expect(recv1Gain).to.equal(hre.ethers.parseEther('1.25'));
+    expect(recv1Gain).to.equal(hre.ethers.parseEther('1.125'));
     expect(feeGain).to.equal(hre.ethers.parseEther('1'));
   });
 });

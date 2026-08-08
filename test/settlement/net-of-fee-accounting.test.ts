@@ -305,4 +305,107 @@ describe('CHALLENGE-2696: settlement fee/receiver accounting invariants', functi
       expect(await tkn.balanceOf(feeAddr.address)).to.equal(hre.ethers.parseEther('100')); // 1000 * FAIL_FEE(10)/100
     });
   });
+
+  // ---- giveUp() partial-progress payout was NOT actually net-of-fee (TANIMOTO re-review) ----
+  // Bug: approvalSuccessOf[i] is GROSS-based (set from the pre-fee balance in
+  // updateRewardSuccessAndfail). giveUp()'s receiver loop paid
+  // approvalSuccessOf[i] * amountToReceiverList / amount, where amount is the net (post-fee)
+  // pool and amountToReceiverList = amount * currentStatus / dayRequired -- `amount` cancels
+  // out of that ratio algebraically, leaving a purely GROSS-based payout with the fee complement
+  // silently NOT applied, for any partial progress (0 < currentStatus < dayRequired). With the
+  // real deployed config pattern (100% single-receiver success group + nonzero fee), this meant
+  // fee + sponsor + receiver could exceed the gross balance whenever progress was partial.
+  // Fixed: compute the fee-complement scaling directly (currentStatus * remainningAmountFee /
+  // (dayRequired * 100)) instead of relying on a ratio that cancels it out. The ERC20 receiver
+  // loop had the identical defect (receiverShare/tokenDenom also canceled to currentStatus/
+  // dayRequired) and is fixed the same way.
+  describe('giveUp() partial-progress payout is genuinely net-of-fee (CHALLENGE-2696 TANIMOTO re-review)', function () {
+    for (const name of STEP_CONTRACTS) {
+      it(`${name}: native, 100% single receiver, partial progress (cs=1/dayRequired=4): fee + sponsor + receiver == gross exactly`, async function () {
+        const opts: any = {
+          awardReceiversPercent: [100],
+          index: 1,
+          goal: 1000,
+          dayRequired: 4,
+          totalAmount: hre.ethers.parseEther('100'),
+        };
+        if (name === 'ChallengeHIIT') {
+          opts.highIntensityIntervals = 5;
+          opts.totalHighIntensityTime = 60;
+        }
+        const { challenge, signers, startTime } = await deployChallenge(name, opts);
+        const sponsor = signers[0];
+        const challenger = signers[1];
+        const feeAddr = signers[2];
+        const recv0 = signers[4];
+        const before = await Promise.all(
+          [sponsor, feeAddr, recv0].map(s => hre.ethers.provider.getBalance(s.address))
+        );
+
+        await moveToStart(startTime);
+        await sendStep(challenge, name, challenger, {
+          day: startTime + 300,
+          steps: 1000,
+          intervals: name === 'ChallengeHIIT' ? 5 : undefined,
+          totalSeconds: name === 'ChallengeHIIT' ? 60 : undefined,
+        });
+        expect(await challenge.currentStatus()).to.equal(1n);
+
+        await expect(challenge.connect(challenger).giveUp([], [], [], [])).to.not.be.reverted;
+
+        const [sponsorGain, feeGain, recv0Gain] = await Promise.all(
+          [sponsor, feeAddr, recv0].map(async (s, i) => (await hre.ethers.provider.getBalance(s.address)) - before[i])
+        );
+
+        // fee = 100 * 10/100 = 10; net = 90; amountToReceiverList = 90*1/4 = 22.5
+        // sponsor = 90 - 22.5 = 67.5; receiver = 100(approvalSuccessOf) * 1 * 90 / (4*100) = 22.5
+        expect(feeGain).to.equal(hre.ethers.parseEther('10'));
+        expect(sponsorGain).to.equal(hre.ethers.parseEther('67.5'));
+        expect(recv0Gain).to.equal(hre.ethers.parseEther('22.5'));
+        // The core invariant this ticket is about: for a 100%-allocated group, nothing is
+        // stranded and nothing is overspent -- fee + sponsor + receiver == gross, exactly.
+        expect(feeGain + sponsorGain + recv0Gain).to.equal(hre.ethers.parseEther('100'));
+      });
+    }
+
+    it('ChallengeBaseStep: ERC20, 100% single receiver, partial progress: fee + sponsor + receiver == gross exactly', async function () {
+      const tkn = await deployERC20();
+      const tknAddr = await tkn.getAddress();
+      const { challenge, signers, startTime } = await deployChallenge('ChallengeBaseStep', {
+        awardReceiversPercent: [100],
+        index: 1,
+        goal: 1000,
+        dayRequired: 4,
+        msgValue: hre.ethers.parseEther('0.01'), // dust native balance so giveUp's native leg is a harmless no-op
+        totalAmount: hre.ethers.parseEther('0.01'),
+        erc20List: [tknAddr],
+      });
+      const challengeAddr = await challenge.getAddress();
+      await tkn.mint(challengeAddr, hre.ethers.parseEther('100'));
+
+      const sponsor = signers[0];
+      const challenger = signers[1];
+      const recv0 = signers[4];
+      const before = await Promise.all([sponsor, recv0].map(s => tkn.balanceOf(s.address)));
+
+      await moveToStart(startTime);
+      await sendStep(challenge, 'ChallengeBaseStep', challenger, { day: startTime + 300, steps: 1000 });
+      expect(await challenge.currentStatus()).to.equal(1n);
+
+      await expect(challenge.connect(challenger).giveUp([], [], [], [])).to.not.be.reverted;
+
+      const [sponsorGain, recv0Gain] = await Promise.all(
+        [sponsor, recv0].map(async (s, i) => (await tkn.balanceOf(s.address)) - before[i])
+      );
+
+      // Same math as the native case: net = 90, sponsor gets 90*(1 - 1/4) = 67.5, receiver
+      // gets 100(gross share) * 1 * 90 / (4*100) = 22.5.
+      expect(sponsorGain).to.equal(hre.ethers.parseEther('67.5'));
+      expect(recv0Gain).to.equal(hre.ethers.parseEther('22.5'));
+      expect(sponsorGain + recv0Gain).to.equal(hre.ethers.parseEther('90'));
+      // Invariant: sponsor + receiver never exceed the gross balance (100), matching the
+      // native-side conservation this fix restores.
+      expect(sponsorGain + recv0Gain).to.be.lte(hre.ethers.parseEther('100'));
+    });
+  });
 });

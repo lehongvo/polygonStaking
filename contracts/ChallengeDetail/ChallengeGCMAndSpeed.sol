@@ -1402,7 +1402,9 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
 
             // CHALLENGE-2795: index by the original ERC20 list position — never push a
             // compressed array and later read it with the full-list index.
-            uint256[] memory amountTokenToReceiverByIndex = new uint256[](erc20ListAddress.length);
+            // CHALLENGE-2696 (TANIMOTO re-review): amountTokenToReceiverByIndex is no longer
+            // needed -- the per-receiver ERC20 payout below is now computed directly (see that
+            // loop), not derived from this sponsor-share computation.
             for (uint256 i = 0; i < erc20ListAddress.length; i++) {
                 uint256 totalTokenRewardSubtractFee =
                     (listBalanceAllToken[i] * remainningAmountFee) / 100;
@@ -1419,29 +1421,41 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
                         sponsor,
                         amountNativeToSponsor
                     );
-
-                    amountTokenToReceiverByIndex[i] = amountTokenToReceiver;
                 }
             }
 
+            // CHALLENGE-2696 (TANIMOTO re-review): the previous native formula
+            // (approvalSuccessOf[i] * amountToReceiverList) / amount reduces algebraically to
+            // approvalSuccessOf[i] * currentStatus / dayRequired -- `amount` (the net, post-fee
+            // balance) cancels out of both sides, so the fee complement was silently NOT
+            // applied to partial-progress receiver payouts even though approvalSuccessOf[i]
+            // itself is GROSS-based (set from the pre-fee balance in
+            // updateRewardSuccessAndfail). The ERC20 loop below had the identical defect:
+            // (awardTokenReceivers[j][i] * receiverShare) / tokenDenom reduces to
+            // awardTokenReceivers[j][i] * currentStatus / dayRequired for the same reason.
+            // Both are fixed by computing the fee-complement scaling directly instead of
+            // relying on a ratio of two fee-scaled quantities to carry it.
             for (uint256 i = 0; i < index; i++) {
                 if (amount > 0) {
                     tranferCoinNative(
                         awardReceivers[i],
-                        (approvalSuccessOf[awardReceivers[i]] * amountToReceiverList) / amount
+                        (approvalSuccessOf[awardReceivers[i]] * currentStatus * remainningAmountFee) /
+                            (dayRequired * 100)
                     );
                 }
 
                 for (uint256 j = 0; j < erc20ListAddress.length; j++) {
-                    uint256 tokenDenom = (listBalanceAllToken[j] * remainningAmountFee) / 100;
-                    uint256 receiverShare = amountTokenToReceiverByIndex[j];
-                    if (tokenDenom == 0 || receiverShare == 0) {
+                    if (
+                        listBalanceAllToken[j] == 0 ||
+                        awardTokenReceivers[erc20ListAddress[j]][i] == 0
+                    ) {
                         continue;
                     }
                     if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
                         uint256 amountTokenTmp =
-                            (awardTokenReceivers[erc20ListAddress[j]][i] * receiverShare) /
-                            tokenDenom;
+                            (awardTokenReceivers[erc20ListAddress[j]][i] *
+                                currentStatus *
+                                remainningAmountFee) / (dayRequired * 100);
 
                         _transferErc20OrCredit(
                             erc20ListAddress[j],
