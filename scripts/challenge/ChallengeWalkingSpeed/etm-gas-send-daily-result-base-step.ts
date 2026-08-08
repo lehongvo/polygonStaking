@@ -162,12 +162,19 @@ async function main() {
     const testMets = hasWalking ? [BigInt(1)] : [];
 
     // Get real _data and _signature from getSignatureSendStepForBaseStep (CHALLENGE_PRIVATE_KEY). Must match NFT securityAddress.
+    // CHALLENGE-2673: pass the SAME testMinutes/testMets/testIntervals/testTotalSeconds that end
+    // up in sendArgs below -- the signed _extraDataHash must match exactly what's submitted, or
+    // checkValidSignature reverts.
     const dataSignature = await getSignatureSendStepForBaseStep(
       provider,
       contractAddress,
       [dayTs],
       [goal],
-      timeRelease
+      timeRelease,
+      testMinutes,
+      testMets,
+      testIntervals,
+      testTotalSeconds
     );
 
     if (dataSignature.error) {

@@ -144,11 +144,16 @@ async function main() {
     ];
 
     // Get real _data and _signature from getSignatureSendStepForHIIT (CHALLENGE_PRIVATE_KEY). Must match NFT securityAddress.
+    // CHALLENGE-2673: pass the SAME testIntervals/testTotalSeconds that end up in sendArgs below
+    // -- the signed _extraDataHash must match exactly what's submitted, or checkValidSignature
+    // reverts.
     const dataSignature = await getSignatureSendStepForHIIT(
       provider,
       contractAddress,
       [dayTs],
-      timeRelease
+      timeRelease,
+      testIntervals,
+      testTotalSeconds
     );
 
     if (dataSignature.error) {
