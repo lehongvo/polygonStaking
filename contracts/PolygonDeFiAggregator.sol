@@ -26,6 +26,8 @@ error AtokenAddressNotFoundForThisToken();
 error StakeNotActive();
 error StakeNotMatured();
 error InvalidFeeRecipient();
+error ProtocolHasOutstandingLiabilities(); // CHALLENGE-2793
+error NoSurplusToRecover(); // CHALLENGE-2794
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -240,6 +242,14 @@ contract PolygonDeFiAggregator is
     ) external onlyOwner {
         if (!(_contractAddress != address(0))) revert InvalidContractAddress();
         if (!(!protocols[_name].isActive)) revert ProtocolAlreadyExists();
+        // CHALLENGE-2793: a deactivated record with totalDeposited > 0 still has live stakes
+        // referencing this protocol NAME (TimeLockedStake.protocol / withdrawal accounting both
+        // resolve protocols[name] fresh, not a snapshot from when the stake was created).
+        // Overwriting contractAddress/type here and resetting totalDeposited to 0 would make
+        // those stakes subtract from a reset total (underflow revert) or route redemption to a
+        // completely different adapter. Re-registering the same name is only safe once every
+        // prior liability against it has been withdrawn.
+        if (!(protocols[_name].totalDeposited == 0)) revert ProtocolHasOutstandingLiabilities();
         if (!(keccak256(bytes(_protocolType)) == keccak256(bytes("liquid")) || keccak256(bytes(_protocolType)) == keccak256(bytes("lending")) || keccak256(bytes(_protocolType)) == keccak256(bytes("compound")))) revert InvalidProtocolType();
 
         protocols[_name] = ProtocolInfo({
@@ -731,6 +741,12 @@ contract PolygonDeFiAggregator is
     }
 
     function setProtocolStatus(string memory _protocol, bool _isActive) external onlyOwner {
+        // CHALLENGE-2793: activating an unknown name previously created/activated an empty
+        // ProtocolInfo (contractAddress == address(0)) -- createTimeLockedStake would then
+        // approve/stake against the zero address. Only a name already registered via
+        // addProtocol (has a real contractAddress) may be activated; deactivation is always
+        // allowed unconditionally, matching the existing lifecycle.
+        if (_isActive && protocols[_protocol].contractAddress == address(0)) revert ProtocolNotFound();
         protocols[_protocol].isActive = _isActive;
     }
 
@@ -764,10 +780,25 @@ contract PolygonDeFiAggregator is
     function emergencyWithdraw(address _token) external onlyOwner {
         IERC20 token = IERC20(_token);
         uint256 balance = token.balanceOf(address(this));
-        if (balance > 0) {
-            token.safeTransfer(owner(), balance);
-            emit EmergencyWithdraw(_token, owner(), balance);
+        if (balance == 0) {
+            return;
         }
+        // CHALLENGE-2794: previously swept the ENTIRE balance unconditionally, including assets
+        // backing active user stakes -- an operational mistake or owner-key compromise could
+        // immediately remove principal, making later withdrawals fail or lose funds.
+        // tokenProtocolTVL is incremented on stake creation and decremented on withdrawal
+        // (createTimeLockedStake / withdrawTimeLockedStake), so summing it across every
+        // registered protocol gives the total liability owed in this token; only the provable
+        // surplus above that may be swept.
+        uint256 totalLiability;
+        uint256 protocolCount = supportedProtocols.length;
+        for (uint256 i = 0; i < protocolCount; i++) {
+            totalLiability += tokenProtocolTVL[_token][supportedProtocols[i]];
+        }
+        if (!(balance > totalLiability)) revert NoSurplusToRecover();
+        uint256 surplus = balance - totalLiability;
+        token.safeTransfer(owner(), surplus);
+        emit EmergencyWithdraw(_token, owner(), surplus);
     }
 
     /**
