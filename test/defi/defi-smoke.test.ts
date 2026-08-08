@@ -15,8 +15,10 @@ async function deployFixture() {
   const agg = await upgrades.deployProxy(Factory, [owner.address, wmatic.address], {
     kind: 'uups',
     initializer: 'initialize',
-    // Finding (pre-existing, KHÔNG do custom-error): state var `percentFeeForSystem` gán initial value
-    // ở L137 — upgradeable contract nên set trong initialize() (initial value bị bỏ qua trong proxy storage).
+    // `percentFeeForSystem`'s inline field declaration (L~159) still trips the upgrades
+    // plugin's state-variable-assignment check even though CHALLENGE-2697 now also assigns it
+    // explicitly inside initialize() -- the plugin flags the inline default regardless of
+    // whether initialize() additionally sets it, so this allowlisting stays required.
     unsafeAllow: ['state-variable-assignment'],
   });
   await agg.waitForDeployment();
@@ -27,6 +29,11 @@ describe('PolygonDeFiAggregator — smoke + custom error runtime', () => {
   it('deploy + init: owner được set đúng', async () => {
     const { agg, owner } = await loadFixture(deployFixture);
     expect(await agg.owner()).to.equal(owner.address);
+  });
+
+  it('deploy + init: percentFeeForSystem is 20, not silently 0 (CHALLENGE-2697 fix)', async () => {
+    const { agg } = await loadFixture(deployFixture);
+    expect(await agg.percentFeeForSystem()).to.equal(20n);
   });
 
   it('addSupportedToken(address(0)) → revert InvalidTokenAddress (custom error runtime)', async () => {

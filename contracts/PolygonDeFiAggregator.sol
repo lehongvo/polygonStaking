@@ -28,6 +28,8 @@ error StakeNotMatured();
 error InvalidFeeRecipient();
 error ProtocolHasOutstandingLiabilities(); // CHALLENGE-2793
 error NoSurplusToRecover(); // CHALLENGE-2794
+error ZeroSharesMinted(); // CHALLENGE-2697
+error CompoundOperationFailed(); // CHALLENGE-2697
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -127,6 +129,28 @@ contract PolygonDeFiAggregator is
     // Constants
     address public WMATIC_ADDRESS;
 
+    // CHALLENGE-2697: virtual shares/assets offset (ERC4626-style "dead shares" mitigation) for
+    // the Aave/Compound share-ratio calculation below. Without this, a first depositor's shares
+    // can be inflated to a very low count and the pooled receipt-token balance donated to
+    // directly (bypassing _stakeToProtocol), so a later legitimate depositor's
+    // `received * totalShares / balance` rounds down to 0 -- they lose their principal with no
+    // shares to reclaim it. Adding SHARE_OFFSET to the *shares* side of the ratio means an
+    // attacker must donate proportionally more than SHARE_OFFSET to manipulate the price at all,
+    // making the attack cost outweigh any extraction for realistic deposit sizes.
+    //
+    // The offset is deliberately ASYMMETRIC (mirrors OpenZeppelin's ERC4626 decimals-offset
+    // formula): the *shares* term always gets `+ SHARE_OFFSET`, the *balance/asset* term always
+    // gets only `+ 1`. A symmetric `+ SHARE_OFFSET` on both terms was tried first and is unsound
+    // for withdrawals -- when a near-100%-of-shares holder redeems after the pooled balance has
+    // *shrunk* below what was originally deposited (a protocol-side loss), a symmetric offset can
+    // compute an amountToWithdraw a few hundred wei ABOVE the actual pooled balance, underflowing
+    // the receipt-token burn. The asymmetric form guarantees amountToWithdraw <= balance always
+    // (shares <= totalShares implies shares/(totalShares + OFFSET) < 1, so
+    // shares*(balance+1)/(totalShares+OFFSET) < balance + 1, i.e. <= balance after flooring),
+    // while still providing the same donation-attack resistance on deposits (the defense comes
+    // from the shares-side offset, not the balance-side one).
+    uint256 private constant SHARE_OFFSET = 1000;
+
     // State variables
     mapping(address => SupportedToken) public supportedTokens;
     address[] public supportedTokensList;
@@ -196,6 +220,29 @@ contract PolygonDeFiAggregator is
         // CHALLENGE-2697: default the governed fee recipient to the owner so it's never
         // address(0); the owner can repoint it later via setSystemFeeAddress.
         systemFeeAddress = initialOwner;
+        // CHALLENGE-2697: percentFeeForSystem's inline field default (= 20, declared at its
+        // storage slot above) is baked into the IMPLEMENTATION contract's own bytecode/storage
+        // but never executes against PROXY storage -- the constructor that would run inline
+        // initializers is disabled (_disableInitializers), only this function runs via the
+        // proxy's delegatecall. A fresh proxy's percentFeeForSystem therefore silently starts
+        // at 0 (Solidity's zero value), not 20, until someone notices and calls
+        // setPercentFeeForSystem. Set it explicitly here so new deployments are correct from
+        // the first transaction.
+        percentFeeForSystem = 20;
+    }
+
+    /**
+     * @dev CHALLENGE-2697: one-time correction for the already-deployed proxy, whose
+     * initialize() (above, pre-fix) never set percentFeeForSystem -- its storage may still be
+     * 0. reinitializer(2) both proves this can only ever run once (on top of the original
+     * initializer) and requires an explicit owner call rather than silently changing behavior
+     * on upgrade. No-ops if the value already reflects the intended fee (e.g. if the owner had
+     * already corrected it via setPercentFeeForSystem), so calling this is always safe.
+     */
+    function reinitializeSystemFee() external reinitializer(2) onlyOwner {
+        if (percentFeeForSystem == 0) {
+            percentFeeForSystem = 20;
+        }
     }
 
     // Accept native MATIC
@@ -413,9 +460,16 @@ contract PolygonDeFiAggregator is
         if (stakingToken == WMATIC_ADDRESS) {
             IWMATIC wmatic = IWMATIC(WMATIC_ADDRESS);
 
+            // CHALLENGE-2697 (TANIMOTO re-review): loss-aware principal, matching the ERC20
+            // branch below (min(actualWithdrawn, stakeAmount)) -- previously always withdrew
+            // the full stakeAmount here even when actualWithdrawn was less (rounding, protocol
+            // loss, or partial liquidity), which made wmatic.withdraw() revert on the shortfall
+            // and left even the recoverable remainder unwithdrawable.
+            uint256 principalToPay = actualWithdrawn <= stakeAmount ? actualWithdrawn : stakeAmount;
+
             // Transfer principal amount
-            wmatic.withdraw(stakeAmount);
-            (bool success1, ) = msg.sender.call{ value: stakeAmount }("");
+            wmatic.withdraw(principalToPay);
+            (bool success1, ) = msg.sender.call{ value: principalToPay }("");
             if (!(success1)) revert PrincipalMaticTransferFailed();
             // Transfer rewards if any
             if (rewards > 0) {
@@ -472,20 +526,40 @@ contract PolygonDeFiAggregator is
             // aToken balance (ERC4626-style: shares = received * totalShares / balanceBefore),
             // so pooled deposits for the same token+protocol correctly share accrued yield and
             // each stake can only ever claim its own proportional slice on withdrawal.
+            // CHALLENGE-2697 (TANIMOTO re-review): SHARE_OFFSET on the shares term deters a
+            // donation/inflation attack (direct aToken transfer to this contract, bypassing this
+            // function, to manipulate the price so a later depositor's shares round to 0) --
+            // also removes the old zero-balance special case, since `balanceBefore + 1` is never
+            // zero. See the SHARE_OFFSET declaration above for why the offset is asymmetric.
             address aToken = _getATokenAddress(_token);
             uint256 balanceBefore = IERC20(aToken).balanceOf(address(this));
             IAavePool(protocol.contractAddress).supply(_token, _amount, address(this), 0);
             uint256 received = IERC20(aToken).balanceOf(address(this)) - balanceBefore;
 
             uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
-            shares = (totalSharesBefore == 0 || balanceBefore == 0)
-                ? received
-                : (received * totalSharesBefore) / balanceBefore;
+            shares = (received * (totalSharesBefore + SHARE_OFFSET)) / (balanceBefore + 1);
             tokenProtocolTotalShares[_token][_protocol] += shares;
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
-            shares = ICompoundPool(protocol.contractAddress).mint(_amount);
+            // CHALLENGE-2697 (TANIMOTO re-review): Compound V2's mint() returns an ERROR CODE
+            // (0 = success), NOT the number of cTokens minted -- treating it as `shares` meant
+            // every successful deposit silently tracked 0 shares. protocol.contractAddress for
+            // a "compound" protocol IS the cToken itself (ICompoundPool already declares
+            // balanceOf), so derive the real minted amount from the balance delta, mirroring
+            // the Aave branch above, with the same donation-resistant SHARE_OFFSET.
+            ICompoundPool cToken = ICompoundPool(protocol.contractAddress);
+            uint256 cBalanceBefore = cToken.balanceOf(address(this));
+            if (cToken.mint(_amount) != 0) revert CompoundOperationFailed();
+            uint256 cReceived = cToken.balanceOf(address(this)) - cBalanceBefore;
+
+            uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
+            shares = (cReceived * (totalSharesBefore + SHARE_OFFSET)) / (cBalanceBefore + 1);
+            tokenProtocolTotalShares[_token][_protocol] += shares;
         }
 
+        // CHALLENGE-2697: reject a deposit that would silently mint 0 shares -- without this, a
+        // legitimate depositor's tokens are pulled in but they receive nothing to reclaim them
+        // with (the exact outcome the donation-attack scenario above is designed to produce).
+        if (shares == 0) revert ZeroSharesMinted();
         return shares;
     }
 
@@ -509,12 +583,21 @@ contract PolygonDeFiAggregator is
             // matching the liquid/compound branches above: the underlying lands on this
             // contract, which then forwards it to the user in withdrawTimeLockedStake (same
             // WMATIC-unwrap / safeTransfer path as the other two protocol types).
+            // CHALLENGE-2697 (TANIMOTO re-review): inverse of the deposit-side ratio, same
+            // asymmetric SHARE_OFFSET placement (offset on the shares term only -- see the
+            // SHARE_OFFSET declaration above). This is required, not just symmetric-for-its-own-
+            // sake: a symmetric `+ SHARE_OFFSET` on aTokenBalance too can let a near-100%-share
+            // holder compute an amountToWithdraw a few hundred wei ABOVE the actual pooled
+            // balance whenever the protocol has taken a loss (aTokenBalance < totalSharesBefore),
+            // underflowing the aToken burn inside IAavePool.withdraw. The asymmetric form
+            // guarantees amountToWithdraw <= aTokenBalance unconditionally. The old
+            // zero-totalShares special case is still unnecessary (offset makes the denominator
+            // unconditionally nonzero).
             address aToken = _getATokenAddress(_token);
             uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
             uint256 aTokenBalance = IERC20(aToken).balanceOf(address(this));
-            uint256 amountToWithdraw = totalSharesBefore == 0
-                ? 0
-                : (_shares * aTokenBalance) / totalSharesBefore;
+            uint256 amountToWithdraw = (_shares * (aTokenBalance + 1)) /
+                (totalSharesBefore + SHARE_OFFSET);
             tokenProtocolTotalShares[_token][_protocol] = totalSharesBefore - _shares;
             if (amountToWithdraw > 0) {
                 amount = IAavePool(protocol.contractAddress).withdraw(
@@ -524,7 +607,25 @@ contract PolygonDeFiAggregator is
                 );
             }
         } else if (keccak256(bytes(protocol.protocolType)) == keccak256(bytes("compound"))) {
-            amount = ICompoundPool(protocol.contractAddress).redeem(_shares);
+            // CHALLENGE-2697 (TANIMOTO re-review): redeem() also returns an ERROR CODE, not the
+            // underlying amount returned -- derive it from this contract's underlying-token
+            // balance delta instead, mirroring the mint-side fix above. `_shares` is this
+            // aggregator's INTERNAL accounting unit; once SHARE_OFFSET is applied on deposit it
+            // is no longer 1:1 with actual cTokens held (a first deposit mints cTokens 1:1 with
+            // the underlying but is credited SHARE_OFFSET-multiplied internal shares), so it
+            // must be converted back to a real cToken amount via the inverse ratio -- the same
+            // two-step share<->asset conversion the Aave branch above already does -- instead of
+            // being passed straight to redeem().
+            ICompoundPool cToken = ICompoundPool(protocol.contractAddress);
+            uint256 totalSharesBefore = tokenProtocolTotalShares[_token][_protocol];
+            uint256 cTokenBalance = cToken.balanceOf(address(this));
+            uint256 cTokensToRedeem = (_shares * (cTokenBalance + 1)) / (totalSharesBefore + SHARE_OFFSET);
+            tokenProtocolTotalShares[_token][_protocol] = totalSharesBefore - _shares;
+            if (cTokensToRedeem > 0) {
+                uint256 underlyingBefore = IERC20(_token).balanceOf(address(this));
+                if (cToken.redeem(cTokensToRedeem) != 0) revert CompoundOperationFailed();
+                amount = IERC20(_token).balanceOf(address(this)) - underlyingBefore;
+            }
         }
 
         return amount;

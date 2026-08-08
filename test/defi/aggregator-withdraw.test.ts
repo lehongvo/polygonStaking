@@ -162,6 +162,23 @@ describe('PolygonDeFiAggregator.withdrawTimeLockedStake — CHALLENGE-2697', fun
     const { time } = await import('@nomicfoundation/hardhat-toolbox/network-helpers.js');
     await time.increase(1 * 86400 + 100);
 
+    // CHALLENGE-2697 (TANIMOTO re-review): withdrawal now prices shares via
+    // (shares * (aTokenBalance + 1)) / (totalShares + SHARE_OFFSET) -- an asymmetric,
+    // ERC4626-style offset (SHARE_OFFSET only on the shares term) that resists a
+    // donation/inflation attack while still guaranteeing the withdrawn amount never exceeds the
+    // actual pooled balance. That offset intentionally leaves a little dust in the contract on
+    // every withdrawal, so the actual amount recovered is no longer bit-for-bit identical to the
+    // raw aTokenBalance. Mirror the exact on-chain formula here instead of assuming zero
+    // rounding loss.
+    const SHARE_OFFSET = 1000n;
+    const stakeBefore = (await agg.getUserTimeLockedStakes(user.address))[stakeId];
+    const stakeShares = stakeBefore.shares;
+    const totalSharesBefore = await agg.tokenProtocolTotalShares(wmaticAddr, 'aave_lending');
+    const aTokenBalanceBeforeWithdraw = await aToken.balanceOf(aggAddr);
+    const actualWithdrawn =
+      (stakeShares * (aTokenBalanceBeforeWithdraw + 1n)) / (totalSharesBefore + SHARE_OFFSET);
+    const expectedRewards = actualWithdrawn > amount ? actualWithdrawn - amount : 0n;
+
     const userBefore = await ethers.provider.getBalance(user.address);
     const feeBefore = await ethers.provider.getBalance(owner.address); // default fee recipient
 
@@ -172,9 +189,10 @@ describe('PolygonDeFiAggregator.withdrawTimeLockedStake — CHALLENGE-2697', fun
     const userAfter = await ethers.provider.getBalance(user.address);
     const feeAfter = await ethers.provider.getBalance(owner.address);
 
-    const percentFee = await agg.percentFeeForSystem(); // default 20%
-    const expectedFee = (yieldAmount * percentFee) / 100n;
-    const expectedUserGain = amount + (yieldAmount - expectedFee) - gasCost;
+    const percentFee = await agg.percentFeeForSystem(); // default 20%, now set by initialize()
+    expect(percentFee).to.equal(20n); // CHALLENGE-2697: no longer silently 0 on a fresh proxy
+    const expectedFee = (expectedRewards * percentFee) / 100n;
+    const expectedUserGain = amount + (expectedRewards - expectedFee) - gasCost;
 
     expect(feeAfter - feeBefore).to.equal(expectedFee);
     expect(userAfter - userBefore).to.equal(expectedUserGain);
