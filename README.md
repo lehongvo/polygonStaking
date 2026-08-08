@@ -113,7 +113,7 @@ cp .env.example .env
 
 ## Security patches
 
-3 challenge contracts (`ChallengeBaseStep`, `ChallengeDetail`, `ChallengeHIIT`) have applied **8 security patches** per third-party AI review (`sun2642026.txt`):
+3 challenge contracts (`ChallengeBaseStep`, `ChallengeDetail`, `ChallengeHIIT`) have applied security patches per third-party AI review (`sun2642026.txt`). **CHALLENGE-2738: the original review input (`sun2642026.txt`) and its report (`REVIEW_REPORT_sun2642026.md`) were never committed to this repository and cannot be located in any ref's history — the table below is only what could be reconstructed from the 7 finding IDs actually present in this repo's own commits/tests. It is NOT a verified reproduction of the original review's full finding list.** A separate revision of this document (`flattened/README.md` at commit `5001740`, since removed) stated 10 fixes against an 8-row table; that discrepancy, and the disposition of `F5` (referenced by the original numbering but never described or fixed in any delivered revision of this repo), are unresolved and need the reviewing vendor's input — see CHALLENGE-2738.
 
 | ID        | Description                                                                                                                                              |
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -121,11 +121,12 @@ cp .env.example .env
 | **F2**    | `sendDailyResult` — fix `isSendFailWithSameDay` inverted bool + `length>1` guard (C1/C2 only; C3 already correct)                                        |
 | **F3**    | Inline `ReentrancyGuard` + `nonReentrant` on `giveUp/sendDailyResult/closeChallenge/withdrawTokensOnCompletion` + CEI state writes before external calls |
 | **F4**    | `tranferCoinNative` reverts on insufficient balance instead of silent skip                                                                               |
+| **F5**    | **Unknown/undelivered.** Referenced by the original review's numbering (the gap between F4 and F6) but no description or corresponding fix was ever committed to this repo under this ID.                                                              |
 | **F6**    | `onTimeSendResult` enforces `endTime + 2 days` upper bound                                                                                               |
 | **N1**    | Constructor enforces `sum(awardReceiversPercent) <= 100`                                                                                                 |
 | **F-A10** | `receive()` guard `_reentrancyStatus != 2` to prevent CEI+receive() infinite-loop DoS                                                                    |
 
-Verified by **84 unit tests** (28 test files across 7 categories).
+Verified by **84 unit tests** (28 test files across 7 categories) — this count is not tied to individual finding IDs above; only `N1` and `F6` have tests named for their specific finding ID, `F1`-`F4`/`F-A10` are covered by general-purpose tests not labeled by ID.
 
 ---
 
@@ -152,7 +153,7 @@ Detailed guide in `flattened/README.md`.
 - `stag` → staging server
 - `staging` → main PR target branch
 - `master` → production
-- `fix/sun2642026-security-patches` → current security patch branch
+- `master-review` → active security-patch/audit-remediation branch for this review (CHALLENGE-2739/2650). `fix/sun2642026-security-patches`, previously referenced here, does not exist on this repository or its origin remote — corrected per CHALLENGE-2738.
 
 ---
 

@@ -3,7 +3,10 @@ import { expect } from 'chai';
 import hre from 'hardhat';
 
 /**
- * Tests for the security fixes applied per REVIEW_REPORT_sun2642026.md.
+ * Tests for security fixes originally tracked under the sun2642026 review's finding IDs (N1, F6,
+ * etc. -- see the Security patches table in README.md). CHALLENGE-2738: REVIEW_REPORT_sun2642026.md
+ * was never committed to this repository and cannot be located in any ref's history; this comment
+ * previously implied it as a source document, which is misleading.
  * Covers fixes that can be exercised without the full off-chain signing
  * infrastructure: N1 constructor sum-percent invariant and F6 onTimeSendResult
  * upper bound. F1/F2/F3 require additional mocking of the signature scheme
