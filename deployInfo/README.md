@@ -64,6 +64,22 @@ const deploymentPath = './deployInfo/polygon-defi-deployment.json';
 | SoulBoundNFT          | `0x39E16281D4668b393303c6A03fa75e2f84d6404B` | [View](https://polygonscan.com/address/0x39E16281D4668b393303c6A03fa75e2f84d6404B) |
 | YOBOWEB3WALK          | `0xF41D70Bd4aE673A3B62A244cBe39270eccFBb9d9` | [View](https://polygonscan.com/address/0xF41D70Bd4aE673A3B62A244cBe39270eccFBb9d9) |
 
+## Test Coverage (Kaia Mainnet Deployments)
+
+CHALLENGE-2737: mapping each contract deployed to Kaia mainnet (chainId 8217) to the test file(s)
+that actually deploy and exercise it, so an untested live deployment is visible at a glance
+instead of hiding behind the suite's overall pass count.
+
+| Contract                        | Address (deployInfo file)                                                                    | Test coverage                                                       |
+| -------------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| ChallengeFee                     | `0x074a133a378b04FA936A53DAC4049aAa687FB16E` (`challenge-fee-kaia.json`)                       | `test/challengeFee/challenge-fee.test.ts`                             |
+| HistoryChallenges                 | `0x8B4a723d12FEe6a45f9FbF3d400FDc8517bB0E9A` (`history-challenges-kaia.json`)                  | `test/historyChallenges/history-challenges-erc20-indexing.test.ts`    |
+| ExerciseSupplementNFTSpecial1     | `0x4aEcd6bdb4DCAb9beb8a49F93c04c0C65d060530` (`exercise-supplement-setup-kaia.json`)            | `test/exerciseSupplementSpecial/exercise-supplement-nft-special.test.ts` |
+| ExerciseSupplementNFTSpecial2     | `0xC1849D39bb4003039089cC46AC55D480EfF045F0` (`exercise-supplement-setup-kaia.json`)            | `test/exerciseSupplementSpecial/exercise-supplement-nft-special.test.ts` |
+
+Update this table whenever a new contract is deployed to Kaia mainnet, or when its test file
+moves/is renamed.
+
 ## Scripts That Use These Files
 
 ### DeFi Scripts
