@@ -59,6 +59,16 @@ describe('ChallengeGCM — reentrancy guard regression (CHALLENGE-2734)', functi
     expect(await attacker.reentryAttempts()).to.equal(1n);
     expect(await attacker.lastReentryReverted()).to.equal(true);
 
+    // CHALLENGE-2734 re-review: reentryAttempts/lastReentryReverted/the balance band below are
+    // ALL identical whether nonReentrant is present or removed -- with the guard gone, the
+    // reentrant call is instead rejected by the unrelated `available` modifier
+    // (ChallengeWasFinished), which also sets lastReentryReverted=true and produces the same
+    // "(low-level revert)" string. Only the actual revert selector distinguishes "blocked by
+    // the reentrancy guard" from "blocked by something else" -- assert it explicitly against
+    // the guard's own error, not a hardcoded literal.
+    const expectedSelector = challenge.interface.getError('ReentrancyguardReentrantCall')!.selector;
+    expect(await attacker.lastRevertSelector()).to.equal(expectedSelector);
+
     const balanceAfter = await hre.ethers.provider.getBalance(attackerAddr);
     const gained = balanceAfter - balanceBefore;
     expect(gained).to.be.greaterThan(0n);

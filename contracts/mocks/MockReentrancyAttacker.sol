@@ -23,6 +23,13 @@ contract MockReentrancyAttacker {
     uint256 public reentryAttempts;
     bool public lastReentryReverted;
     string public lastRevertReason;
+    // CHALLENGE-2734 re-review: `catch Error(string)` / bare `catch` collapse every custom
+    // error to the same "(low-level revert)" string, so a test asserting only
+    // lastReentryReverted/lastRevertReason cannot tell "blocked by nonReentrant" apart from
+    // "blocked by some other, unrelated guard" -- exactly the gap that let this test pass
+    // identically with the guard present or removed. The 4-byte selector is the one thing
+    // that actually distinguishes them.
+    bytes4 public lastRevertSelector;
 
     function setTarget(address _t) external {
         target = _t;
@@ -33,6 +40,7 @@ contract MockReentrancyAttacker {
         reentryAttempts = 0;
         lastReentryReverted = false;
         lastRevertReason = "";
+        lastRevertSelector = bytes4(0);
     }
 
     function disarm() external {
@@ -52,9 +60,12 @@ contract MockReentrancyAttacker {
             } catch Error(string memory reason) {
                 lastReentryReverted = true;
                 lastRevertReason = reason;
-            } catch {
+            } catch (bytes memory data) {
                 lastReentryReverted = true;
                 lastRevertReason = "(low-level revert)";
+                if (data.length >= 4) {
+                    lastRevertSelector = bytes4(data);
+                }
             }
         }
     }
