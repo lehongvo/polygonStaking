@@ -4309,25 +4309,27 @@ contract ExerciseSupplementNFT is
                 _dayRequired >= _duration - (_duration / listToleranceAmount[1])
             ) {
                 if (listSpecialNftAddress.length() < 2) revert MissingNft();
-                TransferHelper.safeMintNFT(listSpecialNftAddress.at(1), _challenger);
                 curentAddressNftUse = listSpecialNftAddress.at(1);
-                indexNftAfterMint = ExerciseSupplementNFT(listSpecialNftAddress.at(1))
-                    .nextTokenIdToMint();
+                // CHALLENGE-2704: nextTokenIdToMint() reflects the COUNTER, which safeMint()
+                // increments only AFTER assigning the pre-increment value as the token id -- so
+                // reading it after the mint call below would return mintedId+1, not the id that
+                // was actually minted. Capture it before minting instead.
+                indexNftAfterMint = ExerciseSupplementNFT(curentAddressNftUse).nextTokenIdToMint();
+                TransferHelper.safeMintNFT(curentAddressNftUse, _challenger);
             } else {
                 if (_dayRequired >= _duration - (_duration / (listToleranceAmount[0]))) {
                     if (listSpecialNftAddress.length() < 1) revert MissingNft();
-                    TransferHelper.safeMintNFT(listSpecialNftAddress.at(0), _challenger);
                     curentAddressNftUse = listSpecialNftAddress.at(0);
-                    indexNftAfterMint = ExerciseSupplementNFT(listSpecialNftAddress.at(0))
-                        .nextTokenIdToMint();
+                    indexNftAfterMint = ExerciseSupplementNFT(curentAddressNftUse).nextTokenIdToMint();
+                    TransferHelper.safeMintNFT(curentAddressNftUse, _challenger);
                 }
             }
         } else {
             if (soulBoundNftAddress == address(0) || !hasSoulBoundMinted) {
                 if (listNftAddress.length() < 1) revert MissingNft();
-                TransferHelper.safeMintNFT(listNftAddress.at(0), _challenger);
                 curentAddressNftUse = listNftAddress.at(0);
-                indexNftAfterMint = ExerciseSupplementNFT(listNftAddress.at(0)).nextTokenIdToMint();
+                indexNftAfterMint = ExerciseSupplementNFT(curentAddressNftUse).nextTokenIdToMint();
+                TransferHelper.safeMintNFT(curentAddressNftUse, _challenger);
             }
         }
 

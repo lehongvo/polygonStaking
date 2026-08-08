@@ -581,9 +581,43 @@ describe('ExerciseSupplementNFT — safeMintNFT (reward distribution logic)', fu
           challenger.address
         );
       expect(ret[0]).to.equal(await specialNft1.getAddress());
-      // indexNftAfterMint is nextTokenIdToMint() of specialNft1 AFTER mint
-      // which equals 1 (one mint inside staticCall context)
-      expect(ret[1]).to.equal(1n);
+      // CHALLENGE-2704: the returned index must be the id that was actually minted, not
+      // nextTokenIdToMint() read AFTER the mint (which would be mintedId+1). specialNft1's
+      // counter starts at 0, so the first mint's id is 0.
+      expect(ret[1]).to.equal(0n);
+    });
+
+    // CHALLENGE-2704: a static call alone can't prove the returned id is the REAL minted
+    // token -- it only proves the read matched the mock counter's pre-call value. This does
+    // a real (non-static) mint, then asserts ownerOf(returnedId) is actually the challenger --
+    // the exact failure mode the ticket describes (ownerOf/tokenURI/history lookups using the
+    // returned value pointing at an unminted, or after a second mint, a DIFFERENT participant's
+    // token) -- across two consecutive mints so an off-by-one can't hide behind the first mint's
+    // coincidental id=0.
+    it('the returned index is the id of the token actually minted to the challenger (real mint, not staticCall)', async function () {
+      const ctx = await loadFixture(deployExerciseSupplementFixture);
+      await setupForSpecialMint(ctx);
+      const { nft, owner, donation, specialNft1, challenger, other } = ctx;
+
+      const mintOnce = async (to: string) => {
+        const ret = await nft
+          .connect(owner)
+          .safeMintNFT.staticCall(1000, 10, 8, ethers.ZeroAddress, 100, 50, donation.address, to);
+        await nft
+          .connect(owner)
+          .safeMintNFT(1000, 10, 8, ethers.ZeroAddress, 100, 50, donation.address, to);
+        return ret[1];
+      };
+
+      const firstId = await mintOnce(challenger.address);
+      expect(await specialNft1.ownerOf(firstId)).to.equal(challenger.address);
+
+      const secondId = await mintOnce(other.address);
+      expect(secondId).to.equal(firstId + 1n);
+      expect(await specialNft1.ownerOf(secondId)).to.equal(other.address);
+      // The second mint's id must NOT resolve to the first challenger -- that's the exact
+      // cross-participant corruption the ticket describes.
+      expect(await specialNft1.ownerOf(secondId)).to.not.equal(challenger.address);
     });
 
     it('returns (0, 0) when no path mints (special met but no tier matches AND empty normal list)', async function () {
