@@ -1238,6 +1238,12 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
         if (dayLength > MAX_DAILY_BATCH_DAYS) revert ExceedsMaxDailyBatch();
         if (_listGachaAddress.length > MAX_GACHA_CALLS_PER_TX) revert TooManyGachaCalls();
         if (_listNFTAddress.length > MAX_NFT_CONTRACTS_PER_TX) revert TooManyNftContracts();
+        // CHALLENGE-2653: these three arrays are parallel to _listNFTAddress. An unequal length
+        // previously surfaced only as an out-of-bounds panic deep inside a transfer loop, after
+        // some state/external calls may already have run. Fail fast and explicitly instead.
+        if (_listIndexNFT.length != _listNFTAddress.length) revert InvalidLists();
+        if (_listSenderAddress.length != _listNFTAddress.length) revert InvalidLists();
+        if (_statusTypeNft.length != _listNFTAddress.length) revert InvalidLists();
         for (uint256 boundCheck = 0; boundCheck < _listNFTAddress.length; boundCheck++) {
             if (_listIndexNFT[boundCheck].length > MAX_NFT_IDS_PER_CONTRACT) revert TooManyNftIds();
         }

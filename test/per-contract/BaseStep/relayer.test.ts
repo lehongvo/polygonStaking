@@ -149,7 +149,7 @@ describe('ChallengeBaseStep — sendDailyResultViaRelayer (multi-param payload)'
   });
 
   it('assetHash khớp → relay vẫn chạy bình thường (không phá luồng hợp lệ)', async function () {
-    const { challenger, challenge, startTime, relayer, attacker } = await deploy();
+    const { challenger, challenge, startTime, relayer } = await deploy();
     await time.increaseTo(startTime + 100);
     const addr = await challenge.getAddress();
     const chainId = (await hre.ethers.provider.getNetwork()).chainId;
@@ -159,11 +159,14 @@ describe('ChallengeBaseStep — sendDailyResultViaRelayer (multi-param payload)'
     const timeRange: [number, number] = [0, 0];
     const deadline = startTime + 100000;
     // Challenger CHỦ ĐỘNG ký kèm đúng bộ tài sản sẽ dùng → phải pass.
-    const assets: Assets = { signature: '0x', gacha: [], nft: [], indexNFT: [], sender: [[attacker.address]], statusTypeNft: [true] };
+    // CHALLENGE-2653: _listSenderAddress/_statusTypeNft must be the SAME length as _listNFTAddress
+    // (parallel arrays) -- keep all four empty here since this test only proves "signature matches
+    // → relay proceeds", not NFT transfer behavior (covered by the negative tests above).
+    const assets: Assets = { signature: '0x', gacha: [], nft: [], indexNFT: [], sender: [], statusTypeNft: [] };
     const sig = await buildSig(challenger, addr, chainId, 0, deadline, day, stepIndex, data, timeRange, [], [], [], [], assets);
     await challenge
       .connect(relayer)
-      .sendDailyResultViaRelayer(day, stepIndex, data, '0x', [], [], [], [[attacker.address]], [true], timeRange, [], [], [], [], 0, deadline, sig);
+      .sendDailyResultViaRelayer(day, stepIndex, data, '0x', [], [], [], [], [], timeRange, [], [], [], [], 0, deadline, sig);
     expect(await challenge.relayNonce(challenger.address)).to.equal(1n);
   });
 });
