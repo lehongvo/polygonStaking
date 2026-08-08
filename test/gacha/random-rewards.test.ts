@@ -202,6 +202,45 @@ describe('Gacha — randomRewards full coverage', function () {
       expect(remaining.length).to.equal(1);
     });
 
+    // CHALLENGE-2796: tokenId 0 is a real, valid delivered token -- not a "delivery failed"
+    // sentinel. Before this fix, `indexTokenReward == 0` was used as the delivery-failure
+    // guard, so a correctly-delivered tokenId 0 was indistinguishable from "nothing was
+    // transferred" and the whole settlement reverted with Erc721DeliveryFailed(), even though
+    // the NFT had already reached the challenger.
+    it('ERC721 transfer-existing tokenId 0: delivers successfully, does NOT revert Erc721DeliveryFailed', async function () {
+      const { gacha, owner, challenger, challenge, erc721Reward, vrfClassic } =
+        await loadFixture(deployGachaFixture);
+      const gachaAddr = await gacha.getAddress();
+      // Mint the FIRST token this collection ever mints -- tokenId 0 (CountersUpgradeable
+      // starts at 0) -- directly to the gacha contract, and configure it as the ONLY entry in
+      // listNft so the reward can only ever deliver tokenId 0.
+      await erc721Reward.mint(gachaAddr, 0);
+
+      await gacha.connect(owner).updateRewardRateAndMaxAllowed(0, 0, 0);
+      await gacha
+        .connect(owner)
+        .addNewReward(
+          await erc721Reward.getAddress(),
+          100,
+          1,
+          0,
+          TypeToken.ERC721,
+          false,
+          5,
+          [0]
+        );
+      await setRandomResult(vrfClassic, 0);
+
+      // Must NOT revert -- tokenId 0 delivered successfully is a success, not a failure.
+      await callRandomRewards(challenge, gacha);
+
+      expect(await erc721Reward.ownerOf(0)).to.equal(challenger.address);
+      expect(await erc721Reward.balanceOf(challenger.address)).to.equal(1n);
+
+      const info = await gacha.userInfor(challenger.address);
+      expect(info.indexToken).to.equal(0n);
+    });
+
     it('ERC1155 mint: mints amount tokens at indexToken', async function () {
       const { gacha, owner, challenger, challenge, erc1155Reward, vrfClassic } =
         await loadFixture(deployGachaFixture);

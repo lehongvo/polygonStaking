@@ -3283,6 +3283,12 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
             if (randomIndexReward != 0) {
                 // Get the index of the selected reward token
                 uint256 indexTokenReward;
+                // CHALLENGE-2796: `indexTokenReward == 0` is NOT a safe "nothing was delivered"
+                // sentinel -- tokenId 0 is a real, mintable/transferable token (the first NFT
+                // minted by CountersUpgradeable-based collections starts at 0), so a delivered
+                // tokenId 0 is indistinguishable from "the loop below never found/transferred a
+                // token". Track delivery with an explicit flag instead.
+                bool erc721Delivered;
 
                 // Get the selected reward token's information from the rewardTokens mapping
                 RewardToken storage currentRewardToken = rewardTokens[randomIndexReward];
@@ -3363,6 +3369,9 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                                     );
                                     // Set the reward index to the transferred token ID
                                     indexTokenReward = currentRewardToken.listNft[j];
+                                    // CHALLENGE-2796: mark delivery explicitly (tokenId 0 is a
+                                    // valid delivered value, not a "nothing happened" default).
+                                    erc721Delivered = true;
 
                                     currentRewardToken.listNft[j] = currentRewardToken.listNft[
                                         currentLength - 1
@@ -3413,7 +3422,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                     if (
                         currentRewardToken.typeToken == TypeToken.ERC721 &&
                         !currentRewardToken.isMintNft &&
-                        indexTokenReward == 0
+                        !erc721Delivered
                     ) {
                         revert Erc721DeliveryFailed();
                     }

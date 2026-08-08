@@ -120,6 +120,48 @@ describe('CHALLENGE-2832: ERC20 settlement failures are isolated', () => {
         const credited = await challenge.pendingErc20Claim(sponsor.address, feeAddr);
         expect(sponsorGain + credited).to.equal((payout * 90n) / 100n);
       });
+
+      // CHALLENGE-2832 re-review: claimPendingErc20 previously required delivered === amount
+      // exactly, which a fee-on-transfer token can never satisfy -- every claim attempt
+      // reverted, forever, regardless of contract liquidity, so the credited shortfall was a
+      // permanent unclaimable liability. This asserts the actual fix: a claim against a
+      // fee-on-transfer credit succeeds (no revert), the pending balance strictly decreases,
+      // and the caller's real token balance increases by what was actually delivered.
+      it('fee-on-transfer ERC20: claimPendingErc20 succeeds and strictly reduces the pending balance (does not revert forever)', async function () {
+        const MockFee = await hre.ethers.getContractFactory('MockFeeOnTransferERC20');
+        const feeToken = await MockFee.deploy('Fee', 'FEE');
+        const feeAddr = await feeToken.getAddress();
+
+        const { challenge, challenger, sponsor, startTime } = await deployVariant(name, [feeAddr]);
+        const challengeAddr = await challenge.getAddress();
+        const payout = hre.ethers.parseEther('100');
+        await feeToken.mint(challengeAddr, payout);
+
+        await moveToStart(startTime);
+        await expect(challenge.connect(challenger).giveUp([], [], [], [])).to.not.be.reverted;
+
+        const creditedBefore = await challenge.pendingErc20Claim(sponsor.address, feeAddr);
+        expect(creditedBefore).to.be.gt(0n);
+        const balanceBefore = await feeToken.balanceOf(sponsor.address);
+
+        // Settlement already swept the contract's ERC20 balance across all recipients (that's
+        // the point of _transferErc20OrCredit crediting a shortfall instead of holding a
+        // reserve) -- top up AFTER settlement, isolating the exact-delivery bug from a
+        // liquidity question, exactly as the auditor's own repro did ("I minted 1000 more into
+        // the contract and repeated").
+        await feeToken.mint(challengeAddr, hre.ethers.parseEther('1000'));
+
+        await expect(challenge.connect(sponsor).claimPendingErc20(feeAddr)).to.not.be.reverted;
+
+        const creditedAfter = await challenge.pendingErc20Claim(sponsor.address, feeAddr);
+        const balanceAfter = await feeToken.balanceOf(sponsor.address);
+
+        expect(creditedAfter).to.be.lt(creditedBefore); // strictly decreased, not stuck
+        expect(balanceAfter).to.be.gt(balanceBefore); // caller actually received tokens
+        // 10% fee on this mock -> delivered = 90% of what was claimed (the full creditedBefore).
+        expect(balanceAfter - balanceBefore).to.equal((creditedBefore * 90n) / 100n);
+        expect(creditedAfter).to.equal(creditedBefore - (balanceAfter - balanceBefore));
+      });
     });
   }
 });

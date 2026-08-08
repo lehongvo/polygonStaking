@@ -1999,15 +1999,23 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
         uint256 delivered = recipientAfter > recipientBefore ? recipientAfter - recipientBefore : 0;
         uint256 spent = senderBefore > senderAfter ? senderBefore - senderAfter : 0;
 
+        // CHALLENGE-2832 re-review fix: a fee-on-transfer token can never deliver the full
+        // credited `amount` by definition of the token -- requiring exact delivery here made
+        // every claim against such a token permanently unclaimable (this branch reverted the
+        // whole call EVERY time, including the shortfall re-credit on the line before it, so
+        // the pending balance never actually decreased no matter how many times a caller
+        // retried, with any amount of contract liquidity). Only a TRUE no-op (nothing left
+        // this contract, nothing arrived at the caller) is a failure; any positive `delivered`
+        // is a successful (possibly partial) claim, and the still-outstanding shortfall, if
+        // any, is restored to pending rather than lost.
         if (!callOk || delivered == 0 || spent == 0) {
             _pendingErc20Claims[msg.sender][token] = amount;
             revert Erc20ClaimTransferFailed();
         }
         if (delivered < amount) {
             _pendingErc20Claims[msg.sender][token] = amount - delivered;
-            revert Erc20ClaimTransferFailed();
         }
-        emit Erc20PayoutClaimed(msg.sender, token, amount);
+        emit Erc20PayoutClaimed(msg.sender, token, delivered);
     }
 
     function getBalanceTokenOfContract(
