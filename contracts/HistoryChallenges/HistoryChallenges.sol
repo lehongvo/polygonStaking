@@ -82,8 +82,12 @@ contract HistoryChallenges{
                 );
             } else {
                 address createByToken = IChallenge(_contractChallengeAddress).createByToken();
+                // CHALLENGE-2705: compared every entry against erc20ListAddress[0] instead of
+                // erc20ListAddress[i] -- a creation token anywhere but the first slot was never
+                // matched, and every OTHER token was wrongly credited with totalReward whenever
+                // index 0 happened to be the creation token.
                 for(uint256 i = 0; i < erc20ListAddress.length; i++) {
-                    if(createByToken == erc20ListAddress[0]) {
+                    if(createByToken == erc20ListAddress[i]) {
                         depositToken[i] = IChallenge(_contractChallengeAddress).totalReward();
                     } else {
                         depositToken[i] = 0;
@@ -153,6 +157,11 @@ contract HistoryChallenges{
         } else {
             address payable challengeAddress = _contractChallengeAddress;
             uint256 indexCreateToken;
+            // CHALLENGE-2705: indexCreateToken defaulted to 0 (uint256's zero value) when the
+            // creation token was absent from erc20ListAddress -- indistinguishable from "found
+            // at index 0", so the later subtraction below could silently debit the wrong token
+            // or underflow-revert. An explicit found flag makes "not found" its own state.
+            bool foundCreateToken;
             for(uint256 i = 0; i < erc20ListAddress.length; i++) {
                 listTokenSymbol[i] = IERC20(erc20ListAddress[i]).symbol();
                 uint256 balance = IERC20(erc20ListAddress[i]).balanceOf(challengeAddress);
@@ -160,6 +169,7 @@ contract HistoryChallenges{
                 if(createByToken == erc20ListAddress[i]) {
                     tokenBalanceBefor[i] = totalReward;
                     indexCreateToken = i;
+                    foundCreateToken = true;
                     if(balance >= totalReward) {
                         tokenBalanceAfter[i] = balance - totalReward;
                     }
@@ -171,7 +181,15 @@ contract HistoryChallenges{
             if(IChallenge(challengeAddress).isFinished()) {
                 uint256 balanceMatic = IChallenge(_contractChallengeAddress).totalBalanceBaseToken();
                 uint256[] memory balanceToken = IChallenge(challengeAddress).getBalanceToken();
-                balanceToken[indexCreateToken] = balanceToken[indexCreateToken] - totalReward;
+                // Only debit once index validity, presence, and sufficient balance are all
+                // confirmed -- never subtract from an unrelated/out-of-range/underflowing slot.
+                if (
+                    foundCreateToken &&
+                    indexCreateToken < balanceToken.length &&
+                    balanceToken[indexCreateToken] >= totalReward
+                ) {
+                    balanceToken[indexCreateToken] = balanceToken[indexCreateToken] - totalReward;
+                }
                 return(0, balanceMatic, tokenBalanceBefor, balanceToken, listTokenSymbol);
             } else {
                 return(0, contractBalance, tokenBalanceBefor, tokenBalanceAfter, listTokenSymbol);
