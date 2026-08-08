@@ -2,6 +2,34 @@
 
 This directory contains deployment information for all contracts deployed in this project.
 
+## ⚠️ CHALLENGE-2735: hardcoded bytecode artifacts are STALE -- do not redeploy from them
+
+The Challenge contract bytecode/ABI hardcoded in three places (this repo's
+`scripts/challenge/*/bytecode.json` / `bytecodeAndAbi.json`, ADMIN's `src/assets/byteCode/*.js`,
+and BACKEND's `app/abis/ChallengeBaseStep.json`) does **not** contain the security fixes applied
+in this review pass (commit `bf1d902` and everything after it in this branch's history) --
+confirmed by selector-checking for `relayNonce(address)` (`0x93621656`, added by the
+`sendDailyResultViaRelayer` meta-tx relay fix), which is absent from every one of those three
+artifact locations as of this note. `yarn gen:bytecode` in this repo only regenerates the two
+files here; it does **not** update ADMIN's or BACKEND's copies, and no tooling currently checks
+that all three stay in sync.
+
+**Do not use these artifacts to deploy or redeploy a Challenge contract until:**
+1. A fresh build-info/bytecode regeneration is run from the exact reviewed commit, AND
+2. ADMIN's `src/assets/byteCode/*.js` and BACKEND's `app/abis/ChallengeBaseStep.json` are updated
+   from that same regeneration (manually, until CHALLENGE-2735's cross-repo tooling gap is closed),
+   AND
+3. The resulting artifacts are verified to embed the fixes above (e.g. re-run the selector check)
+   before any deploy/verify script is pointed at them.
+
+Separately, BACKEND's Kaia verification input (`app/abis/verify/challenge-standard-input.json`,
+sent to Kaiascan) does not byte-match any commit in this repo's available branches -- it contains
+a `historyDateIndex` optimization absent from every local revision. Confirming which commit
+actually produced the bytecode currently live on Polygon/Kaia mainnet needs the deploying
+vendor/owner's input; this cannot be reconstructed from the source available in this clone alone.
+See CHALLENGE-2735 for full evidence and the cross-repo regeneration-tooling gap this note does
+not by itself close.
+
 ## File Structure
 
 ### Current Deployments
