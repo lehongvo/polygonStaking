@@ -2866,9 +2866,14 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
     error MaxNumberAllowedShouldBeEqualZero();
     error IndexOfTokenRewardNotExist();
     error Erc721DeliveryFailed();
+    error TooManyRewards();
 
     // Upper bound for ERC1155 eligibility scans in checkBalanceNft (gas DoS guard).
     uint256 private constant MAX_ERC1155_ID_SCAN = 256;
+    // CHALLENGE-2701 re-review: listIdToken had no count bound -- every draw/eligibility path
+    // scans it in full (getRandomIndexReward, checkRewardExists-style loops), so an unbounded
+    // admin-configured catalog is the least-bounded remaining path in this gas budget.
+    uint256 private constant MAX_REWARD_COUNT = 100;
 
     // Import necessary libraries
     // EnumerableSet for managing sets of addresses and uints
@@ -3692,6 +3697,10 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
         // Require the reward value to be greater than zero.
         if (!(_rewardValue > 0)) revert InvalidRewardValue();
 
+        // CHALLENGE-2701 re-review: bound the reward catalog -- every draw/eligibility scan
+        // below is O(listIdToken.length), so an unbounded catalog is an unbounded gas cost.
+        if (!(listIdToken.length < MAX_REWARD_COUNT)) revert TooManyRewards();
+
         // Find the first empty slot in the list of rewards.
         uint256 indexOfTokenReward = 0;
 
@@ -4231,19 +4240,23 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
      * @return True if the address has the required balance, false otherwise
      */
     function checkBalanceNft(address _fromAddress) private view returns (bool) {
+        // CHALLENGE-2701 re-review: requireBalanceNftAddress.values() copies the whole
+        // EnumerableSet to memory on every call. Reading it once up front instead of once per
+        // loop condition/body access turns an O(n^2)-in-copies scan into O(n).
+        address[] memory required = requireBalanceNftAddress.values();
+
         // Loop through all the NFTs that are required for the challenge
-        for (uint256 i = 0; i < requireBalanceNftAddress.values().length; i++) {
+        for (uint256 i = 0; i < required.length; i++) {
             // If the NFT is an ERC-721 token
-            if (typeNfts[requireBalanceNftAddress.values()[i]]) {
+            if (typeNfts[required[i]]) {
                 // If the address has a balance of this token
-                if (IERC721(requireBalanceNftAddress.values()[i]).balanceOf(_fromAddress) > 0) {
+                if (IERC721(required[i]).balanceOf(_fromAddress) > 0) {
                     return true;
                 }
             } else {
                 // If the NFT is an ERC-1155 token
                 // Get the current index token for this NFT
-                uint256 currentIndexToken = IERC1155(requireBalanceNftAddress.values()[i])
-                    .nextTokenIdToMint();
+                uint256 currentIndexToken = IERC1155(required[i]).nextTokenIdToMint();
 
                 uint256 scanLimit = currentIndexToken;
                 if (scanLimit > MAX_ERC1155_ID_SCAN) {
@@ -4252,10 +4265,7 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
 
                 // Loop through token IDs up to the scan cap
                 for (uint256 j = 0; j < scanLimit; j++) {
-                    if (
-                        IERC1155(requireBalanceNftAddress.values()[i]).balanceOf(_fromAddress, j) >
-                        0
-                    ) {
+                    if (IERC1155(required[i]).balanceOf(_fromAddress, j) > 0) {
                         return true;
                     }
                 }
