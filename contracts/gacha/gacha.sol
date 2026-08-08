@@ -4040,11 +4040,19 @@ contract Gacha is Initializable, IERC721Receiver, AccessControlUpgradeable, UUPS
                                  * Loop through the list of receivers and check if the receiver gets 98% of the reward and the receiver is an admin
                                  * Check if any of the award receivers are admins with 98% of the reward
                                  */
+                                // CHALLENGE-2798: getAwardReceiversAtIndex(_index, false) resolves to
+                                // awardReceivers[_index + index] on the Challenge side (a
+                                // FAILURE-relative index), while `i` here indexes the FULL
+                                // awardReceiversPercent array starting at the first failure entry
+                                // (1). Was hardcoded to `0` regardless of `i`, so with more than one
+                                // failure receiver a later entry's PERCENTAGE could be combined with
+                                // the FIRST failure receiver's IDENTITY. `i - 1` keeps both indices
+                                // advancing together.
                                 for (uint256 i = 1; i < awardReceiversPercent.length; i++) {
                                     if (awardReceiversPercent[i] == 98) {
                                         if (
                                             IChallenge(_challengeAddress).getAwardReceiversAtIndex(
-                                                0,
+                                                i - 1,
                                                 false
                                             ) == receiveAdminWallet
                                         ) {
