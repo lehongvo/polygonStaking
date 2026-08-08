@@ -2,7 +2,7 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import { network, run } from 'hardhat';
 import * as path from 'path';
-import batchGrantRole from './grantChallengeRole';
+import { grantAllChallengeRoles } from './grantChallengeRole';
 
 const hre = require('hardhat');
 
@@ -214,17 +214,17 @@ async function main() {
   console.log('\n🔐 GRANTING CHALLENGE ROLE');
   console.log('===========================');
 
+  // CHALLENGE-2672 (TANIMOTO re-review): both grants (ExerciseSupplementNFT +
+  // every configured Gacha proxy) must succeed, or this Challenge is NOT ready to use -- a
+  // silently-swallowed failure here previously left an unregistered Challenge deployed and
+  // reported as done, disabling sendDailyResult/randomRewards for it indefinitely.
   let roleGrantTxHash: string | null = null;
-  try {
-    console.log(
-      `⏳ Granting ALLOWED_CONTRACTS_CHALLENGE role to ${contractAddress}...`
-    );
-    roleGrantTxHash = await batchGrantRole(contractAddress);
-    console.log('✅ Challenge role granted successfully');
-  } catch (error) {
-    console.warn('⚠️  Failed to grant challenge role:', error);
-    console.log('You may need to grant the role manually later');
-  }
+  console.log(
+    `⏳ Granting ALLOWED_CONTRACTS_CHALLENGE + Gacha CHALLENGE_ROLE to ${contractAddress}...`
+  );
+  const grantedRoles = await grantAllChallengeRoles(contractAddress);
+  roleGrantTxHash = grantedRoles.exerciseSupplementNFT;
+  console.log('✅ Challenge roles granted successfully:', grantedRoles);
 
   // Test sendDailyResult function
   await new Promise(resolve => setTimeout(resolve, 40000));

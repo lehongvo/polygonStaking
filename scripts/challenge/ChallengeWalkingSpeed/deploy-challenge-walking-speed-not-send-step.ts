@@ -2,7 +2,7 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import { network, run } from 'hardhat';
 import * as path from 'path';
-import batchGrantRole from '../grantChallengeRole';
+import { grantAllChallengeRoles } from '../grantChallengeRole';
 
 const hre = require('hardhat');
 
@@ -361,14 +361,13 @@ async function main() {
   // --- Step 5: Grant challenge role ---
   console.log('\n📋 STEP 5: GRANT CHALLENGE ROLE');
   console.log('=================================');
+  // CHALLENGE-2672 (TANIMOTO re-review): both grants (ExerciseSupplementNFT +
+  // every configured Gacha proxy) must succeed, or this Challenge is NOT ready to use.
   let roleGrantTxHash: string | null = null;
-  try {
-    roleGrantTxHash = await batchGrantRole(contractAddress);
-    await new Promise(resolve => setTimeout(resolve, 15000));
-    console.log('✅ Challenge role granted successfully');
-  } catch (error) {
-    console.warn('⚠️  Failed to grant challenge role:', error);
-  }
+  const grantedRoles = await grantAllChallengeRoles(contractAddress);
+  roleGrantTxHash = grantedRoles.exerciseSupplementNFT;
+  await new Promise(resolve => setTimeout(resolve, 15000));
+  console.log('✅ Challenge roles granted successfully:', grantedRoles);
 
   // --- Step 6: Save deployment info ---
   console.log('\n📋 STEP 6: SAVE DEPLOYMENT INFO');

@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ethers } from 'ethers';
 
 const ExerciseSupplementNFT_ABI = [
@@ -1339,6 +1341,39 @@ const ExerciseSupplementNFT_ABI = [
   },
 ] as const;
 
+// CHALLENGE-2672 (TANIMOTO re-review): minimal AccessControlUpgradeable ABI for granting
+// Gacha's CHALLENGE_ROLE. This is a distinct, separately-deployed contract from
+// ExerciseSupplementNFT -- the two roles must be granted independently.
+const Gacha_ABI = [
+  {
+    inputs: [],
+    name: 'CHALLENGE_ROLE',
+    outputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'role', type: 'bytes32' },
+      { internalType: 'address', name: 'account', type: 'address' },
+    ],
+    name: 'grantRole',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { internalType: 'bytes32', name: 'role', type: 'bytes32' },
+      { internalType: 'address', name: 'account', type: 'address' },
+    ],
+    name: 'hasRole',
+    outputs: [{ internalType: 'bool', name: '', type: 'bool' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
+
 // Hardhat network is resolved lazily at call time so this helper can be
 // imported from scripts that run on different networks (polygon/sepolia).
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -1361,6 +1396,117 @@ function getExerciseSupplementNFTAddress(): string {
     return process.env.EXERCISE_SUPPLEMENT_NFT_ADDRESS_SEPOLIA ?? '';
   return process.env.EXERCISE_SUPPLEMENT_NFT_ADDRESS ?? '';
 }
+
+// CHALLENGE-2672 (TANIMOTO re-review): a Challenge contract is not tied to a single Gacha
+// instance at deploy time -- it passes whichever Gacha address it wants at sendDailyResult
+// call time, so every legitimate reward-pool Gacha proxy on a network must grant this
+// Challenge its CHALLENGE_ROLE for daily settlement to succeed against any of them.
+//
+// The authoritative inventory of deployed Gacha proxies already exists at
+// docs/contractAddress/gachaAddress.json (the same file scripts/gacha/upgrade-gacha-proxies.ts
+// reads) -- deriving from it here, rather than a separately-maintained env var, avoids a second
+// source of truth that can silently drift from what's actually deployed (per TANIMOTO's
+// acceptance criterion: "Derive every legitimate Gacha<->Challenge relationship from an
+// authoritative registry"). GACHA_ADDRESSES[_SEPOLIA] remains as an override/addition for
+// networks (e.g. amoy/sepolia test deployments) not yet present in that registry.
+/** Return every known Gacha proxy address for the current network. */
+export function getGachaAddresses(): string[] {
+  const name = hre.network.name;
+
+  const registryPath = path.join(
+    process.cwd(),
+    'docs',
+    'contractAddress',
+    'gachaAddress.json'
+  );
+  const fromRegistry: string[] = fs.existsSync(registryPath)
+    ? (JSON.parse(fs.readFileSync(registryPath, 'utf8')) as Array<{
+        Network: string;
+        GachaProxyAddress: string;
+      }>)
+        .filter(entry => entry.Network === name)
+        .map(entry => entry.GachaProxyAddress)
+    : [];
+
+  const fromEnvRaw =
+    (name === 'sepolia'
+      ? process.env.GACHA_ADDRESSES_SEPOLIA
+      : process.env.GACHA_ADDRESSES) ?? '';
+  const fromEnv = fromEnvRaw
+    .split(',')
+    .map(addr => addr.trim())
+    .filter(addr => addr.length > 0);
+
+  return Array.from(new Set([...fromRegistry, ...fromEnv]));
+}
+
+/**
+ * Grant Gacha's CHALLENGE_ROLE to `challengeAddress` on every configured Gacha proxy for the
+ * current network. Idempotent per-address (skips one that already has the role). Throws on the
+ * first failure -- callers must NOT treat a Challenge as ready if this rejects.
+ */
+const grantGachaChallengeRole = async (
+  challengeAddress: string
+): Promise<string[]> => {
+  const gachaAddresses = getGachaAddresses();
+  if (gachaAddresses.length === 0) {
+    throw new Error(
+      `No Gacha proxy addresses found for network ${hre.network.name}: none in docs/contractAddress/gachaAddress.json and GACHA_ADDRESSES[_SEPOLIA] is unset. If this network genuinely has no Gacha deployments, this should not have been reached; otherwise add the missing address(es).`
+    );
+  }
+
+  const rpcUrl = getRpcUrl();
+  if (!rpcUrl) {
+    throw new Error(
+      `Missing RPC URL for network ${hre.network.name}. Set the appropriate *_RPC_URL env var in .env.`
+    );
+  }
+
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+  const signer = new ethers.Wallet(adminKey?.toString() || '', provider);
+
+  const results: string[] = [];
+  for (const gachaAddress of gachaAddresses) {
+    console.log('\n================================================');
+    console.log(
+      `Granting Gacha CHALLENGE_ROLE on network=${hre.network.name} gacha=${gachaAddress} to challenge address`,
+      challengeAddress
+    );
+
+    const gacha = new ethers.Contract(gachaAddress, Gacha_ABI, signer);
+    const challengeRole = await gacha.CHALLENGE_ROLE();
+    const alreadyHasRole = await gacha.hasRole(challengeRole, challengeAddress);
+    if (alreadyHasRole) {
+      console.log('✅ Challenge address already has CHALLENGE_ROLE on this Gacha — skip grant');
+      console.log('================================================\n');
+      results.push('already_granted');
+      continue;
+    }
+
+    const grantTx = await gacha.grantRole(challengeRole, challengeAddress);
+    const receipt = await grantTx.wait();
+    console.log(`✅ Transaction hash: ${grantTx.hash}`);
+    console.log('================================================\n');
+    results.push(grantTx.hash);
+  }
+
+  return results;
+};
+
+/**
+ * Grant every role a new Challenge contract needs to operate: ALLOWED_CONTRACTS_CHALLENGE on
+ * ExerciseSupplementNFT, and CHALLENGE_ROLE on every configured Gacha proxy. Deliberately does
+ * NOT swallow errors (unlike the two individual grant functions' internal try/catch, which only
+ * exists to log context before rethrowing) -- a deploy script calling this must halt and refuse
+ * to treat the Challenge as ready if any registration fails, per CHALLENGE-2672's re-review.
+ */
+export const grantAllChallengeRoles = async (
+  challengeAddress: string
+): Promise<{ exerciseSupplementNFT: string; gacha: string[] }> => {
+  const exerciseSupplementNFT = await batchGrantRole(challengeAddress);
+  const gacha = await grantGachaChallengeRole(challengeAddress);
+  return { exerciseSupplementNFT, gacha };
+};
 
 const batchGrantRole = async (challengeAddress: string): Promise<string> => {
   try {

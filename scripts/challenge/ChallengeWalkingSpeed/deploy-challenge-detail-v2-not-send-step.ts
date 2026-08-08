@@ -2,7 +2,7 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import { network, run } from 'hardhat';
 import * as path from 'path';
-import batchGrantRole from '../grantChallengeRole';
+import { grantAllChallengeRoles } from '../grantChallengeRole';
 
 const hre = require('hardhat');
 
@@ -215,17 +215,16 @@ async function main() {
 
   // Grant ALLOWED_CONTRACTS_CHALLENGE role on ExerciseSupplementNFT so the
   // newly-deployed challenge can mint reward NFTs through the registry.
-  // batchGrantRole helper signs with ADMIN_PRIVATE_KEY (admin holds the role).
+  // grantAllChallengeRoles signs with ADMIN_PRIVATE_KEY (admin holds both roles).
+  // CHALLENGE-2672 (TANIMOTO re-review): both grants must succeed, or this Challenge is NOT
+  // ready to use -- no longer swallowed into a warning.
   console.log('\n🔐 GRANTING CHALLENGE ROLE');
   console.log('==========================');
 
   let roleGrantTxHash: string | null = null;
-  try {
-    roleGrantTxHash = await batchGrantRole(contractAddress);
-    console.log('✅ Challenge role granted');
-  } catch (error) {
-    console.warn('⚠️ Failed to grant challenge role:', error);
-  }
+  const grantedRoles = await grantAllChallengeRoles(contractAddress);
+  roleGrantTxHash = grantedRoles.exerciseSupplementNFT;
+  console.log('✅ Challenge roles granted:', grantedRoles);
   console.log('Waiting for 20 seconds...');
   await new Promise(resolve => setTimeout(resolve, 20000));
   const roleGranted = roleGrantTxHash !== null;
