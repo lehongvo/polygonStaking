@@ -1795,16 +1795,25 @@ contract ChallengeGCMAndSpeed is IERC721Receiver {
             serverSuccessFee = (coinNativeBalance * amountSuccessFee) / (100);
             serverFailureFee = (coinNativeBalance * amountFailFee) / (100);
 
-            for (uint256 i = 0; i < awardReceivers.length; i++) {
+            // CHALLENGE-2706: the success loop previously ran over the WHOLE awardReceivers
+            // array (writing approvalSuccessOf for fail-partition receivers too, i.e. [index,
+            // length) which the actual payout loop -- transferToListReceiverSuccess, i < index --
+            // never reads) and both sums used `=` instead of `+=`, so each only ever held the
+            // LAST iteration's share. Reset once, accumulate, and use the same non-overlapping
+            // [0,index) / [index,length) partition the real payout loops use.
+            sumAwardSuccess = 0;
+            sumAwardFail = 0;
+
+            for (uint256 i = 0; i < index; i++) {
                 approvalSuccessOf[awardReceivers[i]] =
                     (awardReceiversPercent[i] * coinNativeBalance) / 100;
-                sumAwardSuccess = (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                sumAwardSuccess += approvalSuccessOf[awardReceivers[i]];
             }
 
             for (uint256 i = index; i < awardReceivers.length; i++) {
                 approvalFailOf[awardReceivers[i]] =
                     (awardReceiversPercent[i] * coinNativeBalance) / 100;
-                sumAwardFail = (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                sumAwardFail += approvalFailOf[awardReceivers[i]];
             }
         } else {
             // Token-funded challenge (native balance == 0): the constructor pre-seeded

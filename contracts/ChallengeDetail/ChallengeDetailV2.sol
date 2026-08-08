@@ -1828,7 +1828,11 @@ contract ChallengeDetailV2 is IERC721Receiver {
             sumAwardSuccess = 0;
             sumAwardFail = 0;
 
-            for (uint256 i = 0; i < awardReceivers.length; i++) {
+            // CHALLENGE-2706: this loop previously ran over the WHOLE awardReceivers array,
+            // writing approvalSuccessOf for fail-partition receivers too ([index, length)) which
+            // the actual payout loop never reads -- use the same non-overlapping [0,index)
+            // partition the real payout loop uses.
+            for (uint256 i = 0; i < index; i++) {
                 approvalSuccessOf[awardReceivers[i]] =
                     (awardReceiversPercent[i] * totalAvailableBalance) / 100;
                 sumAwardSuccess += (awardReceiversPercent[i] * totalAvailableBalance) / 100;
