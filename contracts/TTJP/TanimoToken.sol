@@ -8,6 +8,7 @@ error YouDoNotHaveRight();
 error Erc20ChallengeWasFinished();
 error InvalidOwnerAddress(); // CHALLENGE-2804
 error NoPendingOwner(); // CHALLENGE-2804
+error InvalidChallengeAddress(); // CHALLENGE-2707
 
 import "./ERC20Upgradeable.sol";
 import "./Initializable.sol";
@@ -62,6 +63,21 @@ contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable {
     event OwnershipTransferProposed(address indexed currentOwner, address indexed pendingOwner);
     event OwnershipTransferAccepted(address indexed previousOwner, address indexed newOwner);
     event OwnershipTransferCancelled(address indexed currentOwner, address indexed cancelledPendingOwner);
+
+    // CHALLENGE-2707: appended AFTER all existing storage (see the CHALLENGE-2804 note above --
+    // TanimoToken is a live UUPS proxy; no existing slot may be reordered/retyped).
+    /**
+     * @dev Governed allowlist of Challenge contracts. Replaces the previous
+     * extcodesize(to)==sizeContract heuristic in _beforeTokenTransfer: an unrelated contract that
+     * happened to share the same runtime bytecode size could have transfers to it wrongly
+     * rejected/routed through IChallenge(to).isFinished(), and a legitimate Challenge
+     * upgrade/variant/compiler change could silently change size and bypass the guard entirely.
+     * `sizeContract`/setSizeContract are left in place unchanged for ABI compatibility but are no
+     * longer consulted for this decision.
+     */
+    mapping(address => bool) private challengeRegistry;
+
+    event ChallengeRegistryUpdated(address indexed target, bool isChallenge);
 
     /**
     * @dev Initializes the Tanimo Token contract.
@@ -150,6 +166,27 @@ contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable {
     }
 
     /**
+     * @dev Add or remove `target` from the governed Challenge registry (CHALLENGE-2707).
+     * Registering a Challenge contract here (instead of relying on code size) is what makes
+     * _beforeTokenTransfer consult its isFinished() state; a non-registered address -- including
+     * an EOA, a proxy, or any unrelated contract -- always follows normal transfer rules with no
+     * external call.
+     */
+    function setChallengeContract(address target, bool isChallengeAddr) external onlyOwner {
+        if (!(target != address(0))) revert InvalidChallengeAddress();
+        challengeRegistry[target] = isChallengeAddr;
+        emit ChallengeRegistryUpdated(target, isChallengeAddr);
+    }
+
+    /**
+     * @dev Whether `target` is currently registered as a Challenge contract for the transfer
+     * guard in _beforeTokenTransfer.
+     */
+    function isRegisteredChallenge(address target) external view returns (bool) {
+        return challengeRegistry[target];
+    }
+
+    /**
     * @dev Hook that is called before any token transfer. Calls the superclass implementation.
     * @param from The address tokens are transferred from.
     * @param to The address tokens are transferred to.
@@ -160,9 +197,12 @@ contract TanimoToken is Initializable, ERC20Upgradeable, UUPSUpgradeable {
         override(ERC20Upgradeable)
     {
         super._beforeTokenTransfer(from, to, amount); // Call the superclass implementation of this function.
-        uint256 size;
-        assembly { size := extcodesize(to) }
-        if(size == sizeContract) {
+        // CHALLENGE-2707: was extcodesize(to)==sizeContract -- any unrelated contract sharing that
+        // exact runtime bytecode size would have transfers to it routed through
+        // IChallenge(to).isFinished(), and a legitimate Challenge upgrade/variant/compiler change
+        // could silently change size and bypass the guard. Consult the governed registry instead;
+        // non-registered addresses (EOAs, proxies, unrelated contracts) make no external call.
+        if (challengeRegistry[to]) {
             if (!(!IChallenge(payable(to)).isFinished())) revert Erc20ChallengeWasFinished();
         }
     }
