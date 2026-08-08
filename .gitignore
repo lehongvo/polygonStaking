@@ -73,3 +73,8 @@ deployment-info.json
 
 # Internal docs (not for public repo)
 docs/
+
+# CHALLENGE-2736: backup/scratch files should never be tracked -- hardhat.config.cjs.bak was
+# committed and had gone stale (missing Kaia/Kairos config present in the real file), risking an
+# engineer reading it as authoritative.
+*.bak

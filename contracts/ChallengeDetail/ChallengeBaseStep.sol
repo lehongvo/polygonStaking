@@ -990,7 +990,7 @@ contract ChallengeBaseStep is IERC721Receiver {
         uint256[] memory _walkingSpeedData,
         uint256[] memory _hiitData
     ) payable {
-        require(_allowGiveUp.length == 3, "Invalid allow give up"); // Checking if _allowGiveUp array length is 3.
+        if (!(_allowGiveUp.length == 3)) revert InvalidAllowGiveUp(); // Checking if _allowGiveUp array length is 3.
         require(_primaryRequired.length >= 5, "Invalid primary required length"); // [duration, startTime, endTime, goal, dayRequired]
         // CHALLENGE-2811: sponsor/challenger/feeAddress are relied on as payout/authorization
         // targets throughout settlement; a zero address here could burn native value or brick
@@ -1012,12 +1012,12 @@ contract ChallengeBaseStep is IERC721Receiver {
         require(_hiitData.length == 0 || _hiitData.length == 2, "Invalid HIIT data"); // 0 = no HIIT, 2 = [highIntensityIntervals, totalHighIntensityTime]
 
         if (_allowGiveUp[1]) {
-            require(msg.value == _totalAmount, "Invalid award"); // Checking if msg.value is equal to _totalAmount when _allowGiveUp[1] is true.
+            if (!(msg.value == _totalAmount)) revert InvalidAward(); // Checking if msg.value is equal to _totalAmount when _allowGiveUp[1] is true.
         }
 
         uint256 i;
 
-        require(_index > 0, "Invalid value"); // Checking if _index is greater than 0.
+        if (!(_index > 0)) revert InvalidValue(); // Checking if _index is greater than 0.
 
         _totalAmount = _totalAmount - _gasData[2]; // Subtracting _gasData[2] from _totalAmount.
 
@@ -1056,7 +1056,7 @@ contract ChallengeBaseStep is IERC721Receiver {
             // below), so re-visiting the same address is detected here without extra storage.
             require(_awardReceivers[i] != address(0), "Invalid receiver address");
             require(approvalSuccessOf[_awardReceivers[i]] == 0, "Duplicate receiver address");
-            require(awardReceiversApprovalsTamp[i] > 0, "Invalid value0"); // Checking if the award amount for each receiver is greater than 0.
+            if (!(awardReceiversApprovalsTamp[i] > 0)) revert InvalidValue0(); // Checking if the award amount for each receiver is greater than 0.
             approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for successful participants.
             sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for successful participants.
         }
@@ -1066,7 +1066,7 @@ contract ChallengeBaseStep is IERC721Receiver {
             // applied to the failure-side mapping (approvalFailOf).
             require(_awardReceivers[i] != address(0), "Invalid receiver address");
             require(approvalFailOf[_awardReceivers[i]] == 0, "Duplicate receiver address");
-            require(awardReceiversApprovalsTamp[i] > 0, "Invalid value1"); // Checking if the award amount for each receiver is greater than 0.
+            if (!(awardReceiversApprovalsTamp[i] > 0)) revert InvalidValue1(); // Checking if the award amount for each receiver is greater than 0.
             approvalFailOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for failed participants.
             sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for failed participants.
         }

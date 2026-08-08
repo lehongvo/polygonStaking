@@ -13,8 +13,12 @@ describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
   const DURATION = 30;
   const DAY_REQUIRED = 1;
 
+  // CHALLENGE-2736: require(..., "Invalid value0"/"Invalid value1") -> revert InvalidValue0()/
+  // InvalidValue1() (declared but previously unused custom errors, now wired up instead of the
+  // duplicate string literals).
+
   // 全配分が 0 → 成功側の検証で revert する
-  it('all-zero percents [0, 0] → reverts "Invalid value0"', async () => {
+  it('all-zero percents [0, 0] → reverts InvalidValue0', async () => {
     await expect(
       deployChallenge('ChallengeBaseStep', {
         awardReceiversPercent: [0, 0],
@@ -24,11 +28,14 @@ describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
         dayRequired: DAY_REQUIRED,
         duration: DURATION,
       })
-    ).to.be.revertedWith('Invalid value0');
+    ).to.be.revertedWithCustomError(
+      await hre.ethers.getContractFactory('ChallengeBaseStep'),
+      'InvalidValue0'
+    );
   });
 
-  // 成功側の先頭が 0% → "Invalid value0" で revert する
-  it('first percent zero [0, 50] with index=1 → reverts "Invalid value0"', async () => {
+  // 成功側の先頭が 0% → InvalidValue0 で revert する
+  it('first percent zero [0, 50] with index=1 → reverts InvalidValue0', async () => {
     await expect(
       deployChallenge('ChallengeBaseStep', {
         awardReceiversPercent: [0, 50],
@@ -38,11 +45,14 @@ describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
         dayRequired: DAY_REQUIRED,
         duration: DURATION,
       })
-    ).to.be.revertedWith('Invalid value0');
+    ).to.be.revertedWithCustomError(
+      await hre.ethers.getContractFactory('ChallengeBaseStep'),
+      'InvalidValue0'
+    );
   });
 
-  // 失敗側に 0% が混在 → "Invalid value1" で revert する
-  it('fail-side zero percent [50, 0] with index=1 → reverts "Invalid value1"', async () => {
+  // 失敗側に 0% が混在 → InvalidValue1 で revert する
+  it('fail-side zero percent [50, 0] with index=1 → reverts InvalidValue1', async () => {
     await expect(
       deployChallenge('ChallengeBaseStep', {
         awardReceiversPercent: [50, 0],
@@ -52,7 +62,10 @@ describe('T22 – ChallengeBaseStep: zero-percent receiver validation', () => {
         dayRequired: DAY_REQUIRED,
         duration: DURATION,
       })
-    ).to.be.revertedWith('Invalid value1');
+    ).to.be.revertedWithCustomError(
+      await hre.ethers.getContractFactory('ChallengeBaseStep'),
+      'InvalidValue1'
+    );
   });
 
   // 配分 [1, 1] + 極小額（10000 wei） → デプロイ成功し、達成時に recv0 へ送金される

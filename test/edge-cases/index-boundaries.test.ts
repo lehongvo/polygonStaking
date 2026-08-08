@@ -16,7 +16,9 @@ describe('T19 – ChallengeBaseStep: index boundary cases', () => {
   const TOTAL_AMOUNT = hre.ethers.parseEther('1');
 
   // index=0 はコントラクト側の既存ガードで弾かれることを確認
-  it('index=0 reverts "Invalid value" (pre-existing guard)', async () => {
+  // CHALLENGE-2736: require(_index > 0, "Invalid value") -> revert InvalidValue() (declared but
+  // previously unused custom error, now wired up instead of the duplicate string literal).
+  it('index=0 reverts InvalidValue (pre-existing guard)', async () => {
     await expect(
       deployChallenge('ChallengeBaseStep', {
         awardReceiversPercent: [50, 50],
@@ -26,7 +28,10 @@ describe('T19 – ChallengeBaseStep: index boundary cases', () => {
         dayRequired: DAY_REQUIRED,
         duration: DURATION,
       })
-    ).to.be.revertedWith('Invalid value');
+    ).to.be.revertedWithCustomError(
+      await hre.ethers.getContractFactory('ChallengeBaseStep'),
+      'InvalidValue'
+    );
   });
 
   // index=2: 2人の受取人がすべて成功側 → 成功時に両者へ送金される

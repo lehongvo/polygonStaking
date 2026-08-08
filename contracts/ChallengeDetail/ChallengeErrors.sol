@@ -15,8 +15,13 @@ pragma solidity ^0.8.16;
  *
  * ADDITIVE + SAFE: this file does NOT modify any deployed contract source; it compiles standalone
  * and does not conflict with the existing inline declarations (Solidity file-scoped errors in
- * different files are separate declarations with the same selector). The in-place migration of the
- * 6 flattened contracts is owner-gated redeploy work (see task/MODULE_5B_CONSOLIDATION.md).
+ * different files are separate declarations with the same selector).
+ *
+ * CHALLENGE-2736: this file is currently UNUSED -- no contract imports it, and the inline
+ * duplicates it was meant to replace are still declared in all 6 Challenge contracts. The
+ * in-place migration described above (importing this file and dropping the inline copies,
+ * subject to a bytecode-size check per contract) has not been done and is owner-gated redeploy
+ * work; there is no committed plan document for it in this repository.
  *
  * BaseStep additionally has 2 variant-specific errors kept local to it:
  *   error InvalidHiitDataLength(); error InvalidWalkingSpeedDataLength();
