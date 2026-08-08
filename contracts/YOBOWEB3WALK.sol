@@ -1688,13 +1688,7 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      */
     function recordChallengeAndMint(address participant) external onlyAdmin {
         if (!(participant != address(0))) revert InvalidParticipantAddress();
-        if (!(balanceOf(participant) == 0)) revert ParticipantAlreadyHasSbt();
-        if (!(_tokenIdCounter.current() < MAX_SUPPLY)) revert ExceedsMaxSupply();
-        uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        _safeMint(participant, tokenId);
-
-        emit SoulBoundMint(participant, tokenId);
+        uint256 tokenId = _mintUniqueSbt(participant);
         emit ChallengeCompleted(participant, tokenId);
     }
 
@@ -1702,15 +1696,14 @@ contract YOBOWEB3WALK is ERC721, Ownable {
      * @dev Manual SBT minting by admin (for emergency cases)
      * @param to Recipient address
      * @notice Used for emergency situations like system failures
+     * @notice Also the entry point invoked (via low-level call, selector safeMint(address)) by
+     *         ExerciseSupplementNFT.safeMintNFT's Challenge reward path when soulBoundNftAddress
+     *         points at this contract -- CHALLENGE-2703 routes it through the same uniqueness
+     *         guard as every other mint entry point.
      */
     function safeMint(address to) public onlyAdmin {
         if (!(to != address(0))) revert InvalidAddress();
-        if (!(_tokenIdCounter.current() < MAX_SUPPLY)) revert ExceedsMaxSupply();
-        uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        _safeMint(to, tokenId);
-
-        emit SoulBoundMint(to, tokenId);
+        _mintUniqueSbt(to);
     }
 
     /**
@@ -1724,12 +1717,31 @@ contract YOBOWEB3WALK is ERC721, Ownable {
         for (uint256 i = 0; i < recipients.length; i++) {
             address to = recipients[i];
             if (!(to != address(0))) revert InvalidAddressInBatch();
-            uint256 tokenId = _tokenIdCounter.current();
-            _tokenIdCounter.increment();
-            _safeMint(to, tokenId);
-
-            emit SoulBoundMint(to, tokenId);
+            // CHALLENGE-2703: _mintUniqueSbt's balanceOf(to)==0 check also rejects a duplicate
+            // recipient within this same batch -- the first occurrence's _safeMint raises its
+            // balance to 1 before the second occurrence is checked. Since a Solidity revert here
+            // undoes every earlier mint in this same transaction, no partial batch can ever
+            // persist even though the check runs per-iteration rather than as an upfront scan.
+            _mintUniqueSbt(to);
         }
+    }
+
+    /**
+     * @dev CHALLENGE-2703: single choke point for every SBT mint route (recordChallengeAndMint,
+     *      safeMint -- including the Challenge-driven call via ExerciseSupplementNFT -- and
+     *      batchMint), enforcing that an address already holding an SBT can never receive a
+     *      second one. Does not itself validate `to != address(0)`: callers keep their own
+     *      distinct zero-address error (InvalidParticipantAddress / InvalidAddress /
+     *      InvalidAddressInBatch) unchanged.
+     */
+    function _mintUniqueSbt(address to) internal returns (uint256 tokenId) {
+        if (!(balanceOf(to) == 0)) revert ParticipantAlreadyHasSbt();
+        if (!(_tokenIdCounter.current() < MAX_SUPPLY)) revert ExceedsMaxSupply();
+        tokenId = _tokenIdCounter.current();
+        _tokenIdCounter.increment();
+        _safeMint(to, tokenId);
+
+        emit SoulBoundMint(to, tokenId);
     }
 
     // === VIEW FUNCTIONS ===
