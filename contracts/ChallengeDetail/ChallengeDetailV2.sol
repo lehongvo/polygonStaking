@@ -43,6 +43,7 @@ error NoPendingErc1155Claim();
 error Erc1155ClaimTransferFailed();
 error NoPendingErc20Claim();
 error Erc20ClaimTransferFailed();
+error InvalidSystemFeePercentForStaking(); // CHALLENGE-2695
 error ExceedsMaxDailyBatch();
 error TooManyGachaCalls();
 error TooManyNftContracts();
@@ -1122,6 +1123,11 @@ contract ChallengeDetailV2 is IERC721Receiver {
 
         totalReward = _totalAmount; // Assigning the total reward to the contract variable
         allowGiveUp = _allowGiveUp; // Assigning the allow give up value to the contract variable
+        // CHALLENGE-2695 (TANIMOTO re-review): unvalidated, a value above 10000 (100%) makes
+        // _withdrawFromStaking's systemFeeAmount exceed rewards, underflowing
+        // `remaining = rewards - systemFeeAmount` and reverting every settlement with positive
+        // yield.
+        if (!(_systemFeePercentForStaking <= 10000)) revert InvalidSystemFeePercentForStaking();
         systemFeePercentForStaking = _systemFeePercentForStaking; // Assigning the system fee percentage for staking
 
         if (_allowGiveUp[0] && _allAwardToSponsorWhenGiveUp) choiceAwardToSponsor = true;
@@ -1857,6 +1863,23 @@ contract ChallengeDetailV2 is IERC721Receiver {
                     (awardReceiversPercent[i] * totalAvailableBalance) / 100;
                 sumAwardFail += (awardReceiversPercent[i] * totalAvailableBalance) / 100;
             }
+        } else {
+            // CHALLENGE-2695 (TANIMOTO re-review): Token-funded / Aave-ERC20 challenge (native
+            // balance == 0 after _withdrawFromStaking -- e.g. an ERC20-only createByToken
+            // config): the constructor pre-seeded approvalSuccessOf/approvalFailOf with
+            // NATIVE-denominated amounts. With no native balance, tranferCoinNative() in
+            // settlement would revert (InsufficientContractBalance) and permanently brick the
+            // payout, even though ERC20 principal was successfully withdrawn. Zero the native
+            // accruals so the native transfers become no-ops; the ERC20 distribution below pays
+            // receivers. Matches the identical fix already applied to the other 5 variants.
+            serverSuccessFee = 0;
+            serverFailureFee = 0;
+            for (uint256 i = 0; i < index; i++) {
+                approvalSuccessOf[awardReceivers[i]] = 0;
+            }
+            for (uint256 i = index; i < awardReceivers.length; i++) {
+                approvalFailOf[awardReceivers[i]] = 0;
+            }
         }
         // Get total balance of base token in contract
         totalBalanceBaseToken = getContractBalance();
@@ -2265,9 +2288,17 @@ contract ChallengeDetailV2 is IERC721Receiver {
             if (createByToken == address(0)) {
                 IWMATIC wmatic = IWMATIC(WMATIC_WPOC_ADDRESS);
 
+                // CHALLENGE-2695 (TANIMOTO re-review): if actualWithdrawn < totalReward (Aave
+                // principal loss, withdrawal fee, or partial liquidity), rewards is already 0
+                // (see above), but unwrapping the full original totalReward regardless would
+                // exceed what was actually received, reverting every terminal settlement.
+                // Unwrap only the principal actually recovered, matching the loss-aware pattern
+                // already used in PolygonDeFiAggregator.withdrawTimeLockedStake (CHALLENGE-2697).
+                uint256 principalToUnwrap = actualWithdrawn <= totalReward ? actualWithdrawn : totalReward;
+
                 // Unwrap principal + net yield into this contract's own native balance --
                 // no transfer out. The existing outcome-based distribution pays it out.
-                wmatic.withdraw(totalReward + remaining);
+                wmatic.withdraw(principalToUnwrap + remaining);
 
                 if (systemFeeAmount > 0) {
                     wmatic.withdraw(systemFeeAmount);
