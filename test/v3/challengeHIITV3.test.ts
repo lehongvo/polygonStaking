@@ -21,9 +21,11 @@ describe('ChallengeHIITV3', () => {
     expect(await challenge.contractVersion()).to.equal(3n);
   });
 
+  // The HIIT days and goal are not checked: the app and BACKEND own them.
   for (const goal of [[0, 60], [6, 0]]) {
-    it(`reverts on the HIIT goal ${JSON.stringify(goal)}`, async () => {
-      await expect(deployV3('ChallengeHIITV3', { hiitGoal: goal })).to.be.revertedWith('Invalid HIIT goal');
+    it(`accepts the HIIT goal ${JSON.stringify(goal)}`, async () => {
+      const { challenge } = await deployV3('ChallengeHIITV3', { hiitGoal: goal });
+      expect([await challenge.hiitIntervalsRequired(), await challenge.hiitSecondsRequired()]).to.deep.equal(goal.map(BigInt));
     });
   }
 
@@ -31,12 +33,25 @@ describe('ChallengeHIITV3', () => {
     ['0 days', 0],
     ['more days than the duration', 11],
   ] as const) {
-    it(`reverts on ${label}`, async () => {
-      await expect(deployV3('ChallengeHIITV3', { duration: 10, dayRequired: days })).to.be.revertedWith(
-        'Invalid HIIT days'
-      );
+    it(`accepts ${label}`, async () => {
+      const { challenge } = await deployV3('ChallengeHIITV3', { duration: 10, dayRequired: days });
+      expect(await challenge.dayRequired()).to.equal(BigInt(days));
     });
   }
+
+  it('0 required days: giveUp does not divide by zero and pays as full progress', async () => {
+    const ctx = await deployHiit({ dayRequired: 0 });
+    const before = await hre.ethers.provider.getBalance(ctx.sponsor.address);
+    await ctx.challenge.connect(ctx.challenger).giveUp([], [], [], []);
+    expect(await hre.ethers.provider.getBalance(ctx.sponsor.address)).to.equal(before); // the sponsor keeps nothing
+    expect(await ctx.challenge.getState()).to.equal(3n); // GAVE_UP
+  });
+
+  it('0 required days: the first HIIT submission finishes the challenge as a success', async () => {
+    const ctx = await deployHiit({ dayRequired: 0 });
+    await sendHiit(ctx, hiitInput([{ day: ctx.dayKey(1), success: 0 }]));
+    expect(await ctx.challenge.isSuccess()).to.equal(true);
+  });
 
   it('rejects the previous 4-value layout without the HIIT goal [duration, start, end, days]', async () => {
     const [sponsor, challenger, fee, wallet] = await hre.ethers.getSigners();

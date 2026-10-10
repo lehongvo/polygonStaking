@@ -871,7 +871,7 @@ contract ChallengeHIITV3 is IERC721Receiver {
      * @param _stakeHolders Array of addresses of the stakeholders participating in the challenge.
      * @param _createByToken The address of the token used to create this challenge.
      * @param _erc721Address Array of addresses of the ERC721 tokens used in the challenge.
-     * @param _primaryRequired [duration (days), startTime, endTime, dayRequired (HIIT success days, 1..duration),
+     * @param _primaryRequired [duration (days), startTime, endTime, dayRequired (HIIT success days; 0 counts as reached),
      *        high-intensity intervals per day, high-intensity seconds per day].
      * @param _awardReceivers Array of addresses of the receivers who will receive awards if the challenge succeeds.
      * @param _index The index of the current award receiver.
@@ -897,11 +897,6 @@ contract ChallengeHIITV3 is IERC721Receiver {
         require(_allowGiveUp.length == 3, "Invalid allow give up");
         // [duration, startTime, endTime, dayRequired, intervals per day, seconds per day]
         require(_primaryRequired.length == 6, "Invalid HIIT data");
-        require(
-            _primaryRequired[3] > 0 && _primaryRequired[3] <= _primaryRequired[0],
-            "Invalid HIIT days"
-        );
-        require(_primaryRequired[4] > 0 && _primaryRequired[5] > 0, "Invalid HIIT goal");
 
         if (_allowGiveUp[1]) {
             require(msg.value == _totalAmount, "Invalid award");
@@ -1189,7 +1184,9 @@ contract ChallengeHIITV3 is IERC721Receiver {
 
             emit FundTransfer(sponsor, amount);
         } else {
-            uint256 amountToReceiverList = (amount * currentStatus) / dayRequired;
+            // No required HIIT day counts as full progress (and avoids a division by zero).
+            (uint256 progress, uint256 progressBase) = dayRequired == 0 ? (1, 1) : (currentStatus, dayRequired);
+            uint256 amountToReceiverList = (amount * progress) / progressBase;
 
             tranferCoinNative(sponsor, amount - amountToReceiverList);
 
@@ -1200,7 +1197,7 @@ contract ChallengeHIITV3 is IERC721Receiver {
 
                 if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
                     amountTokenToReceiver =
-                        (totalTokenRewardSubtractFee * currentStatus) / dayRequired;
+                        (totalTokenRewardSubtractFee * progress) / progressBase;
 
                     uint256 amountNativeToSponsor =
                         totalTokenRewardSubtractFee - amountTokenToReceiver;

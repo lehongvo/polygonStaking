@@ -62,13 +62,6 @@ describe('ChallengeBaseStepV3', () => {
     for (const [label, opts, reason] of [
       ['step days 0', { dayRequired: 0 }, 'Invalid step days'],
       ['step days > duration', { dayRequired: 11 }, 'Invalid step days'],
-      ['speed days 0', { walkingSpeedData: [5, 30, 0] }, 'Invalid walking speed days'],
-      ['speed days > duration', { walkingSpeedData: [5, 30, 11] }, 'Invalid walking speed days'],
-      ['speed minutes 0', { walkingSpeedData: [5, 0, 2] }, 'Invalid walking speed days'],
-      ['HIIT days 0', { hiitData: [0, 6, 60] }, 'Invalid HIIT days'],
-      ['HIIT days > duration', { hiitData: [11, 6, 60] }, 'Invalid HIIT days'],
-      ['HIIT goal 0 intervals', { hiitData: [2, 0, 60] }, 'Invalid HIIT goal'],
-      ['HIIT goal 0 seconds', { hiitData: [2, 6, 0] }, 'Invalid HIIT goal'],
       ['HIIT days only (previous format)', { hiitData: [2] }, 'Invalid HIIT data'],
       ['two HIIT values', { hiitData: [5, 60] }, 'Invalid HIIT data'],
     ] as const) {
@@ -78,6 +71,49 @@ describe('ChallengeBaseStepV3', () => {
         );
       });
     }
+
+    // The walking speed and HIIT values are not checked: the app and BACKEND own them.
+    for (const [label, opts] of [
+      ['speed days 0', { walkingSpeedData: [5, 30, 0] }],
+      ['speed days > duration', { walkingSpeedData: [5, 30, 11] }],
+      ['speed minutes 0', { walkingSpeedData: [5, 0, 2] }],
+      ['HIIT days 0', { hiitData: [0, 6, 60] }],
+      ['HIIT days > duration', { hiitData: [11, 6, 60] }],
+      ['HIIT goal 0 intervals', { hiitData: [2, 0, 60] }],
+      ['HIIT goal 0 seconds', { hiitData: [2, 6, 0] }],
+    ] as const) {
+      it(`accepts ${label} and stores it as given`, async () => {
+        const { challenge } = await deployV3('ChallengeBaseStepV3', { duration: 10, ...(opts as any) });
+        if ('walkingSpeedData' in opts) {
+          expect(await challenge.speedDayRequired()).to.equal(BigInt(opts.walkingSpeedData[2]));
+        } else {
+          expect(await challenge.hiitDayRequired()).to.equal(BigInt(opts.hiitData[0]));
+          expect([await challenge.hiitIntervalsRequired(), await challenge.hiitSecondsRequired()]).to.deep.equal([
+            BigInt(opts.hiitData[1]),
+            BigInt(opts.hiitData[2]),
+          ]);
+        }
+      });
+    }
+
+    it('0 required speed minutes: a speed day counts when first recorded (any minutes), once', async () => {
+      const ctx = await deployAll({ dayRequired: 1, walkingSpeedData: [5, 0, 2], hiitData: [] });
+      const [d1, d2] = [ctx.dayKey(1), ctx.dayKey(2)];
+      await sendBaseStep(ctx, { speed: speedInput([{ day: d1, minutes: 0, mets: 150 }]) });
+      expect((await progress(ctx.challenge))[2]).to.equal(1);
+      await sendBaseStep(ctx, { speed: speedInput([{ day: d1, minutes: 25, mets: 300 }]) });
+      expect((await progress(ctx.challenge))[2]).to.equal(1); // the same day is not counted twice
+      await sendBaseStep(ctx, { step: stepInput([{ day: d2, steps: GOAL }]), speed: speedInput([{ day: d2, minutes: 5, mets: 200 }]) });
+      expect((await progress(ctx.challenge))[2]).to.equal(2);
+      expect(await ctx.challenge.isSuccess()).to.equal(true);
+    });
+
+    it('0 required HIIT and speed days count as reached: the step days alone finish the challenge', async () => {
+      const ctx = await deployAll({ walkingSpeedData: [5, 30, 0], hiitData: [0, 6, 60] });
+      await sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(1), steps: GOAL }, { day: ctx.dayKey(2), steps: GOAL }]) });
+      expect(await ctx.challenge.isSuccess()).to.equal(true);
+      expect(await ctx.challenge.getState()).to.equal(1n); // SUCCESS
+    });
   });
 
   describe('counting', () => {

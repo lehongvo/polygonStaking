@@ -958,7 +958,8 @@ contract ChallengeBaseStepV3 is IERC721Receiver {
      *        [2] required walking speed days (counted independently of step days).
      * @param _hiitData Optional HIIT config (length 0 = no HIIT, length 3 = step + HIIT):
      *        [required HIIT success days, high-intensity intervals per day, high-intensity seconds per day].
-     *        Every required number of days (step, walking speed, HIIT) must be between 1 and duration.
+     *        The step days must be between 1 and duration; walking speed and HIIT values are not checked
+     *        (0 required days counts as reached).
      */
     constructor(
         address payable[] memory _stakeHolders,
@@ -985,20 +986,8 @@ contract ChallengeBaseStepV3 is IERC721Receiver {
             _walkingSpeedData.length == 0 || _walkingSpeedData.length == 3,
             "Invalid walking speed data"
         ); // 0 = step only, 3 = step + walking speed.
-        if (_walkingSpeedData.length == 3) {
-            require(
-                _walkingSpeedData[1] > 0 &&
-                    _walkingSpeedData[2] > 0 &&
-                    _walkingSpeedData[2] <= _primaryRequired[0],
-                "Invalid walking speed days"
-            );
-        }
         // 0 = no HIIT, 3 = [hiitDayRequired, intervals per day, seconds per day]
         require(_hiitData.length == 0 || _hiitData.length == 3, "Invalid HIIT data");
-        if (_hiitData.length == 3) {
-            require(_hiitData[0] > 0 && _hiitData[0] <= _primaryRequired[0], "Invalid HIIT days");
-            require(_hiitData[1] > 0 && _hiitData[2] > 0, "Invalid HIIT goal");
-        }
 
         if (_allowGiveUp[1]) {
             require(msg.value == _totalAmount, "Invalid award"); // Checking if msg.value is equal to _totalAmount when _allowGiveUp[1] is true.
@@ -1185,20 +1174,22 @@ contract ChallengeBaseStepV3 is IERC721Receiver {
                 uint256 dayIndex = _dayIndex(day);
                 uint256 minutesAtTarget = _speed.minutesAtTargetSpeed[i];
                 uint256 previousMinutes = speedMinutesOn[dayIndex];
+                // A day is counted once, when it first reaches the required minutes; with 0 required
+                // minutes, when it is first recorded.
+                bool reachedBefore = speedRecorded[dayIndex] && previousMinutes >= requiredMinutes;
                 if (!speedRecorded[dayIndex]) {
                     speedRecorded[dayIndex] = true;
                     speedDate.push(day);
                 }
                 if (minutesAtTarget > previousMinutes) {
                     speedMinutesOn[dayIndex] = minutesAtTarget;
-                    // requiredMinutes > 0, so a day is counted when it first reaches the requirement.
-                    if (
-                        previousMinutes < requiredMinutes &&
-                        minutesAtTarget >= requiredMinutes &&
-                        speedCount < speedDayRequired
-                    ) {
-                        speedCount = speedCount + 1;
-                    }
+                }
+                if (
+                    !reachedBefore &&
+                    speedMinutesOn[dayIndex] >= requiredMinutes &&
+                    speedCount < speedDayRequired
+                ) {
+                    speedCount = speedCount + 1;
                 }
                 if (_speed.metsWalkingSpeed[i] > speedMetsOn[dayIndex]) {
                     speedMetsOn[dayIndex] = _speed.metsWalkingSpeed[i];
