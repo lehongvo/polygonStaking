@@ -360,7 +360,7 @@ interface IExerciseSupplementNFT {
 
     /**
      * @dev Mint an NFT with specified parameters.
-     * @param _goal For HIIT challenges, pass `highIntensityIntervals` here (the external interface uses this slot for the primary numeric config).
+     * @param _goal For HIIT V3 challenges, 0 (there is no per-day step or interval goal).
      * @param _duration The duration of the challenge.
      * @param _dayRequired The number of days required for the challenge.
      * @param _createByToken The address of the creator of the token.
@@ -541,12 +541,30 @@ interface IERC20 {
 pragma solidity ^0.8.16;
 
 /**
- * @title ChallengeHIIT
- * @dev HIIT (High-Intensity Interval Training) challenge contract.
- *      Uses heart-rate-based evaluation: achieved per day is derived from highIntensityIntervals and totalHighIntensityTime.
- *      Reuses existing signature interface; backend signs HIIT result as 0/1 per day.
+ * @title ChallengeHIITV3
+ * @dev Contract version 3 of the HIIT-only challenge.
+ *      Each exercise day stores the highest high-intensity intervals and seconds sent for it; the day
+ *      is a HIIT success day when both reach the challenge's HIIT goal (judged on chain). A day is
+ *      counted at most once and a success is never lowered. Days are keyed by the first second of the calendar day in the challenge's
+ *      creation time zone. Results are accepted until the outcome is finalized (success, give-up
+ *      or close); there is no endTime + 2 days limit.
  */
-contract ChallengeHIIT is IERC721Receiver {
+contract ChallengeHIITV3 is IERC721Receiver {
+    /** @dev HIIT results: high-intensity intervals and seconds per exercise day. */
+    struct HiitInput {
+        uint256[] day;
+        uint256[] intervals;
+        uint256[] totalSeconds;
+        uint64[] timeRange;
+    }
+
+    /**
+     * @dev Required value of `_data[0]` in a V3 result signature ("ESPV3SR!"). Legacy backend
+     *      signers always put the contract nonce there, so a signature made for an older
+     *      contract version can never be accepted by this contract.
+     */
+    uint64 public constant SIGNATURE_DOMAIN_V3 = 0x4553505633535221;
+
     /** @param ChallengeState currentState of challenge:
          1 : in processs
          2 : success
@@ -598,17 +616,31 @@ contract ChallengeHIIT is IERC721Receiver {
      */
     uint256[] historyData;
 
+    /** @dev Highest high-intensity intervals / seconds sent per day, aligned with historyDate. */
+    uint256[] historyIntervals;
+    uint256[] historySeconds;
+
+    /** @dev HIIT goal of a day: high-intensity intervals and seconds. */
+    uint256 public hiitIntervalsRequired;
+    uint256 public hiitSecondsRequired;
+
     /** @dev historyDate date in challenge.
      */
     uint256[] historyDate;
 
-    /** @dev historyIntervals raw high-intensity interval count per day submission.
+    /** @dev historyDateIndex O(1) lookup: day index (see _dayIndex) → (index in historyDate) + 1; 0 means not present.
      */
-    uint256[] historyIntervals;
+    mapping(uint256 => uint256) private historyDateIndex;
 
-    /** @dev historyTime raw total high-intensity seconds per day submission.
+    /**
+     * @dev dayAnchor the first recorded exercise day key; it anchors the challenge calendar.
+     *      Results are keyed by the day index from this anchor (see _dayIndex), so one calendar
+     *      day can never be counted twice under two keys.
      */
-    uint256[] historyTime;
+    uint256 public dayAnchor;
+
+    /** @dev Keeps the day index positive for days recorded before the anchor day. */
+    uint256 private constant DAY_INDEX_OFFSET = 36500 days;
 
     /** @dev index index to split array receivers.
      */
@@ -660,10 +692,6 @@ contract ChallengeHIIT is IERC721Receiver {
      */
     uint256 sumAwardFail;
 
-    /** @dev sequence submit daily result count number of challenger.
-     */
-    uint256 sequence;
-
     /** @dev allowGiveUp challenge allow give up or not.
      */
     bool[] public allowGiveUp;
@@ -692,10 +720,6 @@ contract ChallengeHIIT is IERC721Receiver {
      */
     mapping(address => uint256) private approvalFailOf;
 
-    /** @dev hiitAchievedOn HIIT achieved status on a day (0 or 1).
-     */
-    mapping(uint256 => uint256) private hiitAchievedOn;
-
     ChallengeState private stateInstance;
 
     uint256[] private awardReceiversPercent;
@@ -713,12 +737,6 @@ contract ChallengeHIIT is IERC721Receiver {
     uint8 private amountSuccessFee;
 
     uint8 private amountFailFee;
-
-    /** @dev HIIT config: number of high-intensity intervals per day. */
-    uint256 public highIntensityIntervals;
-
-    /** @dev HIIT config: total high-intensity time in seconds per day. */
-    uint256 public totalHighIntensityTime;
 
     // Reentrancy guard status: 1 = NOT_ENTERED, 2 = ENTERED.
     uint256 private _reentrancyStatus = 1;
@@ -747,6 +765,19 @@ contract ChallengeHIIT is IERC721Receiver {
     event FundTransfer(address indexed to, uint256 indexed valueSend);
 
     /**
+     * @dev Emitted when a native-token transfer to a receiver fails during settlement.
+     * Settlement continues rather than reverting — funds remain in contract for recovery.
+     */
+    event NativeTransferFailed(address indexed receiver, uint256 amount);
+
+    /**
+     * @dev Emitted when a gacha call fails. The gacha is a bonus: its failure must not block the
+     * result submission or settlement, but it is recorded so it can be reconciled off chain.
+     * @param gacha The gacha contract whose randomRewards call failed.
+     */
+    event GachaRewardFailed(address indexed gacha);
+
+    /**
      * @dev Emitted when a participant gives up on the challenge.
      * @param from The address of the participant who gave up.
      */
@@ -771,7 +802,7 @@ contract ChallengeHIIT is IERC721Receiver {
      * @dev Action should be called in required time.
      */
     modifier onTimeSendResult() {
-        require(block.timestamp <= endTime + 2 days, "Challenge was finished");
+        // No upper time limit: results are accepted until the outcome is finalized (see `available`).
         require(block.timestamp >= startTime, "Challenge has not started yet");
         _;
     }
@@ -840,7 +871,8 @@ contract ChallengeHIIT is IERC721Receiver {
      * @param _stakeHolders Array of addresses of the stakeholders participating in the challenge.
      * @param _createByToken The address of the token used to create this challenge.
      * @param _erc721Address Array of addresses of the ERC721 tokens used in the challenge.
-     * @param _primaryRequired [duration, startTime, endTime, highIntensityIntervals, totalHighIntensityTime, dayRequired].
+     * @param _primaryRequired [duration (days), startTime, endTime, dayRequired (HIIT success days, 1..duration),
+     *        high-intensity intervals per day, high-intensity seconds per day].
      * @param _awardReceivers Array of addresses of the receivers who will receive awards if the challenge succeeds.
      * @param _index The index of the current award receiver.
      * @param _allowGiveUp Array of boolean values indicating whether each stakeholder can give up the challenge or not.
@@ -863,7 +895,13 @@ contract ChallengeHIIT is IERC721Receiver {
         uint256 _totalAmount
     ) payable {
         require(_allowGiveUp.length == 3, "Invalid allow give up");
-        require(_primaryRequired.length >= 6, "Invalid HIIT data");
+        // [duration, startTime, endTime, dayRequired, intervals per day, seconds per day]
+        require(_primaryRequired.length == 6, "Invalid HIIT data");
+        require(
+            _primaryRequired[3] > 0 && _primaryRequired[3] <= _primaryRequired[0],
+            "Invalid HIIT days"
+        );
+        require(_primaryRequired[4] > 0 && _primaryRequired[5] > 0, "Invalid HIIT goal");
 
         if (_allowGiveUp[1]) {
             require(msg.value == _totalAmount, "Invalid award");
@@ -895,6 +933,7 @@ contract ChallengeHIIT is IERC721Receiver {
             sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i];
         }
 
+        require(_stakeHolders[2] != address(0), "Invalid fee address");
         sponsor = _stakeHolders[0];
         challenger = _stakeHolders[1];
         feeAddress = _stakeHolders[2];
@@ -904,9 +943,9 @@ contract ChallengeHIIT is IERC721Receiver {
         duration = _primaryRequired[0];
         startTime = _primaryRequired[1];
         endTime = _primaryRequired[2];
-        highIntensityIntervals = _primaryRequired[3];
-        totalHighIntensityTime = _primaryRequired[4];
-        dayRequired = _primaryRequired[5];
+        dayRequired = _primaryRequired[3];
+        hiitIntervalsRequired = _primaryRequired[4];
+        hiitSecondsRequired = _primaryRequired[5];
         stateInstance = ChallengeState.PROCESSING;
         awardReceivers = _awardReceivers;
         awardReceiversApprovals = awardReceiversApprovalsTamp;
@@ -942,165 +981,170 @@ contract ChallengeHIIT is IERC721Receiver {
     }
 
     /**
-     * @dev Send daily HIIT results to update contract activities.
-     * @param _day An array of uint256 values representing days.
-     * @param _intervals Number of high-intensity intervals per day (one value per day).
-     * @param _totalSeconds Total high-intensity time in seconds per day (one value per day).
-     *        A day is achieved when _intervals[i] >= highIntensityIntervals AND _totalSeconds[i] >= totalHighIntensityTime.
-     * @param _data A tuple of two uint64 values.
-     * @param _signature The signature to be validated.
-     * @param _listGachaAddress An array of addresses representing Gacha contract addresses.
+     * @dev Send daily HIIT results for one or more exercise days.
+     *      Each entry carries its exercise day key and the calendar-day range [start, end] of that
+     *      day in the challenge's creation time zone (see `_checkDays`).
+     *      The highest intervals / seconds of each day are kept; the day is a HIIT success day when
+     *      both reach the HIIT goal. A day is counted at most once, and a success is never lowered.
+     *      The backend signs keccak256(abi.encode(_hiit)); the hash is passed to the NFT signature
+     *      check as its only step-index element, so every submitted value is signed, and `_data[0]`
+     *      must be SIGNATURE_DOMAIN_V3.
+     * @param _hiit HIIT results: high-intensity intervals and seconds per day.
+     * @param _data [SIGNATURE_DOMAIN_V3, signature expiry]; the expiry is checked by the NFT contract.
+     * @param _signature Backend signature over the payload hash.
+     * @param _listGachaAddress Gacha contracts called with the success flags (0/1) of the submitted days.
      * @param _listNFTAddress An array of addresses representing NFT contract addresses.
      * @param _listIndexNFT An array of arrays representing NFT indices.
-     * @param _listSenderAddress An array of arrays representing sender addresses.
      * @param _statusTypeNft An array of boolean values representing NFT status types.
-     * @param _timeRange A tuple of two uint64 values representing the time range.
-     * @dev This function can only be called by authorized challengers within a specific time frame.
      */
     function sendDailyResult(
-        uint256[] memory _day,
-        uint256[] memory _intervals,
-        uint256[] memory _totalSeconds,
+        HiitInput calldata _hiit,
         uint64[2] memory _data,
         bytes calldata _signature,
         address[] memory _listGachaAddress,
         address[] memory _listNFTAddress,
         uint256[][] memory _listIndexNFT,
-        address[][] memory _listSenderAddress,
-        bool[] memory _statusTypeNft,
-        uint64[2] memory _timeRange
+        bool[] memory _statusTypeNft
     ) public nonReentrant available onTimeSendResult onlyChallenger {
-        uint256[] memory emptyArr = new uint256[](0);
+        require(_data[0] == SIGNATURE_DOMAIN_V3, "Invalid signature domain");
+        uint256[] memory payloadHash = new uint256[](1);
+        payloadHash[0] = _hiitPayloadHash(_hiit);
         IExerciseSupplementNFT(erc721Address[0]).checkValidSignature(
-            _day,
-            emptyArr,
+            new uint256[](0),
+            payloadHash,
             _data,
             _signature
         );
-
-        uint dayLength = _day.length;
-        require(dayLength > 0, "Invalid HIIT results length");
+        require(_hiit.day.length > 0, "Invalid HIIT results length");
         require(
-            _intervals.length == dayLength && _totalSeconds.length == dayLength,
+            _hiit.intervals.length == _hiit.day.length && _hiit.totalSeconds.length == _hiit.day.length,
             "Invalid HIIT results length"
         );
+        // The first recorded day anchors the challenge calendar (see _dayIndex).
+        if (dayAnchor == 0) dayAnchor = _hiit.day[0];
+        _checkDays(_hiit.day, _hiit.timeRange);
 
-        uint256[] memory achieved = new uint256[](dayLength);
-        for (uint256 i = 0; i < dayLength; i++) {
-            if (
-                _intervals[i] >= highIntensityIntervals &&
-                _totalSeconds[i] >= totalHighIntensityTime
-            ) {
-                achieved[i] = 1;
-            }
+        // Whether this submission changed anything (so a resend of identical results does not trigger
+        // the gacha again) and the success flag of each submitted day.
+        (bool changed, uint256[] memory successOf) = _recordHiit(_hiit);
+
+        // Success when the required number of HIIT success days is reached. There is no early
+        // failure here: late results can still raise any past day, so a failed outcome is only
+        // finalized by closeChallenge (after endTime + 2 days) or giveUp.
+        if (currentStatus >= dayRequired) {
+            stateInstance = ChallengeState.SUCCESS;
+            transferToListReceiverSuccess(_listNFTAddress, _listIndexNFT, _statusTypeNft);
         }
 
-        bool isSendSameDay;
-        bool isSendFailWithSameDay;
-        uint256 lastIndex = totalReward;
-        uint256[] storage tempHistoryDate = historyDate;
-        uint256[] storage tempHistoryData = historyData;
-
-        for (uint256 i = 0; i < dayLength; i++) {
-            bool dayAlreadyAchieved = false;
-            bool dayFoundInHistory = false;
-            bool thisDayIsSameDay = false;
-
-            for (uint256 j = 0; j < tempHistoryDate.length; j++) {
-                if (
-                    !thisDayIsSameDay &&
-                    tempHistoryDate[j] >= _timeRange[0] &&
-                    tempHistoryDate[j] <= _timeRange[1] &&
-                    tempHistoryDate[j] == _day[dayLength - 1]
-                ) {
-                    if (tempHistoryData[j] == 1) require(false, "Day already achieved");
-                    isSendSameDay = true;
-                    thisDayIsSameDay = true;
-                    tempHistoryData[j] = achieved[dayLength - 1];
-                    tempHistoryDate[j] = _day[dayLength - 1];
-                    hiitAchievedOn[_day[dayLength - 1]] = achieved[dayLength - 1];
-                    historyIntervals[j] = _intervals[dayLength - 1];
-                    historyTime[j] = _totalSeconds[dayLength - 1];
-                } else {
-                    if (tempHistoryDate[j] == _day[i]) {
-                        dayFoundInHistory = true;
-                        if (tempHistoryData[j] == 1) {
-                            dayAlreadyAchieved = true;
-                        }
-                        lastIndex = i;
-                        tempHistoryData[j] = achieved[i];
-                        hiitAchievedOn[_day[i]] = achieved[i];
-                        historyIntervals[j] = _intervals[i];
-                        historyTime[j] = _totalSeconds[i];
-                    }
+        // try/catch so a faulty/paused gacha cannot revert and block settlement
+        // (settlement above is already final; gacha is a bonus side-effect).
+        if (changed) {
+            for (uint256 i = 0; i < _listGachaAddress.length; i++) {
+                try
+                    IGacha(_listGachaAddress[i]).randomRewards(address(this), successOf)
+                {} catch {
+                    emit GachaRewardFailed(_listGachaAddress[i]);
                 }
             }
-
-            if (!thisDayIsSameDay && !dayFoundInHistory) {
-                tempHistoryDate.push(_day[i]);
-                tempHistoryData.push(achieved[i]);
-                hiitAchievedOn[_day[i]] = achieved[i];
-                historyIntervals.push(_intervals[i]);
-                historyTime.push(_totalSeconds[i]);
-            }
-
-            uint256 achievedValue = thisDayIsSameDay ? achieved[dayLength - 1] : achieved[i];
-            if (achievedValue == 1 && !dayAlreadyAchieved && currentStatus < dayRequired) {
-                if (!thisDayIsSameDay || i == dayLength - 1) {
-                    currentStatus = currentStatus + 1;
-                }
-            }
-        }
-
-        if (tempHistoryData.length > 1) {
-            isSendFailWithSameDay = true;
-            for (uint256 i = 0; i < tempHistoryData.length - 1; i++) {
-                if (tempHistoryData[i] == 0) {
-                    isSendFailWithSameDay = false;
-                    lastIndex = totalReward;
-                    break;
-                }
-            }
-        }
-
-        if (isSendSameDay && isSendFailWithSameDay) {
-            sequence = sequence + dayLength - 1;
-        } else {
-            sequence = sequence + dayLength;
-        }
-
-        if (
-            achieved[dayLength - 1] == 0 &&
-            _day[dayLength - 1] > _timeRange[0] &&
-            _day[dayLength - 1] < _timeRange[1]
-        ) {
-            isSendFailWithSameDay = true;
-        }
-
-        if (
-            sequence - currentStatus > duration - dayRequired &&
-            !isSendFailWithSameDay &&
-            lastIndex == totalReward
-        ) {
-            stateInstance = ChallengeState.FAILED;
-            transferToListReceiverFail(
-                _listNFTAddress,
-                _listIndexNFT,
-                _listSenderAddress,
-                _statusTypeNft
-            );
-        } else {
-            if (currentStatus >= dayRequired) {
-                stateInstance = ChallengeState.SUCCESS;
-                transferToListReceiverSuccess(_listNFTAddress, _listIndexNFT, _statusTypeNft);
-            }
-        }
-
-        for (uint256 i = 0; i < _listGachaAddress.length; i++) {
-            IGacha(_listGachaAddress[i]).randomRewards(address(this), achieved);
         }
 
         emit SendDailyResult(currentStatus);
+    }
+
+    /**
+     * @dev Payload hash signed by the backend:
+     *      keccak256(abi.encode(_hiit.day, _hiit.intervals, _hiit.totalSeconds, _hiit.timeRange))
+     *      (the four arrays as separate values: encoding the struct at once is too deep for the stack).
+     */
+    function _hiitPayloadHash(HiitInput calldata _hiit) private pure returns (uint256) {
+        return uint256(keccak256(abi.encode(_hiit.day, _hiit.intervals, _hiit.totalSeconds, _hiit.timeRange)));
+    }
+
+    /**
+     * @dev Record the HIIT values of the submitted days: the highest intervals / seconds of each day are
+     *      kept, and a day becomes a HIIT success day (counted once, never lowered) when both reach the goal.
+     * @return changed Whether a day was added or a value raised.
+     * @return successOf Success flag (0/1) of each submitted day after this submission.
+     */
+    function _recordHiit(HiitInput calldata _hiit) private returns (bool changed, uint256[] memory successOf) {
+        successOf = new uint256[](_hiit.day.length);
+        for (uint256 i = 0; i < _hiit.day.length; i++) {
+            uint256 day = _hiit.day[i];
+            uint256 dayIndex = _dayIndex(day);
+            uint256 idx = historyDateIndex[dayIndex];
+            if (idx == 0) {
+                historyDate.push(day);
+                historyData.push(0);
+                historyIntervals.push(0);
+                historySeconds.push(0);
+                idx = historyDate.length;
+                historyDateIndex[dayIndex] = idx;
+                changed = true;
+            }
+            if (_hiit.intervals[i] > historyIntervals[idx - 1]) {
+                historyIntervals[idx - 1] = _hiit.intervals[i];
+                changed = true;
+            }
+            if (_hiit.totalSeconds[i] > historySeconds[idx - 1]) {
+                historySeconds[idx - 1] = _hiit.totalSeconds[i];
+                changed = true;
+            }
+            if (
+                historyData[idx - 1] == 0 &&
+                historyIntervals[idx - 1] >= hiitIntervalsRequired &&
+                historySeconds[idx - 1] >= hiitSecondsRequired
+            ) {
+                historyData[idx - 1] = 1;
+                if (currentStatus < dayRequired) currentStatus = currentStatus + 1;
+            }
+            successOf[i] = historyData[idx - 1];
+        }
+    }
+
+    /**
+     * @dev Validate the exercise day keys against their calendar-day ranges.
+     *      `_timeRange` holds one [start, end] pair per day: [start0, end0, start1, end1, ...].
+     *      The day key must be the first second of its calendar day (the range start), the range must
+     *      be one calendar day long (23 to 25 hours with daylight saving time), the day must have
+     *      started, the day must overlap the challenge period [startTime, endTime], and the key must
+     *      sit on the challenge calendar (_dayIndex).
+     */
+    function _checkDays(uint256[] calldata _days, uint64[] calldata _timeRange) private view {
+        require(_timeRange.length == _days.length * 2, "Invalid time range length");
+        for (uint256 i = 0; i < _days.length; i++) {
+            uint256 dayStart = _timeRange[2 * i];
+            uint256 dayEnd = _timeRange[2 * i + 1];
+            require(
+                _days[i] == dayStart &&
+                    dayEnd >= dayStart + 23 hours - 1 &&
+                    dayEnd <= dayStart + 25 hours - 1,
+                "Invalid time range"
+            );
+            require(dayStart <= block.timestamp, "Day has not started");
+            require(dayEnd >= startTime && dayStart <= endTime, "Day outside challenge period");
+            _dayIndex(dayStart);
+        }
+    }
+
+    /**
+     * @dev Index of an exercise day on the calendar anchored at `dayAnchor`. A day key must be a
+     *      whole number of days from the anchor, within one hour for daylight saving time, so a
+     *      calendar day has exactly one index even if its key were built in another time zone.
+     */
+    function _dayIndex(uint256 _day) private view returns (uint256 calendarIndex) {
+        bool onCalendar;
+        (calendarIndex, onCalendar) = _calendarIndex(_day);
+        require(onCalendar, "Day not on the challenge calendar");
+    }
+
+    /** @dev Day index of `_day` and whether it is within one hour of the anchored day grid. */
+    function _calendarIndex(
+        uint256 _day
+    ) private view returns (uint256 calendarIndex, bool onCalendar) {
+        calendarIndex = (_day + DAY_INDEX_OFFSET + 12 hours - dayAnchor) / 1 days;
+        uint256 aligned = dayAnchor + calendarIndex * 1 days - DAY_INDEX_OFFSET;
+        uint256 drift = _day > aligned ? _day - aligned : aligned - _day;
+        onCalendar = drift <= 1 hours;
     }
 
     /**
@@ -1166,9 +1210,10 @@ contract ChallengeHIIT is IERC721Receiver {
                         sponsor,
                         amountNativeToSponsor
                     );
-
-                    amountTokenToReceiverList.push(amountTokenToReceiver);
                 }
+                // One entry per listed token (0 when it has no balance): the payout loop below reads it by
+                // the token's list index, and a funded token is not always first (Kaia lists TTJP before JPYC).
+                amountTokenToReceiverList.push(amountTokenToReceiver);
             }
 
             for (uint256 i = 0; i < index; i++) {
@@ -1181,10 +1226,15 @@ contract ChallengeHIIT is IERC721Receiver {
 
                 for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                     if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
+                        // Guard against division-by-zero when dust balances make
+                        // the denominator round to 0 (would revert the whole giveUp).
+                        uint256 denom = (listBalanceAllToken[j] * remainningAmountFee) / 100;
+                        if (denom == 0) {
+                            continue;
+                        }
                         uint256 amountTokenTmp =
                             (awardTokenReceivers[erc20ListAddress[j]][i] *
-                                amountTokenToReceiverList[j]) /
-                                ((listBalanceAllToken[j] * remainningAmountFee) / 100);
+                                amountTokenToReceiverList[j]) / denom;
 
                         TransferHelper.safeTransfer(
                             erc20ListAddress[j],
@@ -1203,8 +1253,11 @@ contract ChallengeHIIT is IERC721Receiver {
             _statusTypeNft
         );
 
-        tranferCoinNative(feeAddress, serverFailureFee);
-        emit FundTransfer(feeAddress, serverFailureFee);
+        if (serverFailureFee > 0 && getContractBalance() >= serverFailureFee) {
+            (bool feeOk, ) = feeAddress.call{ value: serverFailureFee }("");
+            if (!feeOk) emit NativeTransferFailed(feeAddress, serverFailureFee);
+            else emit FundTransfer(feeAddress, serverFailureFee);
+        }
 
         emit GiveUp(msg.sender);
     }
@@ -1281,11 +1334,18 @@ contract ChallengeHIIT is IERC721Receiver {
 
         updateRewardSuccessAndfail();
 
-        tranferCoinNative(feeAddress, serverSuccessFee);
-        emit FundTransfer(feeAddress, serverSuccessFee);
+        if (serverSuccessFee > 0 && getContractBalance() >= serverSuccessFee) {
+            (bool feeOk, ) = feeAddress.call{ value: serverSuccessFee }("");
+            if (!feeOk) emit NativeTransferFailed(feeAddress, serverSuccessFee);
+            else emit FundTransfer(feeAddress, serverSuccessFee);
+        }
 
         for (uint256 i = 0; i < index; i++) {
-            tranferCoinNative(awardReceivers[i], approvalSuccessOf[awardReceivers[i]]);
+            uint256 nativeAmount = approvalSuccessOf[awardReceivers[i]];
+            if (nativeAmount > 0 && getContractBalance() >= nativeAmount) {
+                (bool sent, ) = awardReceivers[i].call{ value: nativeAmount }("");
+                if (!sent) emit NativeTransferFailed(awardReceivers[i], nativeAmount);
+            }
 
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
@@ -1301,7 +1361,7 @@ contract ChallengeHIIT is IERC721Receiver {
         if (allowGiveUp[2]) {
             address currentAddressNftUse;
             (currentAddressNftUse, indexNft) = IExerciseSupplementNFT(erc721Address[0]).safeMintNFT(
-                highIntensityIntervals,
+                0, // HIIT V3 has no per-day step or interval goal
                 duration,
                 dayRequired,
                 createByToken,
@@ -1334,11 +1394,18 @@ contract ChallengeHIIT is IERC721Receiver {
 
         updateRewardSuccessAndfail();
 
-        tranferCoinNative(feeAddress, serverFailureFee);
-        emit FundTransfer(feeAddress, serverFailureFee);
+        if (serverFailureFee > 0 && getContractBalance() >= serverFailureFee) {
+            (bool feeOk, ) = feeAddress.call{ value: serverFailureFee }("");
+            if (!feeOk) emit NativeTransferFailed(feeAddress, serverFailureFee);
+            else emit FundTransfer(feeAddress, serverFailureFee);
+        }
 
         for (uint256 i = index; i < awardReceivers.length; i++) {
-            tranferCoinNative(awardReceivers[i], approvalFailOf[awardReceivers[i]]);
+            uint256 nativeAmount = approvalFailOf[awardReceivers[i]];
+            if (nativeAmount > 0 && getContractBalance() >= nativeAmount) {
+                (bool sent, ) = awardReceivers[i].call{ value: nativeAmount }("");
+                if (!sent) emit NativeTransferFailed(awardReceivers[i], nativeAmount);
+            }
 
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
@@ -1479,6 +1546,20 @@ contract ChallengeHIIT is IERC721Receiver {
                     (awardReceiversPercent[i] * coinNativeBalance) / 100;
                 sumAwardFail += (awardReceiversPercent[i] * coinNativeBalance) / 100;
             }
+        } else {
+            // No native balance (e.g. JPYC/ERC20-only challenge): zero the native
+            // payouts so tranferCoinNative becomes a no-op and settlement proceeds to
+            // the ERC20 distribution below instead of reverting on insufficient native
+            // balance (constructor-seeded approvals are denominated in the total amount,
+            // not in native coin).
+            serverSuccessFee = 0;
+            serverFailureFee = 0;
+            for (uint256 i = 0; i < index; i++) {
+                approvalSuccessOf[awardReceivers[i]] = 0;
+            }
+            for (uint256 i = index; i < awardReceivers.length; i++) {
+                approvalFailOf[awardReceivers[i]] = 0;
+            }
         }
 
         totalBalanceBaseToken = getContractBalance();
@@ -1514,33 +1595,15 @@ contract ChallengeHIIT is IERC721Receiver {
         return (historyDate, historyData);
     }
 
-    /**
-     * @dev Returns raw HIIT submission history per day.
-     * @return date Array of submission timestamps.
-     * @return data Array of achieved status per day (0=not achieved, 1=achieved).
-     * @return intervals Array of raw high-intensity interval counts per day.
-     * @return time Array of raw total high-intensity seconds per day.
-     */
-    function getHIITHistory()
-        external
-        view
-        returns (
-            uint256[] memory date,
-            uint256[] memory data,
-            uint256[] memory intervals,
-            uint256[] memory time
-        )
-    {
-        return (historyDate, historyData, historyIntervals, historyTime);
-    }
-
     function getState() external view returns (ChallengeState) {
         return stateInstance;
     }
 
     function tranferCoinNative(address payable from, uint256 value) private {
-        require(getContractBalance() >= value, "Insufficient contract balance");
-        TransferHelper.saveTransferEth(from, value);
+        if (value > 0 && getContractBalance() >= value) {
+            (bool success, ) = from.call{ value: value }("");
+            if (!success) emit NativeTransferFailed(from, value);
+        }
     }
 
     function getBalanceTokenOfContract(
@@ -1567,18 +1630,34 @@ contract ChallengeHIIT is IERC721Receiver {
         return (currentStatus, dayRequired, dayRequired - currentStatus);
     }
 
-    /** @dev Returns the HIIT configuration for this challenge. */
-    function getHIITConfig()
+    /** @dev Contract version identifier; deployed challenges before this version do not have it. */
+    function contractVersion() external pure returns (uint256) {
+        return 3;
+    }
+
+    /**
+     * @dev HIIT exercise days (first-submission order) with the highest intervals / seconds sent for
+     *      each day and its success flag (0/1).
+     */
+    function getHistoryV3()
         external
         view
-        returns (uint256 _highIntensityIntervals, uint256 _totalHighIntensityTime)
+        returns (
+            uint256[] memory hiitDays,
+            uint256[] memory hiitIntervals,
+            uint256[] memory hiitSeconds,
+            uint256[] memory hiitSuccess
+        )
     {
-        return (highIntensityIntervals, totalHighIntensityTime);
+        return (historyDate, historyIntervals, historySeconds, historyData);
     }
 
     /** @dev Returns the HIIT achievement status for a specific day. */
     function getHIITAchievedOn(uint256 _day) external view returns (uint256) {
-        return hiitAchievedOn[_day];
+        if (dayAnchor == 0) return 0;
+        (uint256 calendarIndex, bool onCalendar) = _calendarIndex(_day);
+        uint256 idx = onCalendar ? historyDateIndex[calendarIndex] : 0;
+        return idx == 0 ? 0 : historyData[idx - 1];
     }
 
     function getAwardReceiversPercent() public view returns (uint256[] memory) {
