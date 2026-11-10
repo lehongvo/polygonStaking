@@ -81,7 +81,9 @@ export async function deployV4(name: 'ChallengeBaseStepV4' | 'ChallengeHIITV4', 
   const duration = opts.duration ?? 10;
   const startTime = day0 + (opts.startOffset ?? 1);
   const endTime = day0 + duration * DAY - 1;
-  const percents = opts.awardReceiversPercent ?? [100];
+  // Fees of the mock fee source: 5% on success, 10% on failure. Success shares + success fee and failure shares
+  // + failure fee must each make 100 (Q5), so the default is one success receiver at 95 and one failure receiver at 90.
+  const percents = opts.awardReceiversPercent ?? [95, 90];
   const receivers = signers.slice(4, 4 + percents.length).map(s => s.address);
   const totalAmount = opts.totalAmount ?? hre.ethers.parseEther('1');
   const common = [
@@ -158,14 +160,28 @@ export async function sendHiit(
   return ctx.challenge.connect(sender).sendDailyResult(hiit, data, signature, gacha, [], [], []);
 }
 
+/**
+ * Day 1 of steps and speed runs from the challenge start, as the backend builds it (point c): a full-day range of
+ * the start day gets startTime as its start. `raw` sends the ranges as given (tests of invalid ranges).
+ */
+function dayOneFromStart<T extends { day: number[]; timeRange: number[] }>(input: T, startTime?: number): T {
+  if (startTime === undefined) return input;
+  const timeRange = input.timeRange.map((value, i) => {
+    const day = input.day[Math.floor(i / 2)];
+    return i % 2 === 0 && value === day && day < startTime && startTime < day + DAY ? startTime : value;
+  });
+  return { ...input, timeRange };
+}
+
 /** Sign and send a BaseStepV4 result. */
 export async function sendBaseStep(
-  ctx: { challenge: any; security: any; challenger: any },
-  sets: { step?: StepInput; speed?: SpeedInput; hiit?: HiitInputV4; gacha?: string[] },
+  ctx: { challenge: any; security: any; challenger: any; startTime?: number },
+  sets: { step?: StepInput; speed?: SpeedInput; hiit?: HiitInputV4; gacha?: string[]; raw?: boolean },
   sender: any = ctx.challenger
 ) {
-  const step = sets.step ?? emptyStep();
-  const speed = sets.speed ?? emptySpeed();
+  const start = sets.raw ? undefined : ctx.startTime;
+  const step = dayOneFromStart(sets.step ?? emptyStep(), start);
+  const speed = dayOneFromStart(sets.speed ?? emptySpeed(), start);
   const hiit = sets.hiit ?? emptyHiit();
   const addr = await ctx.challenge.getAddress();
   const { data, signature } = await signPayload(ctx.security, addr, payloadHashBaseStep(step, speed, hiit));

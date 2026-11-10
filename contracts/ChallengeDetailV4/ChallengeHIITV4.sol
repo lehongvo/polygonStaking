@@ -638,9 +638,6 @@ contract ChallengeHIITV4 is IERC721Receiver {
 
     /** @dev Keeps the day index positive for days recorded before the anchor day. */
     uint256 private constant DAY_INDEX_OFFSET = 36500 days;
-    /// @dev With HIIT, results are accepted until the outcome is finalized, so the sponsor can close only
-    /// this long after the end time; the challenger can close from endTime + 2 days.
-    uint256 private constant SPONSOR_CLOSE_DELAY = 30 days;
 
     /** @dev index index to split array receivers.
      */
@@ -704,10 +701,6 @@ contract ChallengeHIITV4 is IERC721Receiver {
      */
     bool public isSuccess;
 
-    /** @dev choiceAwardToSponsor all award will go to sponsor wallet when challenger give up or not.
-     */
-    bool private choiceAwardToSponsor;
-
     /** @dev selectGiveUpStatus challenge need be give up one time.
      */
     bool selectGiveUpStatus;
@@ -728,9 +721,16 @@ contract ChallengeHIITV4 is IERC721Receiver {
 
     uint256[] private listBalanceAllToken;
 
-    uint256[] private amountTokenToReceiverList;
-
     uint256 public totalBalanceBaseToken;
+
+    /**
+     * @dev Unpaid amounts of failed transfers, by token (address(0) = native coin) and intended recipient.
+     *      Only that recipient can claim them; they never go to the sponsor.
+     */
+    mapping(address => mapping(address => uint256)) public claimable;
+
+    /** @dev Total claimable per token (address(0) = native coin), kept out of the remainder returned to the sponsor. */
+    mapping(address => uint256) public totalClaimable;
 
     address public createByToken;
 
@@ -769,6 +769,15 @@ contract ChallengeHIITV4 is IERC721Receiver {
      * Settlement continues rather than reverting — funds remain in contract for recovery.
      */
     event NativeTransferFailed(address indexed receiver, uint256 amount);
+
+    /**
+     * @dev Emitted when a transfer fails during settlement; the amount stays claimable by its recipient.
+     * @param token The token (address(0) = native coin).
+     */
+    event TransferClaimable(address indexed token, address indexed receiver, uint256 amount);
+
+    /** @dev Emitted when a recipient claims an amount left by a failed transfer. */
+    event Claimed(address indexed token, address indexed receiver, uint256 amount);
 
     /**
      * @dev Emitted when a gacha call fails. The gacha is a bonus: its failure must not block the
@@ -840,17 +849,6 @@ contract ChallengeHIITV4 is IERC721Receiver {
     }
 
     /**
-     * @dev Action only called from stakeholders.
-     */
-    modifier onlyStakeHolders() {
-        require(
-            msg.sender == challenger || msg.sender == sponsor,
-            "Only stakeholders can call this function"
-        );
-        _;
-    }
-
-    /**
      * @dev Action only called from challenger.
      */
     modifier onlyChallenger() {
@@ -877,8 +875,10 @@ contract ChallengeHIITV4 is IERC721Receiver {
      * @param _index The index of the current award receiver.
      * @param _allowGiveUp Array of boolean values indicating whether each stakeholder can give up the challenge or not.
      * @param _gasData Array of gas data values for executing the smart contract functions in the challenge.
-     * @param _allAwardToSponsorWhenGiveUp A boolean value indicating whether all awards should be given to the sponsor when the challenge is given up.
-     * @param _awardReceiversPercent Array of percentage values representing the percentage of awards that each award receiver will receive.
+     *      The ninth argument (all awards to the sponsor on give-up) is ignored and kept for the deploy arguments:
+     *      on give-up the deposit minus the failure fee always goes back to the sponsor (no payout by achievement).
+     * @param _awardReceiversPercent Percent of each receiver. With the fees read from the fee contract, the success
+     *        percents plus the success fee and the failure percents plus the failure fee must each make 100.
      * @param _totalAmount The total amount of tokens locked in the challenge.
      */
     constructor(
@@ -890,7 +890,7 @@ contract ChallengeHIITV4 is IERC721Receiver {
         uint256 _index,
         bool[] memory _allowGiveUp,
         uint256[] memory _gasData,
-        bool _allAwardToSponsorWhenGiveUp,
+        bool /* _allAwardToSponsorWhenGiveUp */,
         uint256[] memory _awardReceiversPercent,
         uint256 _totalAmount
     ) payable {
@@ -913,8 +913,16 @@ contract ChallengeHIITV4 is IERC721Receiver {
         }
 
         uint256 i;
+        uint256 successPercent;
+        uint256 failPercent;
 
         require(_index > 0, "Invalid value");
+        // Required HIIT days: at least 1 and at most the number of calendar days of the period.
+        require(
+            _primaryRequired[3] >= 1 &&
+                _primaryRequired[3] <= (_primaryRequired[2] - _primaryRequired[1]) / 1 days + 1,
+            "Invalid required days"
+        );
 
         _totalAmount = _totalAmount - _gasData[2];
 
@@ -930,12 +938,14 @@ contract ChallengeHIITV4 is IERC721Receiver {
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value0");
             approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i];
             sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i];
+            successPercent += _awardReceiversPercent[i];
         }
 
         for (i = _index; i < _awardReceivers.length; i++) {
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value1");
             approvalFailOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i];
             sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i];
+            failPercent += _awardReceiversPercent[i];
         }
 
         require(_stakeHolders[2] != address(0), "Invalid fee address");
@@ -965,11 +975,14 @@ contract ChallengeHIITV4 is IERC721Receiver {
         (amountSuccessFee, amountFailFee) = IChallengeFee(
             IExerciseSupplementNFT(_erc721Address[0]).feeSettingAddress()
         ).getAmountFee();
+        // Each outcome pays exactly the deposit: nothing but a rounding remainder can stay in the contract.
+        require(
+            successPercent + amountSuccessFee == 100 && failPercent + amountFailFee == 100,
+            "Invalid award percent"
+        );
 
         totalReward = _totalAmount;
         allowGiveUp = _allowGiveUp;
-
-        if (_allowGiveUp[0] && _allAwardToSponsorWhenGiveUp) choiceAwardToSponsor = true;
 
         tranferCoinNative(challenger, gasFee);
         emit FundTransfer(challenger, gasFee);
@@ -1090,8 +1103,10 @@ contract ChallengeHIITV4 is IERC721Receiver {
      *      `_timeRange` holds one [start, end] pair per day: [start0, end0, start1, end1, ...].
      *      The range start is the later of the day key and the challenge start, so day 1 runs from
      *      the challenge start to the end of that calendar day. The range end sits 23 to 25 hours
-     *      after the day key (daylight saving time). The day must have started, must overlap the
-     *      challenge period, and its key must sit on the challenge calendar (_dayIndex).
+     *      after the day key (daylight saving time). The day must have started, must be one of the
+     *      period's calendar days (its key less than one day before the start, its range ending between
+     *      the start time and the end time), and its key must sit on the challenge calendar (_dayIndex).
+     *      Known limit: on a 25-hour day, a start in its last hour would refuse that day's key.
      */
     function _checkDays(uint256[] calldata _days, uint64[] calldata _timeRange) private view {
         require(_timeRange.length == _days.length * 2, "Invalid time range length");
@@ -1106,7 +1121,10 @@ contract ChallengeHIITV4 is IERC721Receiver {
                 "Invalid time range"
             );
             require(rangeStart <= block.timestamp, "Day has not started");
-            require(rangeEnd >= startTime && rangeStart <= endTime, "Day outside challenge period");
+            require(
+                day + 1 days > startTime && rangeEnd >= startTime && rangeEnd <= endTime,
+                "Day outside challenge period"
+            );
             // The key, never the range start: day 1 can start many hours after its key.
             _dayIndex(day);
         }
@@ -1151,88 +1169,16 @@ contract ChallengeHIITV4 is IERC721Receiver {
         selectGiveUpStatus = true;
         stateInstance = ChallengeState.GAVE_UP;
 
-        updateRewardSuccessAndfail();
+        updateRewardSuccessAndfail(false);
 
+        // The deposit minus the failure fee goes back to the sponsor: no payout by achievement.
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
-
         uint256 amount = (address(this).balance * remainningAmountFee) / 100;
-
-        if (choiceAwardToSponsor) {
-            tranferCoinNative(sponsor, amount);
-            for (uint256 i = 0; i < erc20ListAddress.length; i++) {
-                uint256 realBalanceToken = getBalanceTokenOfContract(
-                    erc20ListAddress[i],
-                    address(this)
-                );
-                if (remainningAmountFee > 0 && realBalanceToken > 0) {
-                    TransferHelper.safeTransfer(
-                        erc20ListAddress[i],
-                        sponsor,
-                        (listBalanceAllToken[i] * remainningAmountFee) / 100
-                    );
-                }
-            }
-
-            emit FundTransfer(sponsor, amount);
-        } else {
-            // No required HIIT day counts as full progress (and avoids a division by zero).
-            (uint256 progress, uint256 progressBase) = dayRequired == 0 ? (1, 1) : (currentStatus, dayRequired);
-            uint256 amountToReceiverList = (amount * progress) / progressBase;
-
-            tranferCoinNative(sponsor, amount - amountToReceiverList);
-
-            for (uint256 i = 0; i < erc20ListAddress.length; i++) {
-                uint256 amountTokenToReceiver;
-                uint256 totalTokenRewardSubtractFee =
-                    (listBalanceAllToken[i] * remainningAmountFee) / 100;
-
-                if (getBalanceTokenOfContract(erc20ListAddress[i], address(this)) > 0) {
-                    amountTokenToReceiver =
-                        (totalTokenRewardSubtractFee * progress) / progressBase;
-
-                    uint256 amountNativeToSponsor =
-                        totalTokenRewardSubtractFee - amountTokenToReceiver;
-
-                    TransferHelper.safeTransfer(
-                        erc20ListAddress[i],
-                        sponsor,
-                        amountNativeToSponsor
-                    );
-                }
-                // One entry per listed token (0 when it has no balance): the payout loop below reads it by
-                // the token's list index, and a funded token is not always first (Kaia lists TTJP before JPYC).
-                amountTokenToReceiverList.push(amountTokenToReceiver);
-            }
-
-            for (uint256 i = 0; i < index; i++) {
-                if (amount > 0) {
-                    tranferCoinNative(
-                        awardReceivers[i],
-                        (approvalSuccessOf[awardReceivers[i]] * amountToReceiverList) / amount
-                    );
-                }
-
-                for (uint256 j = 0; j < erc20ListAddress.length; j++) {
-                    if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
-                        // Guard against division-by-zero when dust balances make
-                        // the denominator round to 0 (would revert the whole giveUp).
-                        uint256 denom = (listBalanceAllToken[j] * remainningAmountFee) / 100;
-                        if (denom == 0) {
-                            continue;
-                        }
-                        uint256 amountTokenTmp =
-                            (awardTokenReceivers[erc20ListAddress[j]][i] *
-                                amountTokenToReceiverList[j]) / denom;
-
-                        TransferHelper.safeTransfer(
-                            erc20ListAddress[j],
-                            awardReceivers[i],
-                            amountTokenTmp
-                        );
-                    }
-                }
-            }
+        tranferCoinNative(sponsor, amount);
+        for (uint256 i = 0; i < erc20ListAddress.length; i++) {
+            _payToken(erc20ListAddress[i], sponsor, (listBalanceAllToken[i] * remainningAmountFee) / 100);
         }
+        emit FundTransfer(sponsor, amount);
 
         transferNFTForSenderWhenFailed(
             _listNFTAddress,
@@ -1241,11 +1187,8 @@ contract ChallengeHIITV4 is IERC721Receiver {
             _statusTypeNft
         );
 
-        if (serverFailureFee > 0 && getContractBalance() >= serverFailureFee) {
-            (bool feeOk, ) = feeAddress.call{ value: serverFailureFee }("");
-            if (!feeOk) emit NativeTransferFailed(feeAddress, serverFailureFee);
-            else emit FundTransfer(feeAddress, serverFailureFee);
-        }
+        if (tranferCoinNative(feeAddress, serverFailureFee)) emit FundTransfer(feeAddress, serverFailureFee);
+        _returnRemainderToSponsor();
 
         emit GiveUp(msg.sender);
     }
@@ -1256,19 +1199,15 @@ contract ChallengeHIITV4 is IERC721Receiver {
      * @param _listIndexNFT The list of NFT indices for each address.
      * @param _listSenderAddress The list of sender addresses for each NFT.
      * @param _statusTypeNft The status of each NFT (true for ERC721, false for ERC1155).
-     *      With HIIT, the sponsor can close only after endTime + SPONSOR_CLOSE_DELAY, so late results of
-     *      the challenger are not cut off at endTime + 2 days; the challenger can close from endTime + 2 days.
+     *      Only the sponsor closes, from endTime + 2 days, with no upper limit; results are accepted until then.
      */
     function closeChallenge(
         address[] memory _listNFTAddress,
         uint256[][] memory _listIndexNFT,
         address[][] memory _listSenderAddress,
         bool[] memory _statusTypeNft
-    ) external nonReentrant onlyStakeHolders afterFinish availableForClose {
-        require(
-            msg.sender == challenger || block.timestamp > endTime + SPONSOR_CLOSE_DELAY,
-            "Sponsor can close 30 days after the end"
-        );
+    ) external nonReentrant afterFinish availableForClose {
+        require(msg.sender == sponsor, "Only sponsor can close");
         transferToListReceiverFail(
             _listNFTAddress,
             _listIndexNFT,
@@ -1299,8 +1238,10 @@ contract ChallengeHIITV4 is IERC721Receiver {
         for (uint256 i = 0; i < _listTokenErc20.length; i++) {
             address tokenErc20 = _listTokenErc20[i];
             uint256 balanceErc20 = IERC20(tokenErc20).balanceOf(address(this));
-
-            TransferHelper.safeTransfer(tokenErc20, returnedNFTWallet, balanceErc20);
+            // Amounts claimable by the recipients of failed transfers stay in the contract.
+            if (balanceErc20 > totalClaimable[tokenErc20]) {
+                TransferHelper.safeTransfer(tokenErc20, returnedNFTWallet, balanceErc20 - totalClaimable[tokenErc20]);
+            }
         }
 
         transferNFTForSenderWhenFinish(
@@ -1326,31 +1267,20 @@ contract ChallengeHIITV4 is IERC721Receiver {
         isSuccess = true;
         isFinished = true;
 
-        updateRewardSuccessAndfail();
+        updateRewardSuccessAndfail(true);
 
-        if (serverSuccessFee > 0 && getContractBalance() >= serverSuccessFee) {
-            (bool feeOk, ) = feeAddress.call{ value: serverSuccessFee }("");
-            if (!feeOk) emit NativeTransferFailed(feeAddress, serverSuccessFee);
-            else emit FundTransfer(feeAddress, serverSuccessFee);
-        }
+        if (tranferCoinNative(feeAddress, serverSuccessFee)) emit FundTransfer(feeAddress, serverSuccessFee);
 
         for (uint256 i = 0; i < index; i++) {
-            uint256 nativeAmount = approvalSuccessOf[awardReceivers[i]];
-            if (nativeAmount > 0 && getContractBalance() >= nativeAmount) {
-                (bool sent, ) = awardReceivers[i].call{ value: nativeAmount }("");
-                if (!sent) emit NativeTransferFailed(awardReceivers[i], nativeAmount);
-            }
-
+            tranferCoinNative(awardReceivers[i], approvalSuccessOf[awardReceivers[i]]);
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
+                // awardTokenReceivers holds amounts only for the tokens that had a balance at settlement.
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
-                    TransferHelper.safeTransfer(
-                        erc20ListAddress[j],
-                        awardReceivers[i],
-                        awardTokenReceivers[erc20ListAddress[j]][i]
-                    );
+                    _payToken(erc20ListAddress[j], awardReceivers[i], awardTokenReceivers[erc20ListAddress[j]][i]);
                 }
             }
         }
+        _returnRemainderToSponsor();
 
         if (allowGiveUp[2]) {
             address currentAddressNftUse;
@@ -1386,31 +1316,20 @@ contract ChallengeHIITV4 is IERC721Receiver {
         // EFFECTS — write finished flag before any external interaction (CEI)
         isFinished = true;
 
-        updateRewardSuccessAndfail();
+        updateRewardSuccessAndfail(false);
 
-        if (serverFailureFee > 0 && getContractBalance() >= serverFailureFee) {
-            (bool feeOk, ) = feeAddress.call{ value: serverFailureFee }("");
-            if (!feeOk) emit NativeTransferFailed(feeAddress, serverFailureFee);
-            else emit FundTransfer(feeAddress, serverFailureFee);
-        }
+        if (tranferCoinNative(feeAddress, serverFailureFee)) emit FundTransfer(feeAddress, serverFailureFee);
 
         for (uint256 i = index; i < awardReceivers.length; i++) {
-            uint256 nativeAmount = approvalFailOf[awardReceivers[i]];
-            if (nativeAmount > 0 && getContractBalance() >= nativeAmount) {
-                (bool sent, ) = awardReceivers[i].call{ value: nativeAmount }("");
-                if (!sent) emit NativeTransferFailed(awardReceivers[i], nativeAmount);
-            }
-
+            tranferCoinNative(awardReceivers[i], approvalFailOf[awardReceivers[i]]);
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
+                // awardTokenReceivers holds amounts only for the tokens that had a balance at settlement.
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
-                    TransferHelper.safeTransfer(
-                        erc20ListAddress[j],
-                        awardReceivers[i],
-                        awardTokenReceivers[erc20ListAddress[j]][i]
-                    );
+                    _payToken(erc20ListAddress[j], awardReceivers[i], awardTokenReceivers[erc20ListAddress[j]][i]);
                 }
             }
         }
+        _returnRemainderToSponsor();
 
         transferNFTForSenderWhenFailed(
             _listNFTAddress,
@@ -1516,7 +1435,8 @@ contract ChallengeHIITV4 is IERC721Receiver {
         }
     }
 
-    function updateRewardSuccessAndfail() private {
+    /** @param _success true on success (success fee), false on give-up or Close (failure fee), for coin and tokens. */
+    function updateRewardSuccessAndfail(bool _success) private {
         // Reset constructor-populated accumulators so the += below sums correctly.
         // listBalanceAllToken / awardTokenReceivers are guaranteed empty here
         // (single-call lifecycle enforced by nonReentrant + isFinished CEI).
@@ -1569,10 +1489,11 @@ contract ChallengeHIITV4 is IERC721Receiver {
                     awardTokenReceivers[erc20ListAddress[i]].push(awardAmount);
                 }
 
-                uint256 realAmountFee = (listBalanceAllToken[i] * amountFailFee) / 100;
-                if (realAmountFee > 0) {
-                    TransferHelper.safeTransfer(erc20ListAddress[i], feeAddress, realAmountFee);
-                }
+                _payToken(
+                    erc20ListAddress[i],
+                    feeAddress,
+                    (listBalanceAllToken[i] * (_success ? amountSuccessFee : amountFailFee)) / 100
+                );
             }
         }
     }
@@ -1593,11 +1514,56 @@ contract ChallengeHIITV4 is IERC721Receiver {
         return stateInstance;
     }
 
-    function tranferCoinNative(address payable from, uint256 value) private {
+    function tranferCoinNative(address payable from, uint256 value) private returns (bool success) {
         if (value > 0 && getContractBalance() >= value) {
-            (bool success, ) = from.call{ value: value }("");
-            if (!success) emit NativeTransferFailed(from, value);
+            (success, ) = from.call{ value: value }("");
+            if (!success) {
+                emit NativeTransferFailed(from, value);
+                _recordClaim(address(0), from, value);
+            }
         }
+    }
+
+    /** @dev Transfer tokens; a failed transfer is recorded for its recipient instead of reverting the settlement. */
+    function _payToken(address _token, address _to, uint256 _amount) private {
+        if (_amount == 0) return;
+        (bool ok, bytes memory data) = _token.call(abi.encodeWithSelector(IERC20.transfer.selector, _to, _amount));
+        if (!ok || (data.length != 0 && !abi.decode(data, (bool)))) _recordClaim(_token, _to, _amount);
+    }
+
+    function _recordClaim(address _token, address _to, uint256 _amount) private {
+        claimable[_token][_to] += _amount;
+        totalClaimable[_token] += _amount;
+        emit TransferClaimable(_token, _to, _amount);
+    }
+
+    /** @dev After a settlement only a rounding remainder is left besides the claimable amounts: it goes to the sponsor. */
+    function _returnRemainderToSponsor() private {
+        uint256 coin = getContractBalance();
+        if (coin > totalClaimable[address(0)]) tranferCoinNative(sponsor, coin - totalClaimable[address(0)]);
+        for (uint256 i = 0; i < erc20ListAddress.length; i++) {
+            address token = erc20ListAddress[i];
+            uint256 balance = IERC20(token).balanceOf(address(this));
+            if (balance > totalClaimable[token]) _payToken(token, sponsor, balance - totalClaimable[token]);
+        }
+    }
+
+    /**
+     * @dev Pay the caller the amount a failed transfer left for it.
+     * @param _token The token (address(0) = native coin).
+     */
+    function claim(address _token) external nonReentrant {
+        uint256 amount = claimable[_token][msg.sender];
+        require(amount > 0, "Nothing to claim");
+        claimable[_token][msg.sender] = 0;
+        totalClaimable[_token] -= amount;
+        if (_token == address(0)) {
+            (bool ok, ) = payable(msg.sender).call{ value: amount }("");
+            require(ok, "Claim failed");
+        } else {
+            TransferHelper.safeTransfer(_token, msg.sender, amount);
+        }
+        emit Claimed(_token, msg.sender, amount);
     }
 
     function getBalanceTokenOfContract(

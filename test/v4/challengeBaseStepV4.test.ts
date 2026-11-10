@@ -75,6 +75,15 @@ describe('ChallengeBaseStepV4', () => {
       ['N = T', { hiitData: [2, 20, 10, 8, 8, 80] }, 'Invalid HIIT menu'],
       ['target 0', { hiitData: [2, 20, 10, 8, 2, 0] }, 'Invalid HIIT menu'],
       ['target 101', { hiitData: [2, 20, 10, 8, 2, 101] }, 'Invalid HIIT menu'],
+      // B7: every enabled minimum is 1 to the number of days of the period.
+      ['speed days 0', { walkingSpeedData: [5, 30, 0] }, 'Invalid required days'],
+      ['speed days > the period', { walkingSpeedData: [5, 30, 11] }, 'Invalid required days'],
+      ['HIIT days 0', { hiitData: [0, ...MENU] }, 'Invalid required days'],
+      ['HIIT days > the period', { hiitData: [11, ...MENU] }, 'Invalid required days'],
+      // Q5: shares + fee of each outcome make 100.
+      ['shares 100 + 100', { awardReceiversPercent: [100, 100] }, 'Invalid award percent'],
+      ['shares 90 + 90 (success 90 + fee 5)', { awardReceiversPercent: [90, 90] }, 'Invalid award percent'],
+      ['no failure receiver', { awardReceiversPercent: [95] }, 'Invalid award percent'],
     ] as const) {
       it(`reverts on ${label}`, async () => {
         await expect(deployV4('ChallengeBaseStepV4', { duration: 10, ...(opts as any) })).to.be.revertedWith(
@@ -83,13 +92,11 @@ describe('ChallengeBaseStepV4', () => {
       });
     }
 
-    // The walking speed and HIIT values are not checked: the app and BACKEND own them.
+    // The walking speed minutes and the HIIT menu limits are not checked: the app and BACKEND own them.
     for (const [label, opts] of [
-      ['speed days 0', { walkingSpeedData: [5, 30, 0] }],
-      ['speed days > duration', { walkingSpeedData: [5, 30, 11] }],
+      ['speed days = the period', { walkingSpeedData: [5, 30, 10] }],
       ['speed minutes 0', { walkingSpeedData: [5, 0, 2] }],
-      ['HIIT days 0', { hiitData: [0, ...MENU] }],
-      ['HIIT days > duration', { hiitData: [11, ...MENU] }],
+      ['HIIT days = the period', { hiitData: [10, ...MENU] }],
       ['a menu beyond the current Custom limits', { hiitData: [2, 120, 120, 40, 5, 90] }],
     ] as const) {
       it(`accepts ${label} and stores it as given`, async () => {
@@ -115,12 +122,6 @@ describe('ChallengeBaseStepV4', () => {
       expect(await ctx.challenge.isSuccess()).to.equal(true);
     });
 
-    it('0 required HIIT and speed days count as reached: the step days alone finish the challenge', async () => {
-      const ctx = await deployAll({ walkingSpeedData: [5, 30, 0], hiitData: [0, ...MENU] });
-      await sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(1), steps: GOAL }, { day: ctx.dayKey(2), steps: GOAL }]) });
-      expect(await ctx.challenge.isSuccess()).to.equal(true);
-      expect(await ctx.challenge.getState()).to.equal(1n); // SUCCESS
-    });
   });
 
   describe('counting', () => {
@@ -290,18 +291,41 @@ describe('ChallengeBaseStepV4', () => {
       ).to.be.revertedWith('Invalid achieved');
     });
 
-    it('day 1 HIIT uses [startTime, end]; steps keep the full day', async () => {
+    it('c: day 1 of steps, speed and HIIT uses [startTime, end of the day]; a full-day range is refused', async () => {
       const ctx = await deployV4('ChallengeBaseStepV4', {
-        goal: GOAL, dayRequired: 2, hiitData: HIIT, startOffset: 14 * 3600 + 300,
+        goal: GOAL, dayRequired: 2, walkingSpeedData: SPEED, hiitData: HIIT, startOffset: 14 * 3600 + 300,
       });
       await moveTo(ctx.startTime);
       const day = ctx.day0;
-      await sendBaseStep(ctx, {
-        step: stepInput([{ day, steps: GOAL }]),
-        hiit: withRange([day], [ctx.startTime, day + DAY - 1]),
-      });
-      expect(await progress(ctx.challenge)).to.deep.equal([1, 2, 0, 0, 1, 2]);
+      const fullDay = { step: stepInput([{ day, steps: GOAL }]), raw: true };
+      await expect(sendBaseStep(ctx, fullDay)).to.be.revertedWith('Invalid time range');
+      await expect(
+        sendBaseStep(ctx, { speed: speedInput([{ day, minutes: 30, mets: 300 }]), raw: true })
+      ).to.be.revertedWith('Invalid time range');
       await expect(sendBaseStep(ctx, { hiit: achievedInput([day]) })).to.be.revertedWith('Invalid time range');
+      await sendBaseStep(ctx, {
+        step: { day: [day], steps: [GOAL], timeRange: [ctx.startTime, day + DAY - 1] },
+        speed: { day: [day], minutesAtTargetSpeed: [30], metsWalkingSpeed: [300], timeRange: [ctx.startTime, day + DAY - 1] },
+        hiit: withRange([day], [ctx.startTime, day + DAY - 1]),
+        raw: true,
+      });
+      expect(await progress(ctx.challenge)).to.deep.equal([1, 2, 1, 2, 1, 2]);
+    });
+
+    it('a day-1 range ending before a late start (23:30) is refused for each set', async () => {
+      const ctx = await deployV4('ChallengeBaseStepV4', {
+        goal: GOAL, dayRequired: 2, walkingSpeedData: SPEED, hiitData: HIIT, startOffset: 23 * 3600 + 1800,
+      });
+      await moveTo(ctx.startTime + 60);
+      const day = ctx.day0;
+      const inverted = [ctx.startTime, ctx.startTime - 1];
+      await expect(sendBaseStep(ctx, { step: { day: [day], steps: [GOAL], timeRange: inverted }, raw: true })).to.be.revertedWith('Day outside challenge period');
+      await expect(
+        sendBaseStep(ctx, { speed: { day: [day], minutesAtTargetSpeed: [30], metsWalkingSpeed: [300], timeRange: inverted }, raw: true })
+      ).to.be.revertedWith('Day outside challenge period');
+      await expect(sendBaseStep(ctx, { hiit: withRange([day], inverted) })).to.be.revertedWith('Day outside challenge period');
+      await sendBaseStep(ctx, { step: stepInput([{ day, steps: GOAL }]) });
+      expect(await progress(ctx.challenge)).to.deep.equal([1, 2, 0, 2, 0, 2]);
     });
 
     it('HIIT sent first anchors the calendar on its day key, not on the range start', async () => {
@@ -333,24 +357,24 @@ describe('ChallengeBaseStepV4', () => {
   describe('give up', () => {
     it('with HIIT only the challenger can give up', async () => {
       const ctx = await deployAll();
-      await expect(giveUp(ctx, ctx.sponsor)).to.be.revertedWith('Caller cannot give up');
-      await expect(giveUp(ctx, ctx.signers[9])).to.be.revertedWith('Caller cannot give up');
+      await expect(giveUp(ctx, ctx.sponsor)).to.be.revertedWith('Only challenger can call this function');
+      await expect(giveUp(ctx, ctx.signers[9])).to.be.revertedWith('Only challenger can call this function');
       await giveUp(ctx, ctx.challenger);
       expect(await ctx.challenge.getState()).to.equal(3n);
     });
 
-    it('without HIIT the sponsor can still give up', async () => {
+    it('B1: without HIIT too, only the challenger can give up', async () => {
       const ctx = await deployAll({ hiitData: [] });
-      await expect(giveUp(ctx, ctx.signers[9])).to.be.revertedWith('Caller cannot give up');
-      await giveUp(ctx, ctx.sponsor);
+      await expect(giveUp(ctx, ctx.sponsor)).to.be.revertedWith('Only challenger can call this function');
+      await giveUp(ctx, ctx.challenger);
       expect(await ctx.challenge.getState()).to.equal(3n);
     });
   });
 
   describe('success', () => {
     it('succeeds only when every condition reaches its own required days, on different days', async () => {
-      // 90%: the 5% success fee is paid first, so a 100% receiver could not be paid in full.
-      const ctx = await deployAll({ awardReceiversPercent: [90] });
+      // Default shares 95 (success) + 5% success fee and 90 (failure) + 10% failure fee (Q5).
+      const ctx = await deployAll();
       const [d0, d1, d2, d3] = [0, 1, 2, 3].map(ctx.dayKey);
       // Steps on days 0 and 1, speed on days 2 and 3, HIIT on days 1 and 3.
       await sendBaseStep(ctx, {
@@ -396,7 +420,7 @@ describe('ChallengeBaseStepV4', () => {
     });
 
     it('getChallengeInfo: cleared/required are step days (ratio <= 100%); daysRemained is 0 only when all are met', async () => {
-      const ctx = await deployAll({ dayRequired: 2, awardReceiversPercent: [90] });
+      const ctx = await deployAll({ dayRequired: 2 });
       await sendBaseStep(ctx, {
         step: stepInput([
           { day: ctx.dayKey(0), steps: 1000 },
@@ -444,8 +468,10 @@ describe('ChallengeBaseStepV4', () => {
       await expect(
         sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(10), steps: 1000 }]) })
       ).to.be.revertedWith('Day outside challenge period');
+      // 3.2: the day before the first day, even with a range starting at startTime.
+      const before = ctx.dayKey(-1);
       await expect(
-        sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(-1), steps: 1000 }]) })
+        sendBaseStep(ctx, { step: { day: [before], steps: [1000], timeRange: [ctx.startTime, before + DAY - 1] }, raw: true })
       ).to.be.revertedWith('Day outside challenge period');
     });
 
@@ -624,82 +650,49 @@ describe('ChallengeBaseStepV4', () => {
   });
 
   describe('close and give-up', () => {
-    it('closeChallenge with HIIT: the challenger from endTime + 2 days, the sponsor only 30 days after the end', async () => {
-      const ctx = await deployAll();
-      await sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(0), steps: 1000 }]) });
-      await expect(ctx.challenge.connect(ctx.challenger).closeChallenge([], [], [], [])).to.be.revertedWith(
-        'Challenge has not finished yet'
-      );
-      await moveTo(ctx.endTime + 2 * DAY + 1);
-      await expect(ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], [])).to.be.revertedWith(
-        'Sponsor can close 30 days after the end'
-      );
-      await ctx.challenge.connect(ctx.challenger).closeChallenge([], [], [], []);
-      expect(await ctx.challenge.isFinished()).to.equal(true);
-      expect(await ctx.challenge.isSuccess()).to.equal(false);
-      expect(await ctx.challenge.getState()).to.equal(4n); // CLOSED
+    it('Q1: only the sponsor closes, from endTime + 2 days, with or without HIIT, with no upper limit', async () => {
+      for (const hiitData of [HIIT, []]) {
+        const ctx = await deployAll({ hiitData });
+        await sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(0), steps: 1000 }]) });
+        await expect(ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], [])).to.be.revertedWith(
+          'Challenge has not finished yet'
+        );
+        await moveTo(ctx.endTime + 2 * DAY + 1);
+        await expect(ctx.challenge.connect(ctx.challenger).closeChallenge([], [], [], [])).to.be.revertedWith(
+          'Only sponsor can close'
+        );
+        // Late results still count until the sponsor closes.
+        await sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(1), steps: 1000 }]) });
+        expect((await progress(ctx.challenge))[0]).to.equal(2);
+        await moveTo(ctx.endTime + 400 * DAY);
+        await ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
+        expect(await ctx.challenge.isFinished()).to.equal(true);
+        expect(await ctx.challenge.isSuccess()).to.equal(false);
+        expect(await ctx.challenge.getState()).to.equal(4n); // CLOSED
+      }
     });
 
-    it('closeChallenge with HIIT: the sponsor can close from endTime + 30 days + 1 s', async () => {
-      const ctx = await deployAll();
-      await time.setNextBlockTimestamp(ctx.endTime + 30 * DAY);
-      await expect(ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], [])).to.be.revertedWith(
-        'Sponsor can close 30 days after the end'
-      );
-      await time.setNextBlockTimestamp(ctx.endTime + 30 * DAY + 1);
-      await ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
-      expect(await ctx.challenge.getState()).to.equal(4n);
-    });
-
-    it('closeChallenge without HIIT keeps the earlier rule: the sponsor from endTime + 2 days', async () => {
-      const ctx = await deployAll({ hiitData: [] });
-      await moveTo(ctx.endTime + 2 * DAY + 1);
-      await ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
-      expect(await ctx.challenge.getState()).to.equal(4n);
-    });
-
-    async function sponsorShareOnGiveUp(opts: Record<string, any>, sets: any) {
-      const ctx = await deployAll({ dayRequired: 4, ...opts });
-      for (const s of sets(ctx)) await sendBaseStep(ctx, s);
-      const before = await hre.ethers.provider.getBalance(ctx.sponsor.address);
+    it('B1: giveUp returns the deposit minus the failure fee to the sponsor, whatever the progress', async () => {
+      const ctx = await deployAll({ dayRequired: 4, walkingSpeedData: [], hiitData: [4, ...MENU], allAwardToSponsor: false });
+      await sendBaseStep(ctx, {
+        step: stepInput([{ day: ctx.dayKey(0), steps: 1000 }, { day: ctx.dayKey(1), steps: 1000 }]),
+        hiit: achievedInput([ctx.dayKey(1)]),
+      });
+      const balance = (a: string) => hre.ethers.provider.getBalance(a);
+      const [receiver, fee] = [ctx.signers[4].address, ctx.signers[2].address];
+      const [s0, r0, f0] = [await balance(ctx.sponsor.address), await balance(receiver), await balance(fee)];
       await ctx.challenge.connect(ctx.challenger).giveUp([], [], [], []);
-      return (await hre.ethers.provider.getBalance(ctx.sponsor.address)) - before;
-    }
-
-    it('giveUp pays by the lowest progress among the enabled conditions', async () => {
-      const total = hre.ethers.parseEther('1');
-      const amount = (total * 90n) / 100n; // after the 10% failure fee
-      // Steps 2/4, HIIT 1/4 -> lowest progress 1/4, sponsor keeps 3/4.
-      const lowest = await sponsorShareOnGiveUp(
-        { walkingSpeedData: [], hiitData: [4, ...MENU] },
-        (ctx: any) => [
-          {
-            step: stepInput([
-              { day: ctx.dayKey(0), steps: 1000 },
-              { day: ctx.dayKey(1), steps: 1000 },
-            ]),
-            hiit: achievedInput([ctx.dayKey(1)]),
-          },
-        ]
-      );
-      expect(lowest).to.equal(amount - (amount * 1n) / 4n);
-      // Step-only 2/4 -> unchanged formula currentStatus / dayRequired, sponsor keeps 2/4.
-      const stepOnly = await sponsorShareOnGiveUp({ walkingSpeedData: [], hiitData: [] }, (ctx: any) => [
-        {
-          step: stepInput([
-            { day: ctx.dayKey(0), steps: 1000 },
-            { day: ctx.dayKey(1), steps: 1000 },
-          ]),
-        },
-      ]);
-      expect(stepOnly).to.equal(amount - (amount * 2n) / 4n);
+      expect((await balance(ctx.sponsor.address)) - s0).to.equal(hre.ethers.parseEther('0.9'));
+      expect((await balance(receiver)) - r0).to.equal(0n);
+      expect((await balance(fee)) - f0).to.equal(hre.ethers.parseEther('0.1'));
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
     });
   });
 
   describe('settlement and edge values', () => {
     it('success pays each receiver its exact share and the success fee', async () => {
       const ctx = await deployV4('ChallengeBaseStepV4', {
-        goal: GOAL, dayRequired: 1, awardReceiversPercent: [50, 40], index: 2,
+        goal: GOAL, dayRequired: 1, awardReceiversPercent: [50, 45, 90], index: 2,
       });
       await moveTo(ctx.dayKey(0) + 3600);
       const [r0, r1, fee] = [ctx.signers[4].address, ctx.signers[5].address, ctx.signers[2].address];
@@ -708,25 +701,25 @@ describe('ChallengeBaseStepV4', () => {
       const after = await Promise.all([r0, r1, fee].map((a) => hre.ethers.provider.getBalance(a)));
       const one = hre.ethers.parseEther('1');
       expect(after[0] - before[0]).to.equal((one * 50n) / 100n);
-      expect(after[1] - before[1]).to.equal((one * 40n) / 100n);
+      expect(after[1] - before[1]).to.equal((one * 45n) / 100n);
       expect(after[2] - before[2]).to.equal((one * 5n) / 100n);
     });
 
-    it('a token (ERC20) challenge settles in the token on success', async () => {
+    it('Q5: a token (ERC20) challenge settles in the token on success, with the success fee', async () => {
       const [sponsor] = await hre.ethers.getSigners();
       const token = await (await hre.ethers.getContractFactory('MockERC20')).deploy('Yen', 'JPYC');
       const amount = hre.ethers.parseEther('1000');
       await token.mint(sponsor.address, amount);
       const ctx = await deployV4('ChallengeBaseStepV4', {
-        goal: GOAL, dayRequired: 1, awardReceiversPercent: [90], totalAmount: amount, msgValue: 0n,
+        goal: GOAL, dayRequired: 1, totalAmount: amount, msgValue: 0n,
         allowGiveUp: [true, false, false], erc20List: [await token.getAddress()],
       });
       await token.connect(sponsor).transfer(await ctx.challenge.getAddress(), amount);
       await moveTo(ctx.dayKey(0) + 3600);
       await sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(0), steps: 1000 }]) });
       expect(await ctx.challenge.isSuccess()).to.equal(true);
-      expect(await token.balanceOf(ctx.signers[4].address)).to.equal((amount * 90n) / 100n);
-      expect(await token.balanceOf(ctx.signers[2].address)).to.equal((amount * 10n) / 100n); // fee address
+      expect(await token.balanceOf(ctx.signers[4].address)).to.equal((amount * 95n) / 100n);
+      expect(await token.balanceOf(ctx.signers[2].address)).to.equal((amount * 5n) / 100n); // fee address: success fee
       expect(await token.balanceOf(await ctx.challenge.getAddress())).to.equal(0n);
     });
 
@@ -738,7 +731,7 @@ describe('ChallengeBaseStepV4', () => {
       for (const name of listOrder) tokens[name] = await Token.deploy(name, name);
       for (const [name, amount] of Object.entries(funded)) await tokens[name].mint(sponsor.address, amount);
       const ctx = await deployV4('ChallengeBaseStepV4', {
-        goal: GOAL, dayRequired: 4, awardReceiversPercent: [90], totalAmount: funded.JPYC, msgValue: 0n,
+        goal: GOAL, dayRequired: 4, totalAmount: funded.JPYC, msgValue: 0n,
         allowGiveUp: [true, false, false], erc20List: await Promise.all(listOrder.map((n) => tokens[n].getAddress())),
       });
       for (const [name, amount] of Object.entries(funded)) await tokens[name].connect(sponsor).transfer(await ctx.challenge.getAddress(), amount);
@@ -747,38 +740,48 @@ describe('ChallengeBaseStepV4', () => {
       return { ctx, tokens, sponsor };
     }
 
-    it('giveUp splits a token that is not first in the NFT token list (Kaia: TTJP listed before JPYC)', async () => {
+    it('B1: giveUp returns a token that is not first in the NFT token list to the sponsor (Kaia: TTJP before JPYC)', async () => {
       const amount = hre.ethers.parseEther('100');
       const { ctx, tokens, sponsor } = await tokenGiveUpCtx({ JPYC: amount }, ['TTJP', 'JPYC']);
       await ctx.challenge.connect(ctx.challenger).giveUp([], [], [], []);
-      const share = (((amount * 90n) / 100n) * 1n) / 4n; // 90 % after the 10 % failure fee, progress 1/4
-      expect(await tokens.JPYC.balanceOf(ctx.signers[4].address)).to.equal(share);
-      expect(await tokens.JPYC.balanceOf(sponsor.address)).to.equal((amount * 90n) / 100n - share);
+      expect(await tokens.JPYC.balanceOf(ctx.signers[4].address)).to.equal(0n);
+      expect(await tokens.JPYC.balanceOf(sponsor.address)).to.equal((amount * 90n) / 100n);
       expect(await tokens.JPYC.balanceOf(ctx.signers[2].address)).to.equal((amount * 10n) / 100n); // fee address
       expect(await tokens.JPYC.balanceOf(await ctx.challenge.getAddress())).to.equal(0n);
     });
 
-    it('giveUp splits every funded token by the same progress when some listed tokens are empty', async () => {
+    it('B1: giveUp returns every funded token to the sponsor when some listed tokens are empty', async () => {
       const funded = { JPYC: hre.ethers.parseEther('100'), USDT: hre.ethers.parseEther('40') };
       const { ctx, tokens, sponsor } = await tokenGiveUpCtx(funded, ['TTJP', 'JPYC', 'USDT']);
       await ctx.challenge.connect(ctx.challenger).giveUp([], [], [], []);
       for (const [name, amount] of Object.entries(funded)) {
-        const share = (((amount * 90n) / 100n) * 1n) / 4n;
-        expect(await tokens[name].balanceOf(ctx.signers[4].address), `${name} receiver`).to.equal(share);
-        expect(await tokens[name].balanceOf(sponsor.address), `${name} sponsor`).to.equal((amount * 90n) / 100n - share);
+        expect(await tokens[name].balanceOf(ctx.signers[4].address), `${name} receiver`).to.equal(0n);
+        expect(await tokens[name].balanceOf(sponsor.address), `${name} sponsor`).to.equal((amount * 90n) / 100n);
         expect(await tokens[name].balanceOf(ctx.signers[2].address), `${name} fee`).to.equal((amount * 10n) / 100n);
         expect(await tokens[name].balanceOf(await ctx.challenge.getAddress()), `${name} left`).to.equal(0n);
       }
     });
 
-    it('closeChallenge is refused at exactly endTime + 2 days and allowed one second later', async () => {
+    it('a coin challenge settles while the NFT also lists a token with no balance (success and Close)', async () => {
+      const token = await (await hre.ethers.getContractFactory('MockERC20')).deploy('Yen', 'JPYC');
+      const ok = await deployAll({ dayRequired: 1, walkingSpeedData: [], hiitData: [], erc20List: [await token.getAddress()] });
+      await sendBaseStep(ok, { step: stepInput([{ day: ok.dayKey(1), steps: 1000 }]) });
+      expect(await ok.challenge.isSuccess()).to.equal(true);
+      const closed = await deployAll({ erc20List: [await token.getAddress()] });
+      await moveTo(closed.endTime + 2 * DAY + 1);
+      await closed.challenge.connect(closed.sponsor).closeChallenge([], [], [], []);
+      expect(await closed.challenge.getState()).to.equal(4n);
+      expect(await closed.challenge.getContractBalance()).to.equal(0n);
+    });
+
+    it('closeChallenge is refused at exactly endTime + 2 days and allowed one second later (sponsor)', async () => {
       const ctx = await deployAll();
       await time.setNextBlockTimestamp(ctx.endTime + 2 * DAY);
-      await expect(ctx.challenge.connect(ctx.challenger).closeChallenge([], [], [], [])).to.be.revertedWith(
+      await expect(ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], [])).to.be.revertedWith(
         'Challenge has not finished yet'
       );
       await time.setNextBlockTimestamp(ctx.endTime + 2 * DAY + 1);
-      await ctx.challenge.connect(ctx.challenger).closeChallenge([], [], [], []);
+      await ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
       expect(await ctx.challenge.isFinished()).to.equal(true);
     });
 

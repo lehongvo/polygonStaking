@@ -141,28 +141,29 @@ describe('ChallengeHIITV4', () => {
     });
 
     it('succeeds and pays exactly when the required days are reached (coin: 5% fee, 95% receiver)', async () => {
-      const ctx = await started({ dayRequired: 2, awardReceiversPercent: [95] });
+      const ctx = await started({ dayRequired: 2, awardReceiversPercent: [95, 90] });
       const [receiver, fee] = [ctx.signers[4].address, ctx.signers[2].address];
       const balance = (a: string) => hre.ethers.provider.getBalance(a);
       const [r0, f0] = [await balance(receiver), await balance(fee)];
-      await sendHiit(ctx, achievedInput([ctx.dayKey(2), ctx.dayKey(4)]));
+      const tx = await sendHiit(ctx, achievedInput([ctx.dayKey(2), ctx.dayKey(4)]));
       expect(await ctx.challenge.getState()).to.equal(SUCCESS);
       expect((await balance(receiver)) - r0).to.equal(hre.ethers.parseEther('0.95'));
       expect((await balance(fee)) - f0).to.equal(hre.ethers.parseEther('0.05'));
+      await expect(tx).to.emit(ctx.challenge, 'FundTransfer').withArgs(fee, hre.ethers.parseEther('0.05'));
       expect(await ctx.challenge.getContractBalance()).to.equal(0n);
       await expect(sendHiit(ctx, achievedInput([ctx.dayKey(5)]))).to.be.revertedWith('Challenge was finished');
     });
 
-    it('settles an ERC20 challenge to several success receivers by their shares (token fee 10%)', async () => {
+    it('Q5: settles an ERC20 challenge to several success receivers by their shares, with the success fee (5%)', async () => {
       const token = await (await hre.ethers.getContractFactory('contracts/mocks/MockERC20.sol:MockERC20')).deploy('JPY Coin', 'JPYC');
-      const ctx = await started({ dayRequired: 1, awardReceiversPercent: [60, 30, 90], index: 2, erc20List: [await token.getAddress()] });
+      const ctx = await started({ dayRequired: 1, awardReceiversPercent: [60, 35, 90], index: 2, erc20List: [await token.getAddress()] });
       const amount = hre.ethers.parseEther('100');
       await token.mint(await ctx.challenge.getAddress(), amount);
       const [r4, r5, r6, fee] = [4, 5, 6, 2].map((i) => ctx.signers[i].address);
       await sendHiit(ctx, achievedInput([ctx.dayKey(1)]));
       expect(await ctx.challenge.getState()).to.equal(SUCCESS);
       expect([await token.balanceOf(r4), await token.balanceOf(r5), await token.balanceOf(r6), await token.balanceOf(fee)]).to.deep.equal([
-        hre.ethers.parseEther('60'), hre.ethers.parseEther('30'), 0n, hre.ethers.parseEther('10'),
+        hre.ethers.parseEther('60'), hre.ethers.parseEther('35'), 0n, hre.ethers.parseEther('5'),
       ]);
       expect(await token.balanceOf(await ctx.challenge.getAddress())).to.equal(0n);
     });
@@ -199,10 +200,17 @@ describe('ChallengeHIITV4', () => {
       expect(await ctx.challenge.getHIITAchievedOn(ctx.dayKey(1) - 3600)).to.equal(1n);
     });
 
-    it('0 required days: the first submission finishes the challenge as a success', async () => {
-      const ctx = await started({ dayRequired: 0 });
-      await sendHiit(ctx, achievedInput([ctx.dayKey(1)]));
-      expect(await ctx.challenge.isSuccess()).to.equal(true);
+    it('B7: refuses 0 required days and more than the days of the period', async () => {
+      await expect(deployHiit({ dayRequired: 0 })).to.be.revertedWith('Invalid required days');
+      await expect(deployHiit({ dayRequired: 11 })).to.be.revertedWith('Invalid required days');
+      expect(await (await deployHiit({ dayRequired: 10 })).challenge.dayRequired()).to.equal(10n);
+    });
+
+    it('Q5: refuses shares that do not make 100% with the fee of each outcome', async () => {
+      for (const percents of [[100, 100], [90, 90], [95, 100], [95]]) {
+        await expect(deployHiit({ awardReceiversPercent: percents })).to.be.revertedWith('Invalid award percent');
+      }
+      await expect(deployHiit({ awardReceiversPercent: [50, 45, 90], index: 2 })).not.to.be.reverted;
     });
 
     it('accepts late results after endTime + 2 days while not finalized', async () => {
@@ -220,7 +228,7 @@ describe('ChallengeHIITV4', () => {
     });
 
     it('caps the count at the required days, so getChallengeInfo cannot underflow', async () => {
-      const ctx = await started({ dayRequired: 5, awardReceiversPercent: [90] });
+      const ctx = await started({ dayRequired: 5 });
       await sendHiit(ctx, achievedInput([1, 2, 3, 4, 5].map(ctx.dayKey)));
       expect(await info(ctx)).to.deep.equal([5, 5, 0]);
     });
@@ -294,12 +302,30 @@ describe('ChallengeHIITV4', () => {
       await expect(sendHiit(ctx, achievedInput([ctx.dayKey(10)]))).to.be.revertedWith('Day outside challenge period');
     });
 
-    it('documents the 1 h tolerance: the day before a 00:00:01 start counts with a 25 h range (as V3; the backend never signs it)', async () => {
+    it('3.2: refuses the day before a 00:00:01 start, even with a 25 h range; the first day counts', async () => {
       const ctx = await started();
       const before = ctx.dayKey(-1);
-      await sendHiit(ctx, withRange([before], [ctx.startTime, before + 25 * 3600 - 1]));
+      await expect(sendHiit(ctx, withRange([before], [ctx.startTime, before + 25 * 3600 - 1]))).to.be.revertedWith('Day outside challenge period');
+      await sendHiit(ctx, withRange([ctx.dayKey(0)], [ctx.startTime, ctx.dayKey(0) + DAY - 1]));
       expect(await info(ctx)).to.deep.equal([1, 2, 1]);
-      expect((await ctx.challenge.getHistoryV4()).map(Number)).to.deep.equal([before]);
+    });
+
+    it('a day-1 range ending before a late start (23:30) is refused; [start, end of the day] is accepted', async () => {
+      const ctx = await deployHiit({ startOffset: 23 * 3600 + 1800, dayRequired: 2 });
+      await moveTo(ctx.startTime + 60);
+      const day = ctx.dayKey(0);
+      await expect(sendHiit(ctx, withRange([day], [ctx.startTime, ctx.startTime - 1]))).to.be.revertedWith('Day outside challenge period');
+      await sendHiit(ctx, withRange([day], [ctx.startTime, day + DAY - 1]));
+      expect(await info(ctx)).to.deep.equal([1, 2, 1]);
+    });
+
+    it('a range ending after the end time is refused (pair end <= endTime)', async () => {
+      const ctx = await deployHiit({ dayRequired: 2, duration: 2 });
+      await moveTo(ctx.dayKey(1) + 3600);
+      const last = ctx.dayKey(1);
+      await expect(sendHiit(ctx, withRange([last], [last, last + 25 * 3600 - 1]))).to.be.revertedWith('Day outside challenge period');
+      await sendHiit(ctx, withRange([last], [last, ctx.endTime]));
+      expect(await info(ctx)).to.deep.equal([1, 2, 1]);
     });
 
     it('rejects another time zone key and maps a DST key to the same day', async () => {
@@ -322,40 +348,131 @@ describe('ChallengeHIITV4', () => {
       expect(await ctx.challenge.getState()).to.equal(GAVE_UP);
     });
 
-    it('giveUp pays by HIIT progress (1 of 4 days)', async () => {
-      const ctx = await started({ dayRequired: 4 });
+    it('B1: giveUp returns the deposit minus the failure fee to the sponsor, nothing by achievement', async () => {
+      const ctx = await started({ dayRequired: 4, allAwardToSponsor: false });
       await sendHiit(ctx, achievedInput([ctx.dayKey(1)]));
-      const before = await hre.ethers.provider.getBalance(ctx.sponsor.address);
-      await giveUp(ctx, ctx.challenger);
-      const amount = (hre.ethers.parseEther('1') * 90n) / 100n;
-      expect((await hre.ethers.provider.getBalance(ctx.sponsor.address)) - before).to.equal(amount - amount / 4n);
-    });
-
-    it('0 required days: giveUp does not divide by zero', async () => {
-      const ctx = await started({ dayRequired: 0 });
-      await giveUp(ctx, ctx.challenger);
+      const balance = (a: string) => hre.ethers.provider.getBalance(a);
+      const [receiver, fee] = [ctx.signers[4].address, ctx.signers[2].address];
+      const [s0, r0, f0] = [await balance(ctx.sponsor.address), await balance(receiver), await balance(fee)];
+      const tx = await giveUp(ctx, ctx.challenger);
       expect(await ctx.challenge.getState()).to.equal(GAVE_UP);
+      expect((await balance(ctx.sponsor.address)) - s0).to.equal(hre.ethers.parseEther('0.9'));
+      expect((await balance(receiver)) - r0).to.equal(0n);
+      expect((await balance(fee)) - f0).to.equal(hre.ethers.parseEther('0.1'));
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+      await expect(tx).to.emit(ctx.challenge, 'GiveUp').withArgs(ctx.challenger.address);
+      await expect(tx).to.emit(ctx.challenge, 'FundTransfer').withArgs(fee, hre.ethers.parseEther('0.1'));
     });
 
-    it('closeChallenge: the challenger from endTime + 2 days; the sponsor waits 30 days, so late results still count', async () => {
+    it('Q1: only the sponsor closes, from endTime + 2 days; late results count until then; failure distribution', async () => {
       const ctx = await started({ dayRequired: 3 });
-      await expect(ctx.challenge.connect(ctx.challenger).closeChallenge([], [], [], [])).to.be.revertedWith('Challenge has not finished yet');
+      await expect(ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], [])).to.be.revertedWith('Challenge has not finished yet');
+      await time.setNextBlockTimestamp(ctx.endTime + 2 * DAY);
+      await expect(ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], [])).to.be.revertedWith('Challenge has not finished yet');
       await moveTo(ctx.endTime + 2 * DAY + 1);
-      await expect(ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], [])).to.be.revertedWith('Sponsor can close 30 days after the end');
+      await expect(ctx.challenge.connect(ctx.challenger).closeChallenge([], [], [], [])).to.be.revertedWith('Only sponsor can close');
       await sendHiit(ctx, achievedInput([ctx.dayKey(3)]));
       expect(await info(ctx)).to.deep.equal([1, 3, 2]);
-      await ctx.challenge.connect(ctx.challenger).closeChallenge([], [], [], []);
-      expect(await ctx.challenge.isFinished()).to.equal(true);
-      expect(await ctx.challenge.isSuccess()).to.equal(false);
+      const balance = (a: string) => hre.ethers.provider.getBalance(a);
+      const [failReceiver, fee] = [ctx.signers[5].address, ctx.signers[2].address];
+      const [r0, f0] = [await balance(failReceiver), await balance(fee)];
+      const tx = await ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
+      expect(await ctx.challenge.getState()).to.equal(4n); // CLOSED
+      expect((await balance(failReceiver)) - r0).to.equal(hre.ethers.parseEther('0.9'));
+      expect((await balance(fee)) - f0).to.equal(hre.ethers.parseEther('0.1'));
+      await expect(tx).to.emit(ctx.challenge, 'FundTransfer').withArgs(fee, hre.ethers.parseEther('0.1'));
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+      await expect(sendHiit(ctx, achievedInput([ctx.dayKey(4)]))).to.be.revertedWith('Challenge was finished');
     });
 
-    it('the sponsor can close from endTime + 30 days + 1 s, not at exactly endTime + 30 days', async () => {
+    it('Q1: Close has no upper limit (the sponsor closes 400 days after the end)', async () => {
       const ctx = await started({ dayRequired: 3 });
-      await time.setNextBlockTimestamp(ctx.endTime + 30 * DAY);
-      await expect(ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], [])).to.be.revertedWith('Sponsor can close 30 days after the end');
-      await time.setNextBlockTimestamp(ctx.endTime + 30 * DAY + 1);
+      await moveTo(ctx.endTime + 400 * DAY);
       await ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
-      expect(await ctx.challenge.getState()).to.equal(4n); // CLOSED
+      expect(await ctx.challenge.getState()).to.equal(4n);
+    });
+  });
+
+  describe('Q5: failed transfers and the remainder', () => {
+    /** A HIIT challenge (1 required day) whose success receiver is a MockClaimReceiver that rejects coin. */
+    async function withRejectingReceiver() {
+      const base = await deployHiit({ dayRequired: 1 });
+      const receiver = await (await hre.ethers.getContractFactory('MockClaimReceiver')).deploy();
+      const challenge = await (await hre.ethers.getContractFactory('ChallengeHIITV4')).deploy(
+        [base.sponsor.address, base.challenger.address, base.signers[2].address], hre.ethers.ZeroAddress, [await base.nft.getAddress()],
+        [10, base.startTime, base.endTime, 1, ...MAIN_MENU], [await receiver.getAddress(), base.signers[5].address], 1,
+        [true, true, false], [0, 0, 0], false, [95, 90], hre.ethers.parseEther('1'), { value: hre.ethers.parseEther('1') }
+      );
+      await base.nft.grantChallengeRole(await challenge.getAddress());
+      await moveTo(base.dayKey(5) + 3600);
+      return { ...base, challenge, receiver };
+    }
+
+    it('a coin award that cannot be paid stays claimable by its recipient and is never sent to the sponsor', async () => {
+      const ctx = await withRejectingReceiver();
+      const balance = (a: string) => hre.ethers.provider.getBalance(a);
+      const s0 = await balance(ctx.sponsor.address);
+      const receiver = await ctx.receiver.getAddress();
+      await expect(sendHiit(ctx, achievedInput([ctx.dayKey(1)])))
+        .to.emit(ctx.challenge, 'TransferClaimable').withArgs(hre.ethers.ZeroAddress, receiver, hre.ethers.parseEther('0.95'));
+      expect(await ctx.challenge.isSuccess()).to.equal(true);
+      expect(await ctx.challenge.claimable(hre.ethers.ZeroAddress, receiver)).to.equal(hre.ethers.parseEther('0.95'));
+      expect(await ctx.challenge.getContractBalance()).to.equal(hre.ethers.parseEther('0.95'));
+      expect((await balance(ctx.sponsor.address)) - s0).to.equal(0n);
+      await expect(ctx.challenge.connect(ctx.sponsor).claim(hre.ethers.ZeroAddress)).to.be.revertedWith('Nothing to claim');
+      // Still rejecting: the claim reverts and the amount stays recorded.
+      await expect(ctx.receiver.claimFrom(await ctx.challenge.getAddress(), hre.ethers.ZeroAddress)).to.be.reverted;
+      await ctx.receiver.setAccept(true);
+      await expect(ctx.receiver.claimFrom(await ctx.challenge.getAddress(), hre.ethers.ZeroAddress))
+        .to.emit(ctx.challenge, 'Claimed').withArgs(hre.ethers.ZeroAddress, receiver, hre.ethers.parseEther('0.95'));
+      expect(await balance(receiver)).to.equal(hre.ethers.parseEther('0.95'));
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+      expect(await ctx.challenge.totalClaimable(hre.ethers.ZeroAddress)).to.equal(0n);
+      await expect(ctx.receiver.claimFrom(await ctx.challenge.getAddress(), hre.ethers.ZeroAddress)).to.be.reverted;
+    });
+
+    it('a token award that cannot be paid stays claimable; the remainder and withdrawTokensOnCompletion leave it', async () => {
+      const token = await (await hre.ethers.getContractFactory('MockBlockingERC20')).deploy();
+      const tokenAddress = await token.getAddress();
+      const ctx = await started({ dayRequired: 1, erc20List: [tokenAddress], msgValue: 0n, allowGiveUp: [true, false, false] });
+      const challengeAddress = await ctx.challenge.getAddress();
+      await token.mint(challengeAddress, hre.ethers.parseEther('100'));
+      const [receiver, fee, returned] = [ctx.signers[4].address, ctx.signers[2].address, ctx.signers[3]];
+      await token.setBlocked(receiver, true);
+      await sendHiit(ctx, achievedInput([ctx.dayKey(1)]));
+      expect(await ctx.challenge.isSuccess()).to.equal(true);
+      expect(await ctx.challenge.claimable(tokenAddress, receiver)).to.equal(hre.ethers.parseEther('95'));
+      expect(await token.balanceOf(fee)).to.equal(hre.ethers.parseEther('5'));
+      expect(await token.balanceOf(ctx.sponsor.address)).to.equal(0n);
+      expect(await token.balanceOf(challengeAddress)).to.equal(hre.ethers.parseEther('95'));
+      await ctx.challenge.connect(returned).withdrawTokensOnCompletion([tokenAddress], [], [], []);
+      expect(await token.balanceOf(challengeAddress)).to.equal(hre.ethers.parseEther('95'));
+      await token.setBlocked(receiver, false);
+      await ctx.challenge.connect(ctx.signers[4]).claim(tokenAddress);
+      expect(await token.balanceOf(receiver)).to.equal(hre.ethers.parseEther('95'));
+      expect(await ctx.challenge.totalClaimable(tokenAddress)).to.equal(0n);
+    });
+
+    it('a coin challenge settles while the NFT also lists a token with no balance (success and Close)', async () => {
+      const token = await (await hre.ethers.getContractFactory('contracts/mocks/MockERC20.sol:MockERC20')).deploy('JPY Coin', 'JPYC');
+      const ok = await started({ dayRequired: 1, erc20List: [await token.getAddress()] });
+      await sendHiit(ok, achievedInput([ok.dayKey(1)]));
+      expect(await ok.challenge.isSuccess()).to.equal(true);
+      const closed = await started({ dayRequired: 3, erc20List: [await token.getAddress()] });
+      await moveTo(closed.endTime + 2 * DAY + 1);
+      await closed.challenge.connect(closed.sponsor).closeChallenge([], [], [], []);
+      expect(await closed.challenge.getState()).to.equal(4n);
+      expect(await closed.challenge.getContractBalance()).to.equal(0n);
+    });
+
+    it('the remainder of a rounding goes back to the sponsor, nothing stays in the contract', async () => {
+      const ctx = await started({ dayRequired: 1, totalAmount: 1001n, msgValue: 1001n });
+      const balance = (a: string) => hre.ethers.provider.getBalance(a);
+      const s0 = await balance(ctx.sponsor.address);
+      await sendHiit(ctx, achievedInput([ctx.dayKey(1)]));
+      // 95% of 1001 = 950 (floor) to the receiver, 5% of 1001 = 50 fee: 1 wei goes back to the sponsor.
+      expect((await balance(ctx.sponsor.address)) - s0).to.equal(1n);
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
     });
   });
 
