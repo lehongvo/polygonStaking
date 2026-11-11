@@ -870,4 +870,60 @@ describe('ChallengeBaseStepV4', () => {
       expect(await ctx.challenge.getContractBalance()).to.equal(0n);
     });
   });
+
+  // B-6 (E2E of 11/11): FundTransfer is emitted only for coin that actually moved. Token-only settlements emit none,
+  // and a refused coin transfer is claimable (NativeTransferFailed + TransferClaimable) without a FundTransfer.
+  describe('FundTransfer only for coin that moved (B-6)', () => {
+    const fundEvents = async (ctx: any, tx: any) => {
+      const receipt = await (await tx).wait();
+      const addr = (await ctx.challenge.getAddress()).toLowerCase();
+      return receipt.logs
+        .filter((l: any) => l.address.toLowerCase() === addr)
+        .map((l: any) => { try { return ctx.challenge.interface.parseLog(l); } catch (_) { return null; } })
+        .filter((e: any) => e && e.name === 'FundTransfer')
+        .map((e: any) => [e.args[0].toLowerCase(), e.args[1]]);
+    };
+    async function tokenCtx(opts: Record<string, any> = {}) {
+      const [sponsor] = await hre.ethers.getSigners();
+      const token = await (await hre.ethers.getContractFactory('MockERC20')).deploy('Yen', 'JPYC');
+      const amount = hre.ethers.parseEther('1000');
+      await token.mint(sponsor.address, amount);
+      const ctx = await deployV4('ChallengeBaseStepV4', {
+        goal: GOAL, dayRequired: 2, totalAmount: amount, msgValue: 0n, allowGiveUp: [true, false, false],
+        erc20List: [await token.getAddress()], ...opts,
+      });
+      await token.connect(sponsor).transfer(await ctx.challenge.getAddress(), amount);
+      return ctx;
+    }
+
+    it('a token challenge emits no FundTransfer on success, give-up or Close', async () => {
+      const ok = await tokenCtx({ dayRequired: 1 });
+      await moveTo(ok.dayKey(1) + 3600);
+      expect(await fundEvents(ok, sendBaseStep(ok, { step: stepInput([{ day: ok.dayKey(1), steps: 1000 }]) }))).to.deep.equal([]);
+      expect(await ok.challenge.isSuccess()).to.equal(true);
+      const gu = await tokenCtx();
+      await moveTo(gu.dayKey(1) + 3600);
+      expect(await fundEvents(gu, gu.challenge.connect(gu.challenger).giveUp([], [], [], []))).to.deep.equal([]);
+      const cl = await tokenCtx();
+      await moveTo(cl.endTime + 2 * DAY + 1);
+      expect(await fundEvents(cl, cl.challenge.connect(cl.sponsor).closeChallenge([], [], [], []))).to.deep.equal([]);
+    });
+
+    it('a coin fee refused by the fee address is claimable and has no FundTransfer', async () => {
+      const receiver = await (await hre.ethers.getContractFactory('MockClaimReceiver')).deploy();
+      const fee = (await receiver.getAddress()).toLowerCase();
+      const ctx = await deployV4('ChallengeBaseStepV4', { goal: GOAL, dayRequired: 2, feeAddress: fee });
+      await moveTo(ctx.endTime + 2 * DAY + 1);
+      const tx = ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
+      expect(await fundEvents(ctx, tx)).to.deep.equal([]);
+      expect(await ctx.challenge.claimable(hre.ethers.ZeroAddress, fee)).to.equal(hre.ethers.parseEther('0.1'));
+    });
+
+    it('the deployment emits FundTransfer for the gas fee only when it is paid', async () => {
+      const unpaid = await tokenCtx({ gasData: [0, 0, 1000n], totalAmount: hre.ethers.parseEther('1000') + 1000n });
+      expect(await fundEvents(unpaid, unpaid.challenge.deploymentTransaction())).to.deep.equal([]);
+      const paid = await deployV4('ChallengeBaseStepV4', { goal: GOAL, dayRequired: 2, gasData: [0, 0, 1000n] });
+      expect(await fundEvents(paid, paid.challenge.deploymentTransaction())).to.deep.equal([[paid.challenger.address.toLowerCase(), 1000n]]);
+    });
+  });
 });

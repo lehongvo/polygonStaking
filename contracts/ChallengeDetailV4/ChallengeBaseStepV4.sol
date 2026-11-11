@@ -1073,8 +1073,7 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
 
 
         // Transferring the gas fee from the challenger to the contract and emitting an event
-        tranferCoinNative(challenger, gasFee);
-        emit FundTransfer(challenger, gasFee);
+        if (tranferCoinNative(challenger, gasFee)) emit FundTransfer(challenger, gasFee);
     }
 
     /**
@@ -1346,11 +1345,12 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
         // The deposit minus the failure fee goes back to the sponsor: no payout by achievement.
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
         uint256 amount = (address(this).balance * remainningAmountFee) / 100;
-        tranferCoinNative(sponsor, amount);
+        bool sponsorPaid = tranferCoinNative(sponsor, amount);
         for (uint256 i = 0; i < erc20ListAddress.length; i++) {
             _payToken(erc20ListAddress[i], sponsor, (listBalanceAllToken[i] * remainningAmountFee) / 100);
         }
-        emit FundTransfer(sponsor, amount);
+        // FundTransfer only for coin that moved (a failed transfer emits NativeTransferFailed and is claimable).
+        if (sponsorPaid) emit FundTransfer(sponsor, amount);
 
         transferNFTForSenderWhenFailed(
             _listNFTAddress,
@@ -1359,8 +1359,7 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
             _statusTypeNft
         );
 
-        tranferCoinNative(feeAddress, serverFailureFee);
-        emit FundTransfer(feeAddress, serverFailureFee);
+        if (tranferCoinNative(feeAddress, serverFailureFee)) emit FundTransfer(feeAddress, serverFailureFee);
         _returnRemainderToSponsor();
 
         emit GiveUp(msg.sender);
@@ -1447,8 +1446,7 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
 
         updateRewardSuccessAndfail(true);
 
-        tranferCoinNative(feeAddress, serverSuccessFee);
-        emit FundTransfer(feeAddress, serverSuccessFee);
+        if (tranferCoinNative(feeAddress, serverSuccessFee)) emit FundTransfer(feeAddress, serverSuccessFee);
 
         for (uint256 i = 0; i < index; i++) {
             tranferCoinNative(awardReceivers[i], awardReceiversApprovals[i]);
@@ -1499,8 +1497,7 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
         updateRewardSuccessAndfail(false);
 
         // Transfer server failure fee to fee address
-        tranferCoinNative(feeAddress, serverFailureFee);
-        emit FundTransfer(feeAddress, serverFailureFee);
+        if (tranferCoinNative(feeAddress, serverFailureFee)) emit FundTransfer(feeAddress, serverFailureFee);
 
         // Transfer rewards and tokens to all receivers
         for (uint256 i = index; i < awardReceivers.length; i++) {
@@ -1705,12 +1702,13 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
     }
 
     // Check if the contract has enough balance to transfer
-    function tranferCoinNative(address payable from, uint256 value) private {
+    /** @return success true only when `value` coin was sent (callers emit FundTransfer only then). */
+    function tranferCoinNative(address payable from, uint256 value) private returns (bool success) {
         // Guard balance (JPYC-only challenge has native=0) AND use a low-level
         // call that does NOT revert on a reverting recipient — emit-and-continue
         // so one bad receiver/feeAddress cannot DoS the whole settlement.
         if (value > 0 && getContractBalance() >= value) {
-            (bool success, ) = from.call{ value: value }("");
+            (success, ) = from.call{ value: value }("");
             if (!success) {
                 emit NativeTransferFailed(from, value);
                 _recordClaim(address(0), from, value);

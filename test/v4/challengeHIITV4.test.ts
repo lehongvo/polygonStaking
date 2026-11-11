@@ -524,6 +524,51 @@ describe('ChallengeHIITV4', () => {
     });
   });
 
+  // B-6 (E2E of 11/11): FundTransfer is emitted only for coin that actually moved (give-up and the deployment gas fee;
+  // the fee transfers already emitted it only when paid).
+  describe('FundTransfer only for coin that moved (B-6)', () => {
+    const fundEvents = async (ctx: any, tx: any) => {
+      const receipt = await (await tx).wait();
+      const addr = (await ctx.challenge.getAddress()).toLowerCase();
+      return receipt.logs
+        .filter((l: any) => l.address.toLowerCase() === addr)
+        .map((l: any) => { try { return ctx.challenge.interface.parseLog(l); } catch (_) { return null; } })
+        .filter((e: any) => e && e.name === 'FundTransfer')
+        .map((e: any) => [e.args[0].toLowerCase(), e.args[1]]);
+    };
+    async function tokenHiit(opts: Record<string, any> = {}) {
+      const [sponsor] = await hre.ethers.getSigners();
+      const token = await (await hre.ethers.getContractFactory('MockERC20')).deploy('Yen', 'JPYC');
+      const amount = hre.ethers.parseEther('1000');
+      await token.mint(sponsor.address, amount);
+      const ctx = await deployHiit({
+        dayRequired: 2, totalAmount: amount, msgValue: 0n, allowGiveUp: [true, false, false], erc20List: [await token.getAddress()], ...opts,
+      });
+      await token.connect(sponsor).transfer(await ctx.challenge.getAddress(), amount);
+      return ctx;
+    }
+
+    it('a token give-up emits no FundTransfer; a coin give-up emits it for the sponsor and the fee', async () => {
+      const token = await tokenHiit();
+      await moveTo(token.dayKey(1) + 3600);
+      expect(await fundEvents(token, token.challenge.connect(token.challenger).giveUp([], [], [], []))).to.deep.equal([]);
+      const coin = await deployHiit({ dayRequired: 2 });
+      await moveTo(coin.dayKey(1) + 3600);
+      const one = hre.ethers.parseEther('1');
+      expect(await fundEvents(coin, coin.challenge.connect(coin.challenger).giveUp([], [], [], []))).to.deep.equal([
+        [coin.sponsor.address.toLowerCase(), (one * 90n) / 100n],
+        [coin.signers[2].address.toLowerCase(), (one * 10n) / 100n],
+      ]);
+    });
+
+    it('the deployment emits FundTransfer for the gas fee only when it is paid', async () => {
+      const unpaid = await tokenHiit({ gasData: [0, 0, 1000n], totalAmount: hre.ethers.parseEther('1000') + 1000n });
+      expect(await fundEvents(unpaid, unpaid.challenge.deploymentTransaction())).to.deep.equal([]);
+      const paid = await deployHiit({ dayRequired: 2, gasData: [0, 0, 1000n] });
+      expect(await fundEvents(paid, paid.challenge.deploymentTransaction())).to.deep.equal([[paid.challenger.address.toLowerCase(), 1000n]]);
+    });
+  });
+
   it('fits the EIP-170 contract size limit', async () => {
     const artifact = await hre.artifacts.readArtifact('ChallengeHIITV4');
     expect((artifact.deployedBytecode.length - 2) / 2).to.be.lessThan(24576);

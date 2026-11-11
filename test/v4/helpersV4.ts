@@ -60,6 +60,10 @@ export interface V4DeployOpts {
   awardReceiversPercent?: number[];
   /** Replaces the default receivers (signers 4, 5, ...), e.g. to list one address twice or in both lists. */
   awardReceivers?: string[];
+  /** Replaces the fee address (signer 2), e.g. with a receiver that refuses coin. */
+  feeAddress?: string;
+  /** Replaces _gasData ([0, 0, 0]); index 2 is the gas fee paid to the challenger at deployment. */
+  gasData?: (number | bigint)[];
   index?: number;
   allowGiveUp?: boolean[];
   allAwardToSponsor?: boolean;
@@ -89,7 +93,7 @@ export async function deployV4(name: 'ChallengeBaseStepV4' | 'ChallengeHIITV4', 
   const receivers = opts.awardReceivers ?? signers.slice(4, 4 + percents.length).map(s => s.address);
   const totalAmount = opts.totalAmount ?? hre.ethers.parseEther('1');
   const common = [
-    [sponsor.address, challenger.address, feeAddr.address],
+    [sponsor.address, challenger.address, opts.feeAddress ?? feeAddr.address],
     hre.ethers.ZeroAddress,
     [await nft.getAddress()],
   ];
@@ -97,7 +101,7 @@ export async function deployV4(name: 'ChallengeBaseStepV4' | 'ChallengeHIITV4', 
     receivers,
     opts.index ?? 1,
     opts.allowGiveUp ?? [true, true, false],
-    [0, 0, 0],
+    opts.gasData ?? [0, 0, 0],
     opts.allAwardToSponsor ?? false,
     percents,
     totalAmount,

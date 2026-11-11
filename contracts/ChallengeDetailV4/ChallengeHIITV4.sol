@@ -974,8 +974,7 @@ contract ChallengeHIITV4 is IERC721Receiver {
         totalReward = _totalAmount;
         allowGiveUp = _allowGiveUp;
 
-        tranferCoinNative(challenger, gasFee);
-        emit FundTransfer(challenger, gasFee);
+        if (tranferCoinNative(challenger, gasFee)) emit FundTransfer(challenger, gasFee);
     }
 
     /**
@@ -1164,11 +1163,12 @@ contract ChallengeHIITV4 is IERC721Receiver {
         // The deposit minus the failure fee goes back to the sponsor: no payout by achievement.
         uint256 remainningAmountFee = uint256(100) - amountFailFee;
         uint256 amount = (address(this).balance * remainningAmountFee) / 100;
-        tranferCoinNative(sponsor, amount);
+        bool sponsorPaid = tranferCoinNative(sponsor, amount);
         for (uint256 i = 0; i < erc20ListAddress.length; i++) {
             _payToken(erc20ListAddress[i], sponsor, (listBalanceAllToken[i] * remainningAmountFee) / 100);
         }
-        emit FundTransfer(sponsor, amount);
+        // FundTransfer only for coin that moved (a failed transfer emits NativeTransferFailed and is claimable).
+        if (sponsorPaid) emit FundTransfer(sponsor, amount);
 
         transferNFTForSenderWhenFailed(
             _listNFTAddress,
