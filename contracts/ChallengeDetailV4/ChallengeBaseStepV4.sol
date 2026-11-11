@@ -763,14 +763,6 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
      */
     bool selectGiveUpStatus;
 
-    /** @dev approvalSuccessOf get amount of coin an `address` can receive when ckhallenge success.
-     */
-    mapping(address => uint256) private approvalSuccessOf;
-
-    /** @dev approvalFailOf get amount of coin an `address` can receive when challenge fail.
-     */
-    mapping(address => uint256) private approvalFailOf;
-
     // Instance of the ChallengeState contract
     ChallengeState private stateInstance;
 
@@ -1010,14 +1002,12 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
 
         for (i = 0; i < _index; i++) {
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value0"); // Checking if the award amount for each receiver is greater than 0.
-            approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for successful participants.
             sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for successful participants.
             successPercent += _awardReceiversPercent[i];
         }
 
         for (i = _index; i < _awardReceivers.length; i++) {
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value1"); // Checking if the award amount for each receiver is greater than 0.
-            approvalFailOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i]; // Setting the award amount for failed participants.
             sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i]; // Summing up the award amounts for failed participants.
             failPercent += _awardReceiversPercent[i];
         }
@@ -1461,7 +1451,7 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
         emit FundTransfer(feeAddress, serverSuccessFee);
 
         for (uint256 i = 0; i < index; i++) {
-            tranferCoinNative(awardReceivers[i], approvalSuccessOf[awardReceivers[i]]);
+            tranferCoinNative(awardReceivers[i], awardReceiversApprovals[i]);
 
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 // awardTokenReceivers holds amounts only for the tokens that had a balance at settlement.
@@ -1515,7 +1505,7 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
         // Transfer rewards and tokens to all receivers
         for (uint256 i = index; i < awardReceivers.length; i++) {
             // Transfer ETH rewards to receiver
-            tranferCoinNative(awardReceivers[i], approvalFailOf[awardReceivers[i]]);
+            tranferCoinNative(awardReceivers[i], awardReceiversApprovals[i]);
 
             // Transfer ERC20 token rewards to receiver
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
@@ -1654,16 +1644,10 @@ contract ChallengeBaseStepV4 is IERC721Receiver {
             serverSuccessFee = (coinNativeBalance * amountSuccessFee) / (100);
             serverFailureFee = (coinNativeBalance * amountFailFee) / (100);
 
+            // Coin is split by list position, like tokens: positions < index are paid on success, the others on
+            // Close, so an address listed in both lists or twice gets the share of each of its positions.
             for (uint256 i = 0; i < awardReceivers.length; i++) {
-                approvalSuccessOf[awardReceivers[i]] =
-                    (awardReceiversPercent[i] * coinNativeBalance) / 100;
-                sumAwardSuccess = (awardReceiversPercent[i] * coinNativeBalance) / 100;
-            }
-
-            for (uint256 i = index; i < awardReceivers.length; i++) {
-                approvalFailOf[awardReceivers[i]] =
-                    (awardReceiversPercent[i] * coinNativeBalance) / 100;
-                sumAwardFail = (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                awardReceiversApprovals[i] = (awardReceiversPercent[i] * coinNativeBalance) / 100;
             }
         }
         // Get total balance of base token in contract

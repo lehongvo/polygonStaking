@@ -812,4 +812,62 @@ describe('ChallengeBaseStepV4', () => {
     const size = (artifact.deployedBytecode.length - 2) / 2;
     expect(size).to.be.lessThan(24576);
   });
+
+  // B-1 / B-2 (E2E of 11/11): native coin is split by list position, like tokens. An address in both lists, or twice
+  // in one list, receives the share of each of its positions. Odd deposit so that every rounding is visible.
+  describe('coin split by list position (B-1, B-2)', () => {
+    const B = hre.ethers.parseEther('1') + 7n;
+    const pct = (p: bigint) => (B * p) / 100n;
+    const bal = (a: string) => hre.ethers.provider.getBalance(a);
+    const deltas = async (addrs: string[], action: () => Promise<any>) => {
+      const before = await Promise.all(addrs.map(bal));
+      await (await action()).wait();
+      return (await Promise.all(addrs.map(bal))).map((v, i) => v - before[i]);
+    };
+    async function stepCoin(list: (s: any[]) => string[], percents: number[], index: number) {
+      const signers = await hre.ethers.getSigners();
+      const ctx = await deployV4('ChallengeBaseStepV4', {
+        goal: GOAL, dayRequired: 1, awardReceivers: list(signers), awardReceiversPercent: percents, index, totalAmount: B, msgValue: B,
+      });
+      await moveTo(ctx.dayKey(1) + 3600);
+      return ctx;
+    }
+    const succeed = (ctx: any) => () => sendBaseStep(ctx, { step: stepInput([{ day: ctx.dayKey(1), steps: 1000 }]) });
+    const close = async (ctx: any) => {
+      await moveTo(ctx.endTime + 2 * DAY + 1);
+      return () => ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
+    };
+
+    it('B-1: an address in both lists gets its success share on success (challenger-like receiver keeps 90%)', async () => {
+      const ctx = await stepCoin((s) => [s[4].address, s[5].address, s[4].address, s[6].address], [5, 90, 20, 70], 2);
+      const [r1, r2, fee, sponsor] = [ctx.signers[4].address, ctx.signers[5].address, ctx.signers[2].address, ctx.sponsor.address];
+      const d = await deltas([r1, r2, fee, sponsor], succeed(ctx));
+      expect(d).to.deep.equal([pct(5n), pct(90n), pct(5n), B - pct(5n) - pct(90n) - pct(5n)]);
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+    });
+
+    it('B-1: the same address gets its failure share on close', async () => {
+      const ctx = await stepCoin((s) => [s[4].address, s[5].address, s[4].address, s[6].address], [5, 90, 20, 70], 2);
+      const [r1, r2, r3, fee] = [ctx.signers[4].address, ctx.signers[5].address, ctx.signers[6].address, ctx.signers[2].address];
+      const d = await deltas([r1, r2, r3, fee], await close(ctx));
+      expect(d).to.deep.equal([pct(20n), 0n, pct(70n), pct(10n)]);
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+    });
+
+    it('B-2: an address listed twice in the success list receives both shares', async () => {
+      const ctx = await stepCoin((s) => [s[4].address, s[4].address, s[5].address, s[6].address], [50, 45, 53, 37], 2);
+      const [r1, fee, sponsor] = [ctx.signers[4].address, ctx.signers[2].address, ctx.sponsor.address];
+      const d = await deltas([r1, fee, sponsor], succeed(ctx));
+      expect(d).to.deep.equal([pct(50n) + pct(45n), pct(5n), B - pct(50n) - pct(45n) - pct(5n)]);
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+    });
+
+    it('B-2: an address listed twice in the failure list receives both shares on close', async () => {
+      const ctx = await stepCoin((s) => [s[4].address, s[5].address, s[5].address], [95, 53, 37], 1);
+      const [r1, r2, fee] = [ctx.signers[4].address, ctx.signers[5].address, ctx.signers[2].address];
+      const d = await deltas([r1, r2, fee], await close(ctx));
+      expect(d).to.deep.equal([0n, pct(53n) + pct(37n), pct(10n)]);
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+    });
+  });
 });

@@ -476,6 +476,54 @@ describe('ChallengeHIITV4', () => {
     });
   });
 
+  // B-1 / B-2 (E2E of 11/11): native coin is split by list position, like tokens. An address in both lists, or twice
+  // in one list, receives the share of each of its positions. Odd deposit so that every rounding is visible.
+  describe('coin split by list position (B-1, B-2)', () => {
+    const B = hre.ethers.parseEther('1') + 7n;
+    const pct = (p: bigint) => (B * p) / 100n;
+    const bal = (a: string) => hre.ethers.provider.getBalance(a);
+    const deltas = async (addrs: string[], action: () => Promise<any>) => {
+      const before = await Promise.all(addrs.map(bal));
+      await (await action()).wait();
+      return (await Promise.all(addrs.map(bal))).map((v, i) => v - before[i]);
+    };
+    async function hiitCoin(list: (s: any[]) => string[], percents: number[], index: number) {
+      const signers = await hre.ethers.getSigners();
+      const ctx = await deployHiit({ dayRequired: 1, awardReceivers: list(signers), awardReceiversPercent: percents, index, totalAmount: B, msgValue: B });
+      await moveTo(ctx.dayKey(1) + 3600);
+      return ctx;
+    }
+    const succeed = (ctx: any) => () => sendHiit(ctx, achievedInput([ctx.dayKey(1)]));
+    const close = async (ctx: any) => {
+      await moveTo(ctx.endTime + 2 * DAY + 1);
+      return () => ctx.challenge.connect(ctx.sponsor).closeChallenge([], [], [], []);
+    };
+
+    it('B-1: an address in both lists gets its success share on success and its failure share on close', async () => {
+      const list = (s: any[]) => [s[4].address, s[5].address, s[4].address, s[6].address];
+      const ok = await hiitCoin(list, [5, 90, 20, 70], 2);
+      const [r1, r2, r3, fee] = [4, 5, 6, 2].map((i) => ok.signers[i].address);
+      expect(await deltas([r1, r2, fee], succeed(ok))).to.deep.equal([pct(5n), pct(90n), pct(5n)]);
+      const cl = await hiitCoin(list, [5, 90, 20, 70], 2);
+      expect(await deltas([r1, r2, r3, fee], await close(cl))).to.deep.equal([pct(20n), 0n, pct(70n), pct(10n)]);
+    });
+
+    it('B-2: an address listed twice in the success list receives both shares', async () => {
+      const ctx = await hiitCoin((s) => [s[4].address, s[4].address, s[5].address, s[6].address], [50, 45, 53, 37], 2);
+      const [r1, fee, sponsor] = [ctx.signers[4].address, ctx.signers[2].address, ctx.sponsor.address];
+      const d = await deltas([r1, fee, sponsor], succeed(ctx));
+      expect(d).to.deep.equal([pct(50n) + pct(45n), pct(5n), B - pct(50n) - pct(45n) - pct(5n)]);
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+    });
+
+    it('B-2: an address listed twice in the failure list receives both shares on close', async () => {
+      const ctx = await hiitCoin((s) => [s[4].address, s[5].address, s[5].address], [95, 53, 37], 1);
+      const [r1, r2, fee] = [4, 5, 2].map((i) => ctx.signers[i].address);
+      expect(await deltas([r1, r2, fee], await close(ctx))).to.deep.equal([0n, pct(53n) + pct(37n), pct(10n)]);
+      expect(await ctx.challenge.getContractBalance()).to.equal(0n);
+    });
+  });
+
   it('fits the EIP-170 contract size limit', async () => {
     const artifact = await hre.artifacts.readArtifact('ChallengeHIITV4');
     expect((artifact.deployedBytecode.length - 2) / 2).to.be.lessThan(24576);

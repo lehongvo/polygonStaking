@@ -58,6 +58,8 @@ export interface V4DeployOpts {
   /** Replaces _primaryRequired, to test invalid layouts. */
   primaryRequired?: number[];
   awardReceiversPercent?: number[];
+  /** Replaces the default receivers (signers 4, 5, ...), e.g. to list one address twice or in both lists. */
+  awardReceivers?: string[];
   index?: number;
   allowGiveUp?: boolean[];
   allAwardToSponsor?: boolean;
@@ -84,7 +86,7 @@ export async function deployV4(name: 'ChallengeBaseStepV4' | 'ChallengeHIITV4', 
   // Fees of the mock fee source: 5% on success, 10% on failure. Success shares + success fee and failure shares
   // + failure fee must each make 100 (Q5), so the default is one success receiver at 95 and one failure receiver at 90.
   const percents = opts.awardReceiversPercent ?? [95, 90];
-  const receivers = signers.slice(4, 4 + percents.length).map(s => s.address);
+  const receivers = opts.awardReceivers ?? signers.slice(4, 4 + percents.length).map(s => s.address);
   const totalAmount = opts.totalAmount ?? hre.ethers.parseEther('1');
   const common = [
     [sponsor.address, challenger.address, feeAddr.address],

@@ -705,14 +705,6 @@ contract ChallengeHIITV4 is IERC721Receiver {
      */
     bool selectGiveUpStatus;
 
-    /** @dev approvalSuccessOf get amount of coin an `address` can receive when ckhallenge success.
-     */
-    mapping(address => uint256) private approvalSuccessOf;
-
-    /** @dev approvalFailOf get amount of coin an `address` can receive when challenge fail.
-     */
-    mapping(address => uint256) private approvalFailOf;
-
     ChallengeState private stateInstance;
 
     uint256[] private awardReceiversPercent;
@@ -936,14 +928,12 @@ contract ChallengeHIITV4 is IERC721Receiver {
 
         for (i = 0; i < _index; i++) {
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value0");
-            approvalSuccessOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i];
             sumAwardSuccess = sumAwardSuccess + awardReceiversApprovalsTamp[i];
             successPercent += _awardReceiversPercent[i];
         }
 
         for (i = _index; i < _awardReceivers.length; i++) {
             require(awardReceiversApprovalsTamp[i] > 0, "Invalid value1");
-            approvalFailOf[_awardReceivers[i]] = awardReceiversApprovalsTamp[i];
             sumAwardFail = sumAwardFail + awardReceiversApprovalsTamp[i];
             failPercent += _awardReceiversPercent[i];
         }
@@ -1272,7 +1262,7 @@ contract ChallengeHIITV4 is IERC721Receiver {
         if (tranferCoinNative(feeAddress, serverSuccessFee)) emit FundTransfer(feeAddress, serverSuccessFee);
 
         for (uint256 i = 0; i < index; i++) {
-            tranferCoinNative(awardReceivers[i], approvalSuccessOf[awardReceivers[i]]);
+            tranferCoinNative(awardReceivers[i], awardReceiversApprovals[i]);
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 // awardTokenReceivers holds amounts only for the tokens that had a balance at settlement.
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
@@ -1321,7 +1311,7 @@ contract ChallengeHIITV4 is IERC721Receiver {
         if (tranferCoinNative(feeAddress, serverFailureFee)) emit FundTransfer(feeAddress, serverFailureFee);
 
         for (uint256 i = index; i < awardReceivers.length; i++) {
-            tranferCoinNative(awardReceivers[i], approvalFailOf[awardReceivers[i]]);
+            tranferCoinNative(awardReceivers[i], awardReceiversApprovals[i]);
             for (uint256 j = 0; j < erc20ListAddress.length; j++) {
                 // awardTokenReceivers holds amounts only for the tokens that had a balance at settlement.
                 if (getBalanceTokenOfContract(erc20ListAddress[j], address(this)) > 0) {
@@ -1449,16 +1439,16 @@ contract ChallengeHIITV4 is IERC721Receiver {
             serverSuccessFee = (coinNativeBalance * amountSuccessFee) / 100;
             serverFailureFee = (coinNativeBalance * amountFailFee) / 100;
 
+            // Coin is split by list position, like tokens: positions < index are paid on success, the others on
+            // Close, so an address listed in both lists or twice gets the share of each of its positions.
             for (uint256 i = 0; i < index; i++) {
-                approvalSuccessOf[awardReceivers[i]] =
-                    (awardReceiversPercent[i] * coinNativeBalance) / 100;
-                sumAwardSuccess += (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                awardReceiversApprovals[i] = (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                sumAwardSuccess += awardReceiversApprovals[i];
             }
 
             for (uint256 i = index; i < awardReceivers.length; i++) {
-                approvalFailOf[awardReceivers[i]] =
-                    (awardReceiversPercent[i] * coinNativeBalance) / 100;
-                sumAwardFail += (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                awardReceiversApprovals[i] = (awardReceiversPercent[i] * coinNativeBalance) / 100;
+                sumAwardFail += awardReceiversApprovals[i];
             }
         } else {
             // No native balance (e.g. JPYC/ERC20-only challenge): zero the native
@@ -1468,11 +1458,8 @@ contract ChallengeHIITV4 is IERC721Receiver {
             // not in native coin).
             serverSuccessFee = 0;
             serverFailureFee = 0;
-            for (uint256 i = 0; i < index; i++) {
-                approvalSuccessOf[awardReceivers[i]] = 0;
-            }
-            for (uint256 i = index; i < awardReceivers.length; i++) {
-                approvalFailOf[awardReceivers[i]] = 0;
+            for (uint256 i = 0; i < awardReceivers.length; i++) {
+                awardReceiversApprovals[i] = 0;
             }
         }
 
